@@ -1,0 +1,89 @@
+{
+  "programme": "P0-AUTHENTICATED-RUNTIME-403-ROOT-CAUSE-01",
+  "run_tag": "20260707T100000Z",
+  "verdict": "AUTHENTICATED_RUNTIME_RESTORED_WITH_CONDITIONS",
+  "staging_backend": {
+    "api_base": "https://pleerity-enterprise.onrender.com/api",
+    "commit_sha": "ba79b17b9aa8d5eab35397bad33e9b612426a40e",
+    "environment": "staging",
+    "health": "healthy"
+  },
+  "staging_frontend": {
+    "url": "https://pleerity-enterprise-9jjg.vercel.app",
+    "bundle": "/static/js/main.be27b211.js",
+    "bundle_bytes": 5129396,
+    "has_getEntitlements": true,
+    "has_client_entitlements_path": true,
+    "has_getEntitlementsContext": true,
+    "has_getLifecycleRuntime": false,
+    "has_formatApiErrorDetail": false,
+    "interpretation": "Vercel preview bundle predates ILP-3 lifecycle runtime and ILP-7 error coercion; still calls legacy GET /client/entitlements"
+  },
+  "root_cause": {
+    "first_denial_point": "_client_context_guard coarse lifecycle block (middleware/__init__.py)",
+    "mechanism": "ILP-10 convergence wired resolve_runtime_contract_for_client into _client_context_guard but retained a coarse _blocked_lifecycle frozenset that denied ALL /api/* traffic (including /api/profile/me) for READ_ONLY, SUSPENDED, CANCELLED_IMMEDIATE, and SUBSCRIPTION_EXPIRED before CAP_* evaluation",
+    "symptom": "POST /auth/login 200 with valid JWT, then synchronous 403 storm on profile, dashboard, today, documents, and legacy entitlements endpoints",
+    "login_vs_profile_split": "Login only checks portal user, password, provisioning, and issues JWT via issue_client_portal_login_token; /api/profile/me additionally runs client_route_guard -> _client_context_guard -> apply_session_runtime_validation -> CAP_PROFILE_VIEW. Pre-ba79b17b guard returned 403 lifecycle_access_denied for non-terminal lifecycle bands.",
+    "fix_commit_primary": "ba79b17b",
+    "fix_commit_secondary": "current develop (emit_events=False on capability enforcement load; usePortfolioUsageContext migrated off entitlements HTTP)"
+  },
+  "authenticated_request_path": [
+    {"step": 1, "stage": "login", "route": "POST /api/auth/login", "outcome": "200 when credentials valid"},
+    {"step": 2, "stage": "jwt_creation", "authority": "issue_client_portal_login_token", "claims": ["portal_user_id", "client_id", "session_id", "runtime_version", "entitlements_version", "session_version"]},
+    {"step": 3, "stage": "session_metadata", "authority": "SessionRuntimeService.create_session|refresh_session"},
+    {"step": 4, "stage": "client_id_resolution", "source": "JWT claim portal_user.client_id"},
+    {"step": 5, "stage": "client_context_guard", "checks": ["client exists", "not deleted", "onboarding PROVISIONED", "terminal lifecycle only ARCHIVED|ACCOUNT_DELETED"]},
+    {"step": 6, "stage": "runtime_contract", "authority": "resolve_runtime_contract_for_client"},
+    {"step": 7, "stage": "lifecycle_state", "source": "resolve_account_lifecycle_state"},
+    {"step": 8, "stage": "portal_mode", "source": "resolve_portal_mode"},
+    {"step": 9, "stage": "capabilities_map", "source": "resolve_capabilities"},
+    {"step": 10, "stage": "capability_evaluation", "authority": "CapabilityEnforcementService.evaluate"},
+    {"step": 11, "stage": "endpoint_authorization", "example": "CAP_PROFILE_VIEW read on /api/profile/me"},
+    {"step": 12, "stage": "frontend_runtime", "authority": "LifecycleRuntimeContext -> GET /api/client/lifecycle-runtime"},
+    {"step": 13, "stage": "api_error_rendering", "authority": "formatApiErrorDetail / LifecycleResponsePayload.to_http_detail"}
+  ],
+  "required_questions": {
+    "why_login_200_profile_403": "Coarse _blocked_lifecycle guard in _client_context_guard returned 403 before CAP_PROFILE_VIEW on staging commit d708c6fb-898cc8b9; fixed in ba79b17b to terminal ARCHIVED|ACCOUNT_DELETED only.",
+    "client_id_resolution": "From JWT claim client_id set at login from portal_users.client_id via build_client_auth_claims",
+    "lifecycle_state_generation": "build_runtime_contract -> resolve_account_lifecycle_state(client, billing)",
+    "portal_mode_generation": "resolve_portal_mode(lifecycle_state, read_only_retention)",
+    "capability_count_active_fixture": ">= 40 entries in contract.capabilities map for ACTIVE fixture",
+    "CAP_PROFILE_VIEW_active": "ALLOW (read permitted)",
+    "CAP_DASHBOARD_VIEW_active": "ALLOW",
+    "CAP_TODAY_VIEW_active": "ALLOW",
+    "CAP_PROP_VIEW_active": "ALLOW",
+    "CAP_DOC_VIEW_active": "ALLOW",
+    "CAP_REPORT_VIEW_active": "ALLOW or PLAN_GATED resolved to ALLOW on plan",
+    "first_403_guard": "_client_context_guard lifecycle_access_denied (pre-ba79b17b) for non-terminal lifecycle; capability_denied after guard fix if CAP_* denies",
+    "why_entitlements_still_called": "Stale Vercel bundle main.be27b211.js retains getEntitlements + /client/entitlements; develop source removed getEntitlements but usePortfolioUsageContext still called /client/entitlements/context until this programme",
+    "why_react_error_31": "Structured FastAPI detail objects (safe_to_retry, action, effective_semantic) rendered as React children in stale bundle without formatApiErrorDetail; fixed in develop ClientTasksPage/portalNotifications/LifecycleShell but not deployed to 9jjg preview"
+  },
+  "conditions_for_full_acceptance": [
+    "Redeploy pleerity-enterprise-9jjg Vercel preview from current develop (must include getLifecycleRuntime and formatApiErrorDetail; must not ship getEntitlements)",
+    "Re-test authenticated endpoint matrix after frontend deploy",
+    "Confirm no 429 IP blocks after login (addressed in 898cc8b9)"
+  ],
+  "validation_endpoints": [
+    "/api/profile/me",
+    "/api/client/lifecycle-runtime",
+    "/api/client/session-runtime/status",
+    "/api/client/dashboard",
+    "/api/today/items",
+    "/api/client/properties",
+    "/api/client/requirements",
+    "/api/documents",
+    "/api/reports/available",
+    "/api/billing/status"
+  ],
+  "tests_passed": {
+    "backend": [
+      "tests/test_p0_authenticated_runtime_403_root_cause_01.py",
+      "tests/test_p0_staging_runtime_stabilization.py"
+    ],
+    "frontend": [
+      "src/hooks/usePortfolioUsageContext.test.js",
+      "src/utils/p0StagingRuntimeStabilization.test.js",
+      "src/utils/portalNotifications.test.js"
+    ]
+  }
+}

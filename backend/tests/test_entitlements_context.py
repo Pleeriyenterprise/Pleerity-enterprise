@@ -6,6 +6,7 @@ from fastapi import Request
 
 from middleware import client_route_guard as middleware_client_route_guard
 from server import app
+from services.account_capability_enforcement import CapabilityDecision, GRANT_ALLOW
 
 
 @pytest.fixture
@@ -15,6 +16,19 @@ def client_user():
         "portal_user_id": "pu-ctx-1",
         "role": "ROLE_CLIENT",
     }
+
+
+async def _allow_capability_evaluate(client_id, capability_id, action, *, contract=None):
+    return CapabilityDecision(
+        capability_id=capability_id,
+        action=action,
+        grant=GRANT_ALLOW,
+        effective_semantic=GRANT_ALLOW,
+        allowed=True,
+        source="test",
+        reason_code="allowed",
+        reason="test allow",
+    )
 
 
 @pytest.fixture
@@ -51,6 +65,9 @@ def test_entitlements_context_shape(client, override_client_guard):
     with patch("routes.client.database.get_db", _get_db), patch(
         "services.plan_registry.plan_registry.get_client_entitlements",
         fake_ent,
+    ), patch(
+        "middleware.capability_gating.CapabilityEnforcementService.evaluate",
+        AsyncMock(side_effect=_allow_capability_evaluate),
     ):
         r = client.get("/api/client/entitlements/context")
 

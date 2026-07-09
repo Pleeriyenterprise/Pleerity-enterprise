@@ -1,8 +1,8 @@
 """
 Read-only HTTP API for integrations (API keys).
 
-Management (JWT): /api/client/integrations/read-api-keys — gated by webhooks entitlement (Professional).
-Data (API key):    /api/client-data/v1/... — Authorization: Bearer ple_read_... or X-Pleerity-Read-Key.
+Management (JWT): /api/client/integrations/read-api-keys — CAP_INTEGRATION_READ_API.
+Data (API key):    /api/client-data/v1/... — CAP_EXPORT_API; Authorization: Bearer ple_read_... or X-Pleerity-Read-Key.
 """
 from __future__ import annotations
 
@@ -14,10 +14,11 @@ from pydantic import BaseModel
 
 from database import database
 from middleware import client_route_guard
+from middleware.capability_gating import assert_client_capability, capability_denied_http_detail
 from models import AuditAction
 from services import client_read_api_service as read_api
+from services.account_capability_enforcement import CapabilityEnforcementService
 from services.compliance_score import calculate_compliance_score
-from services.plan_registry import plan_registry
 from utils.audit import create_audit_log
 from utils.rate_limiter import log_rate_limit_event, rate_limiter
 
@@ -34,17 +35,22 @@ class CreateReadApiKeyBody(BaseModel):
     name: Optional[str] = None
 
 
-async def _ensure_webhooks(client_id: str) -> None:
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(client_id, "webhooks")
-    if not allowed:
+async def _require_read_api_read(user: Dict[str, Any]) -> None:
+    await assert_client_capability(user, "CAP_INTEGRATION_READ_API", "read")
+
+
+async def _require_read_api_write(user: Dict[str, Any]) -> None:
+    await assert_client_capability(user, "CAP_INTEGRATION_READ_API", "write")
+
+
+async def _ensure_export_api(client_id: str) -> None:
+    decision = await CapabilityEnforcementService(database.get_db()).evaluate(
+        client_id, "CAP_EXPORT_API", "read"
+    )
+    if not decision.allowed:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details
-            or {
-                "message": error_msg,
-                "feature": "webhooks",
-                "upgrade_required": True,
-            },
+            detail=capability_denied_http_detail(decision),
         )
 
 
@@ -68,17 +74,7 @@ async def _authenticate_read_request(request: Request) -> Dict[str, Any]:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or revoked API key",
         )
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(ctx["client_id"], "webhooks")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details
-            or {
-                "message": error_msg,
-                "feature": "webhooks",
-                "upgrade_required": True,
-            },
-        )
+    await _ensure_export_api(ctx["client_id"])
     ok, err_msg = await rate_limiter.check_rate_limit(
         f"read_api:{ctx['key_id']}",
         max_attempts=120,
@@ -108,7 +104,7 @@ def _require_scope(ctx: Dict[str, Any], scope: str) -> None:
 @mgmt_router.get("")
 async def list_read_api_keys(request: Request):
     user = await client_route_guard(request)
-    await _ensure_webhooks(user["client_id"])
+    await _require_read_api_read(user)
     keys = await read_api.list_keys(user["client_id"])
     return {
         "keys": keys,
@@ -121,7 +117,7 @@ async def list_read_api_keys(request: Request):
 @mgmt_router.post("")
 async def create_read_api_key(request: Request, body: CreateReadApiKeyBody):
     user = await client_route_guard(request)
-    await _ensure_webhooks(user["client_id"])
+    await _require_read_api_write(user)
     try:
         secret, key_meta = await read_api.create_key(
             user["client_id"],
@@ -153,7 +149,7 @@ async def create_read_api_key(request: Request, body: CreateReadApiKeyBody):
 @mgmt_router.delete("/{key_id}")
 async def revoke_read_api_key(request: Request, key_id: str):
     user = await client_route_guard(request)
-    await _ensure_webhooks(user["client_id"])
+    await _require_read_api_write(user)
     ok = await read_api.revoke_key(user["client_id"], key_id)
     if not ok:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Key not found or already revoked")

@@ -1,0 +1,152 @@
+{
+  "programme": "ACCOUNT-LIFECYCLE-GOVERNANCE-CONSISTENCY-REVIEW-01",
+  "generated_at": "2026-06-30T18:00:00+00:00",
+  "branch": "develop",
+  "outcome": "ACCOUNT_LIFECYCLE_GOVERNANCE_REVIEW_COMPLETE",
+  "verdict": "GOVERNANCE_APPROVED_FOR_IMPLEMENTATION",
+  "decision": "Governance frozen at v1 policy pins; ILP-1 may begin upon stakeholder sign-off",
+  "documents_reviewed": 19,
+  "governance_version_pins": {
+    "lifecycle_policy": "account_lifecycle_policy_v1",
+    "capability_authority": "account_capability_v1",
+    "runtime_contract_schema": "1.0.0",
+    "runtime_authority": "account_lifecycle_runtime_v1"
+  },
+  "deliverables": {
+    "ACCOUNT_LIFECYCLE_GOVERNANCE_REVIEW.md": "backend/docs/ACCOUNT_LIFECYCLE_GOVERNANCE_REVIEW.md",
+    "ACCOUNT_LIFECYCLE_GOVERNANCE_CONSISTENCY_MATRIX.md": "backend/docs/ACCOUNT_LIFECYCLE_GOVERNANCE_CONSISTENCY_MATRIX.md",
+    "ACCOUNT_LIFECYCLE_IMPLEMENTATION_READINESS.md": "backend/docs/ACCOUNT_LIFECYCLE_IMPLEMENTATION_READINESS.md",
+    "ACCOUNT_LIFECYCLE_GOVERNANCE_EVIDENCE.json": "backend/docs/audit/account_lifecycle_governance_consistency_review_01/ACCOUNT_LIFECYCLE_GOVERNANCE_EVIDENCE.json"
+  },
+  "phase_results": {
+    "phase_1_lifecycle_states": "PASS",
+    "phase_2_portal_modes": "PASS",
+    "phase_3_capabilities": "PASS",
+    "phase_4_runtime_contract": "PASS",
+    "phase_5_transitions": "PASS",
+    "phase_6_events": "PASS",
+    "phase_7_reactivation": "PASS",
+    "phase_8_customer_experience": "PASS_WITH_NOTES",
+    "phase_9_terminology": "PASS_WITH_NOTES",
+    "phase_10_implementation_readiness": "PASS",
+    "phase_11_authority_boundaries": "PASS"
+  },
+  "findings": [
+    {
+      "id": "GCR-001",
+      "classification": "DOCUMENT_INCONSISTENCY",
+      "severity": "MEDIUM",
+      "title": "ALPA GRACE scheduled reports contradicted policy matrix",
+      "resolution": "FIXED — ALPA background table aligned to Continue",
+      "implementation_blocker": false
+    },
+    {
+      "id": "GCR-002",
+      "classification": "DOCUMENT_INCONSISTENCY",
+      "severity": "MEDIUM",
+      "title": "ILP roadmap differed between ALPA and Runtime Contract",
+      "resolution": "FIXED — ALPA harmonized to canonical ILP sequence in Implementation Readiness",
+      "implementation_blocker": false
+    },
+    {
+      "id": "GCR-003",
+      "classification": "TERMINOLOGY_DRIFT",
+      "severity": "LOW",
+      "title": "Committed ACA doc references older ILP numbering for session/background",
+      "resolution": "SUPERSEDED by ACCOUNT_LIFECYCLE_IMPLEMENTATION_READINESS.md canonical table",
+      "implementation_blocker": false
+    },
+    {
+      "id": "GCR-004",
+      "classification": "TERMINOLOGY_DRIFT",
+      "severity": "LOW",
+      "title": "Capability matrix uses column abbreviations vs full state names",
+      "resolution": "DOCUMENTED — catalog and schema use canonical names",
+      "implementation_blocker": false
+    },
+    {
+      "id": "GCR-005",
+      "classification": "NO_CHANGE_REQUIRED",
+      "severity": "INFO",
+      "title": "READ_ONLY lifecycle state has no current platform band",
+      "resolution": "Known POLICY_GAP; ILP-1 scope",
+      "implementation_blocker": false
+    },
+    {
+      "id": "GCR-006",
+      "classification": "NO_CHANGE_REQUIRED",
+      "severity": "INFO",
+      "title": "UNKNOWN and LEGACY inherit portal mode CX without dedicated sections",
+      "resolution": "Derived from BILLING_RECOVERY and READ_ONLY respectively",
+      "implementation_blocker": false
+    },
+    {
+      "id": "GCR-007",
+      "classification": "TRANSITION_GAP",
+      "severity": "LOW",
+      "title": "T-014 SUBSCRIPTION_EXPIRED to READ_ONLY timer not implemented",
+      "resolution": "Policy consistent; implementation deferred to ILP-1/ILP-9",
+      "implementation_blocker": false
+    },
+    {
+      "id": "GCR-008",
+      "classification": "NO_CHANGE_REQUIRED",
+      "severity": "INFO",
+      "title": "Current codebase consumes parallel bands not runtime contract",
+      "resolution": "Expected pre-ILP drift; ILP-2 through ILP-10 migrate consumers",
+      "implementation_blocker": false
+    }
+  ],
+  "classification_summary": {
+    "NO_CHANGE_REQUIRED": 3,
+    "TERMINOLOGY_DRIFT": 2,
+    "DOCUMENT_INCONSISTENCY": 2,
+    "AUTHORITY_OVERLAP": 0,
+    "AUTHORITY_GAP": 0,
+    "RUNTIME_CONTRACT_GAP": 0,
+    "CAPABILITY_GAP": 0,
+    "PORTAL_MODE_GAP": 0,
+    "TRANSITION_GAP": 1,
+    "EVENT_GAP": 0,
+    "REACTIVATION_GAP": 0,
+    "IMPLEMENTATION_BLOCKER": 0
+  },
+  "harmonizations_applied": [
+    {
+      "file": "backend/docs/ACCOUNT_LIFECYCLE_POLICY_AUTHORITY.md",
+      "change": "GRACE_PERIOD scheduled reports Continue (was Pause new schedules)"
+    },
+    {
+      "file": "backend/docs/ACCOUNT_LIFECYCLE_POLICY_AUTHORITY.md",
+      "change": "ILP roadmap aligned to Runtime Contract canonical sequence"
+    }
+  ],
+  "canonical_ilp_sequence": [
+    {"order": 1, "id": "ILP-1", "name": "Lifecycle State Resolver", "ready": true, "blocked_by": []},
+    {"order": 2, "id": "ILP-2", "name": "Runtime Contract API", "ready": false, "blocked_by": ["ILP-1"]},
+    {"order": 3, "id": "ILP-3", "name": "Portal Mode", "ready": false, "blocked_by": ["ILP-2"]},
+    {"order": 4, "id": "ILP-4", "name": "Capability Enforcement", "ready": false, "blocked_by": ["ILP-2"]},
+    {"order": 5, "id": "ILP-5", "name": "Frontend Lifecycle Shell", "ready": false, "blocked_by": ["ILP-2", "ILP-3"]},
+    {"order": 6, "id": "ILP-6", "name": "API Responses", "ready": false, "blocked_by": ["ILP-4"]},
+    {"order": 7, "id": "ILP-7", "name": "Session Authority", "ready": false, "blocked_by": ["ILP-2"]},
+    {"order": 8, "id": "ILP-8", "name": "Background Services", "ready": false, "blocked_by": ["ILP-2"]},
+    {"order": 9, "id": "ILP-9", "name": "Lifecycle Events", "ready": false, "blocked_by": ["ILP-1", "ILP-2"]},
+    {"order": 10, "id": "ILP-10", "name": "Legacy Removal", "ready": false, "blocked_by": ["ILP-1", "ILP-2", "ILP-3", "ILP-4", "ILP-5", "ILP-6", "ILP-7", "ILP-8", "ILP-9"]}
+  ],
+  "acceptance_assessment": {
+    "governance_internally_consistent": true,
+    "lifecycle_states_uniquely_defined": true,
+    "portal_modes_governed": true,
+    "capabilities_governed": true,
+    "runtime_fields_single_owner": true,
+    "transitions_valid": true,
+    "events_consumed": true,
+    "reactivation_paths_supported": true,
+    "terminology_consistent": true,
+    "no_authority_overlap": true,
+    "ilp_roadmap_no_missing_dependencies": true,
+    "governance_approved_for_implementation": true,
+    "implementation_blockers": 0
+  },
+  "regression_note": "Review-only on develop; two harmonization edits to uncommitted ALPA; no code changes."
+}

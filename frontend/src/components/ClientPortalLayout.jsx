@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import { usePortalNavigationCapabilities, useProfileCapabilities } from '../utils/accountCapabilityAccess';
 import api, { clientAPI, authAPI } from '../api/client';
 import { Button } from './ui/button';
 import { SUPPORT_EMAIL } from '../config';
@@ -31,6 +31,11 @@ import {
   isOperationsPath,
   isSecondaryNavPath,
 } from '../config/portalNavigationConfig';
+import { annotateNavWithLifecyclePolicy } from '../utils/portalNavigationPolicy';
+import { usePortalMode, useLifecycleRuntime } from '../contexts/LifecycleRuntimeContext';
+import { isLifecycleRestrictedPortalMode } from '../utils/lifecycleRecoveryCopy';
+import LifecycleShell from './lifecycle/LifecycleShell';
+import LifecycleRuntimeDiagnostics from './lifecycle/LifecycleRuntimeDiagnostics';
 import {
   PortalNavDropdown,
   PortalNavLink,
@@ -47,9 +52,10 @@ export { PORTAL_TABS };
 
 export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const { user, logout, isClient } = useAuth();
-  const { hasFeature, entitlementsLoadFailed } = useEntitlements();
-  /** While entitlements failed to load, keep gated nav visible so users are not misled into thinking features are absent; route gates show retry. */
-  const navHasFeature = (key) => entitlementsLoadFailed || hasFeature(key);
+  const { navHasFeature, showReports, showBilling, showCalendar, showAssistant, invoicingEnabled } = usePortalNavigationCapabilities();
+  const { canEditProfile } = useProfileCapabilities();
+  const { navigationPolicy, portalMode } = usePortalMode();
+  const { runtimeAvailable } = useLifecycleRuntime();
   const navigate = useNavigate();
   const isTenant = user?.role === 'ROLE_TENANT';
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -67,6 +73,8 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const [portalTrustLoading, setPortalTrustLoading] = useState(false);
   const [portalTrustError, setPortalTrustError] = useState(false);
   const complianceReportHintCooldownRef = useRef(0);
+  const portalTrustFailuresRef = useRef(0);
+  const portalTrustCircuitUntilRef = useRef(0);
 
   const loadInAppNotifications = () => {
     if (isTenant || !isClient) return;
@@ -85,45 +93,51 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   };
 
   const loadPortalTrust = async () => {
-    if (isTenant || !isClient) return;
+    if (isTenant || !isClient || !runtimeAvailable) return;
+    const now = Date.now();
+    if (portalTrustCircuitUntilRef.current > now) {
+      setPortalTrustError(true);
+      return;
+    }
     setPortalTrustLoading(true);
     setPortalTrustError(false);
-    const maxAttempts = 4;
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        const r = await clientAPI.getPortalContext();
-        setPortalTrust(r.data || null);
-        setPortalTrustError(false);
-        setPortalTrustLoading(false);
-        return;
-      } catch {
-        setPortalTrustError(true);
-        if (attempt < maxAttempts - 1) {
-          await sleep(600 * (attempt + 1));
-        }
+    try {
+      const r = await clientAPI.getPortalContext();
+      setPortalTrust(r.data || null);
+      setPortalTrustError(false);
+      portalTrustFailuresRef.current = 0;
+      portalTrustCircuitUntilRef.current = 0;
+    } catch {
+      setPortalTrustError(true);
+      portalTrustFailuresRef.current += 1;
+      if (portalTrustFailuresRef.current >= 2) {
+        portalTrustCircuitUntilRef.current = Date.now() + 5 * 60 * 1000;
       }
+    } finally {
+      setPortalTrustLoading(false);
     }
-    setPortalTrustLoading(false);
   };
 
   useEffect(() => {
-    if (!isClient || isTenant) return;
+    if (!isClient || isTenant || !runtimeAvailable) return;
     loadInAppNotifications();
     loadPortalTrust();
     const t = setInterval(loadInAppNotifications, 120000);
-    const t2 = setInterval(loadPortalTrust, 180000);
+    const t2 = setInterval(() => {
+      if (portalTrustCircuitUntilRef.current <= Date.now()) {
+        loadPortalTrust();
+      }
+    }, 180000);
     return () => {
       clearInterval(t);
       clearInterval(t2);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient, isTenant, user?.portal_user_id]);
+  }, [isClient, isTenant, user?.portal_user_id, runtimeAvailable]);
 
   useEffect(() => {
     if (!isClient || isTenant) return undefined;
-    const reportsUnlocked = hasFeature('reports_pdf') || hasFeature('reports_csv');
-    if (!reportsUnlocked) return undefined;
+    if (!showReports) return undefined;
     const onOutcome = (ev) => {
       const detail = ev && typeof ev === 'object' ? ev.detail : undefined;
       if (!detail || !shouldSuggestComplianceReportHint(detail)) return;
@@ -135,7 +149,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
     };
     window.addEventListener('compliance-outcome', onOutcome);
     return () => window.removeEventListener('compliance-outcome', onOutcome);
-  }, [isClient, isTenant, hasFeature]);
+  }, [isClient, isTenant, showReports]);
 
   useEffect(() => {
     if (notifOpen) loadInAppNotifications();
@@ -226,17 +240,19 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   };
 
   const location = useLocation();
-  const showReports = navHasFeature('reports_pdf') || navHasFeature('reports_csv');
-  const invoicingEnabled = navHasFeature('invoicing');
-
   const tenantTabs = isTenant ? TENANT_PORTAL_TABS : null;
   const navModel = isTenant
     ? null
-    : buildPortalNavigationModel({
-        navHasFeature,
-        showReports,
-        userRole: user?.role,
-      });
+    : annotateNavWithLifecyclePolicy(
+        buildPortalNavigationModel({
+          navHasFeature,
+          showReports,
+          showBilling,
+          showCalendar,
+          userRole: user?.role,
+        }),
+        navigationPolicy,
+      );
   const { primaryLinks = [], operationsGroup = null, secondaryItems = [] } = navModel || {};
 
   const closeNavMenus = () => {
@@ -380,14 +396,13 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                                 className={`w-full text-left px-3 py-2 border-b border-gray-50 hover:bg-gray-50 text-sm ${n.is_read ? 'opacity-80' : 'bg-slate-50/80'}`}
                                 onClick={async () => {
                                   try {
-                                    await clientAPI.markInAppNotificationRead(n.notification_id);
-                                    const wasUnread = !n.is_read;
-                                    setNotifItems((prev) =>
-                                      prev.map((x) =>
-                                        x.notification_id === n.notification_id ? { ...x, is_read: true } : x
-                                      )
-                                    );
-                                    if (wasUnread) {
+                                    if (canEditProfile && !n.is_read) {
+                                      await clientAPI.markInAppNotificationRead(n.notification_id);
+                                      setNotifItems((prev) =>
+                                        prev.map((x) =>
+                                          x.notification_id === n.notification_id ? { ...x, is_read: true } : x
+                                        )
+                                      );
                                       setNotifUnreadCount((c) => Math.max(0, c - 1));
                                     }
                                   } catch (_) {
@@ -412,6 +427,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                   )}
                 </div>
               )}
+              {showAssistant && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -422,6 +438,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                 <MessageSquare className="w-4 h-4 sm:mr-1.5 shrink-0" />
                 <span className="hidden sm:inline">Ask Assistant</span>
               </Button>
+              )}
               <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-initial justify-end">
                 {headerAvatarUrl && (
                   <div className="w-9 h-9 rounded-full overflow-hidden border border-white/30 shrink-0">
@@ -492,6 +509,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                       icon={item.icon}
                       invoicingEnabled={invoicingEnabled}
                       onNavigate={closeNavMenus}
+                      lifecycleNavHint={item.lifecycleNavHint}
                     />
                   ))}
                   {operationsGroup ? (
@@ -569,10 +587,12 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
         </nav>
       </header>
 
-      {!isTenant && isClient && (
+      {!isTenant && isClient && !isLifecycleRestrictedPortalMode(portalMode) && (
         <div className="border-b border-gray-200 bg-gray-50">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-1.5 text-xs text-gray-600">
-            {portalTrustLoading && !portalTrust ? (
+            {!runtimeAvailable ? (
+              <span className="text-gray-600">Portal status will appear once account status finishes loading.</span>
+            ) : portalTrustLoading && !portalTrust ? (
               <span className="text-gray-600">
                 {portalTrustError
                   ? 'Unable to sync portal status. Retrying…'
@@ -628,6 +648,8 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
       )}
 
       <main className="client-portal-main client-portal-prose flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7 pb-10">
+        <LifecycleRuntimeDiagnostics />
+        <LifecycleShell />
         {children}
       </main>
 

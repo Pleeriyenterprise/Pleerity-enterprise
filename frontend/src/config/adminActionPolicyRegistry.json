@@ -278,5 +278,55 @@
     "requires_step_up": true,
     "affects_multiple_customers": false,
     "irreversible": true
+  },
+  "lifecycle_ops_refresh_runtime": {
+    "action_id": "lifecycle_ops_refresh_runtime",
+    "risk_class": "standard_operational",
+    "operator_level": "l2_support",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": false
+  },
+  "lifecycle_ops_reconcile_stripe": {
+    "action_id": "lifecycle_ops_reconcile_stripe",
+    "risk_class": "high_impact_operational",
+    "operator_level": "billing_specialist",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": false
+  },
+  "lifecycle_ops_resume_subscription": {
+    "action_id": "lifecycle_ops_resume_subscription",
+    "risk_class": "high_impact_operational",
+    "operator_level": "billing_specialist",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": true,
+    "affects_multiple_customers": false,
+    "irreversible": false
+  },
+  "lifecycle_ops_mark_support_review": {
+    "action_id": "lifecycle_ops_mark_support_review",
+    "risk_class": "standard_operational",
+    "operator_level": "l2_support",
+    "requires_reason": true,
+    "requires_confirmation": false,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": false
+  },
+  "lifecycle_ops_export_support_bundle": {
+    "action_id": "lifecycle_ops_export_support_bundle",
+    "risk_class": "standard_operational",
+    "operator_level": "l2_support",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": false
   }
 }

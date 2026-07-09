@@ -33,7 +33,8 @@ import {
 } from '../components/ui/select';
 import { ClipboardCheck, Loader2, Download, Search, Wrench, Briefcase, Eye, CheckCircle, XCircle, MessageCircle } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
-import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
+import { OperationalCapabilityProtectedRoute } from '../utils/CapabilityProtectedRoute';
+import { useOperationalExecutionCapabilities } from '../utils/operationalCapabilityAccess';
 import { PortalFilterStack, PortalLoadingPanel, portalPageRoot, portalDrawerPanelClass } from '../components/client/ClientPortalPatterns';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { invoiceDisplayLabel } from '../utils/invoiceDisplay';
@@ -118,6 +119,8 @@ function BenchmarkBadge({ fit }) {
 
 function ClientApprovalsPageInner() {
   const navigate = useNavigate();
+  const { canWriteOpsApprovals } = useOperationalExecutionCapabilities();
+  const approvalsStepUp = useStepUpApi();
   const [searchParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -214,7 +217,7 @@ function ClientApprovalsPageInner() {
 
   const handleAction = (action, notes, invoiceIdParam) => {
     const id = invoiceIdParam ?? selectedId;
-    if (!id) return;
+    if (!id || !canWriteOpsApprovals) return;
     setActionLoading(true);
     const payload = { action, notes };
     if (action === 'mark_paid') {
@@ -607,9 +610,9 @@ function ClientApprovalsPageInner() {
               </div>
               {detail.status === 'pending' && (
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleAction('approved', null, detail.invoice_id)} disabled={actionLoading}>Approve</Button>
-                  <Button size="sm" variant="destructive" onClick={() => handleAction('rejected', null, detail.invoice_id)} disabled={actionLoading}>Reject</Button>
-                  <Button size="sm" variant="outline" onClick={() => handleAction('needs_info', null, detail.invoice_id)} disabled={actionLoading}>Request more info</Button>
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleAction('approved', null, detail.invoice_id)} disabled={!canWriteOpsApprovals || actionLoading}>Approve</Button>
+                  <Button size="sm" variant="destructive" onClick={() => handleAction('rejected', null, detail.invoice_id)} disabled={!canWriteOpsApprovals || actionLoading}>Reject</Button>
+                  <Button size="sm" variant="outline" onClick={() => handleAction('needs_info', null, detail.invoice_id)} disabled={!canWriteOpsApprovals || actionLoading}>Request more info</Button>
                 </div>
               )}
               {detail.status === 'approved' && (
@@ -676,8 +679,8 @@ function ClientApprovalsPageInner() {
 
 export default function ClientApprovalsPage() {
   return (
-    <EntitlementProtectedRoute requiredFeature="invoicing">
+    <OperationalCapabilityProtectedRoute requiredFeature="invoicing">
       <ClientApprovalsPageInner />
-    </EntitlementProtectedRoute>
+    </OperationalCapabilityProtectedRoute>
   );
 }

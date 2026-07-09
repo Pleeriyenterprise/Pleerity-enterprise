@@ -2,8 +2,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api, { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
-import { useEntitlements } from '../contexts/EntitlementsContext';
-import { UpgradeRequired } from '../components/UpgradePrompt';
+import {
+  getCapabilityDeniedMessage,
+  isCapabilityDeniedApiError,
+  useReportCapabilities,
+} from '../utils/reportCapabilityAccess';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from '@/utils/portalNotifications';
@@ -15,7 +18,6 @@ import {
   FileSpreadsheet,
   ClipboardList,
   Shield,
-  Calendar,
   Building2,
   Filter,
   Clock,
@@ -31,10 +33,9 @@ import {
   Package,
   BarChart2,
 } from 'lucide-react';
-import UpgradePrompt from '../components/UpgradePrompt';
 import { operationalLabelForToken } from '../utils/presentationLanguage';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
-import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
+import { PortalModePageBanner } from '../components/lifecycle/LifecycleShell';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import { presentPortalAnalyticsEvent } from '../utils/timelinePresent';
@@ -64,7 +65,17 @@ function reportPropertyOptionLabel(p) {
 const ReportsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { hasFeature } = useEntitlements();
+  const {
+    canViewReports,
+    canDownloadReports,
+    canGeneratePdf,
+    canGenerateCsv,
+    canScheduleReportsRead,
+    canScheduleReportsWrite,
+    canAuditPackRead,
+    canAuditPackWrite,
+    canViewRentOperationsSummary,
+  } = useReportCapabilities();
   const [availableReports, setAvailableReports] = useState([]);
   const [previousReports, setPreviousReports] = useState([]);
   const [schedules, setSchedules] = useState([]);
@@ -74,7 +85,6 @@ const ReportsPage = () => {
   const [selectedPropertyForReport, setSelectedPropertyForReport] = useState('');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [creatingSchedule, setCreatingSchedule] = useState(false);
-  const [upgradeRequiredDetail, setUpgradeRequiredDetail] = useState(null);
   const [selectedFilters, setSelectedFilters] = useState({
     property_id: '',
     start_date: '',
@@ -92,11 +102,6 @@ const ReportsPage = () => {
   const [rentOpsSummary, setRentOpsSummary] = useState(null);
   const [rentOpsExpenseSummary, setRentOpsExpenseSummary] = useState(null);
 
-  const hasReportsAccess = hasFeature('reports_pdf') || hasFeature('reports_csv');
-  const hasRentOperations = hasFeature('rent_operations');
-  const hasReportsPdf = hasFeature('reports_pdf');
-  const hasScheduledReportsAccess = hasFeature('scheduled_reports');
-  const hasAuditLogExport = hasFeature('audit_log_export');
   const [evidencePackJobs, setEvidencePackJobs] = useState([]);
   const [evidencePackLoading, setEvidencePackLoading] = useState(false);
   const [evidencePackGenerating, setEvidencePackGenerating] = useState(false);
@@ -108,14 +113,14 @@ const ReportsPage = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      setUpgradeRequiredDetail(null);
-      const [reportsRes, propsRes, schedulesRes, previousRes, digestsRes] = await Promise.all([
-        api.get('/reports/available'),
+      const requests = [
+        canViewReports ? api.get('/reports/available') : Promise.resolve({ data: { reports: [] } }),
         api.get('/client/properties'),
-        api.get('/reports/schedules'),
-        hasReportsAccess ? api.get('/reports').catch(() => ({ data: { reports: [] } })) : Promise.resolve({ data: { reports: [] } }),
-        api.get('/portal/digests?limit=6').catch(() => ({ data: { digests: [] } }))
-      ]);
+        canScheduleReportsRead ? api.get('/reports/schedules') : Promise.resolve({ data: { schedules: [] } }),
+        canViewReports ? api.get('/reports').catch(() => ({ data: { reports: [] } })) : Promise.resolve({ data: { reports: [] } }),
+        canViewReports ? api.get('/portal/digests?limit=6').catch(() => ({ data: { digests: [] } })) : Promise.resolve({ data: { digests: [] } }),
+      ];
+      const [reportsRes, propsRes, schedulesRes, previousRes, digestsRes] = await Promise.all(requests);
       setAvailableReports(
         sortReportsForCatalog((reportsRes.data.reports || []).map(enrichReportFromApi)),
       );
@@ -124,22 +129,22 @@ const ReportsPage = () => {
       setPreviousReports(previousRes?.data?.reports || []);
       setDigests(digestsRes?.data?.digests || []);
     } catch (error) {
-      if (error.isPlanGateDenied && error.upgradeDetail) {
-        setUpgradeRequiredDetail(error.upgradeDetail);
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to load reports'));
       } else {
         toast.error('Failed to load reports');
       }
     } finally {
       setLoading(false);
     }
-  }, [hasReportsAccess]);
+  }, [canViewReports, canScheduleReportsRead]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const fetchEvidencePackJobs = useCallback(async () => {
-    if (!hasAuditLogExport) return;
+    if (!canAuditPackRead) return;
     setEvidencePackLoading(true);
     try {
       const r = await clientAPI.listEvidencePackJobs({ limit: 10 });
@@ -149,7 +154,7 @@ const ReportsPage = () => {
     } finally {
       setEvidencePackLoading(false);
     }
-  }, [hasAuditLogExport]);
+  }, [canAuditPackRead]);
 
   useEffect(() => {
     fetchEvidencePackJobs();
@@ -174,7 +179,7 @@ const ReportsPage = () => {
   }, [analyticsDays]);
 
   useEffect(() => {
-    if (!hasRentOperations) return;
+    if (!canViewRentOperationsSummary) return;
     let cancelled = false;
     Promise.all([
       clientAPI.getRentSummary(),
@@ -195,9 +200,10 @@ const ReportsPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [hasRentOperations]);
+  }, [canViewRentOperationsSummary]);
 
   const requestNewEvidencePack = async () => {
+    if (!canAuditPackWrite) return;
     const ps = (evidencePeriodStart || '').trim();
     const pe = (evidencePeriodEnd || '').trim();
     if ((ps && !pe) || (!ps && pe)) {
@@ -247,10 +253,10 @@ const ReportsPage = () => {
     } catch (err) {
       const st = err.response?.status;
       const det = err.response?.data?.detail;
-      if (st === 429) {
+      if (isCapabilityDeniedApiError(err)) {
+        toast.error(getCapabilityDeniedMessage(err, 'Failed to generate evidence pack'));
+      } else if (st === 429) {
         toast.error(typeof det === 'string' ? det : 'Rate limit: maximum 5 evidence packs per 24 hours.');
-      } else if (st === 403 && det?.upgrade_required) {
-        setUpgradeRequiredDetail(det);
       } else if (st === 400) {
         toast.error(typeof det === 'string' ? det : 'Invalid export period');
       } else {
@@ -288,6 +294,14 @@ const ReportsPage = () => {
   const downloadReport = async (reportId, endpoint) => {
     if (isSpecialtyReport(reportId)) {
       toast.info('Open the dedicated section for this report type.');
+      return;
+    }
+    if (selectedFilters.format === 'csv' && !canGenerateCsv) {
+      toast.error('CSV export is not available for this account state.');
+      return;
+    }
+    if (selectedFilters.format === 'pdf' && !canGeneratePdf) {
+      toast.error('PDF export is not available for this account state.');
       return;
     }
     setGenerating(reportId);
@@ -338,10 +352,8 @@ const ReportsPage = () => {
         toast.success('Report ready', {
           description: 'Snapshot of your current compliance position.',
         });
-      } else if (!hasReportsPdf) {
-        toast.info('Professional PDF exports are included on portfolio-scale plans. CSV export remains available.', {
-          tier: 'important',
-        });
+      } else if (!canGeneratePdf) {
+        toast.error('PDF export is not available for this account state.');
       } else {
         const serverPdfByReport = {
           compliance_summary: '/reports/professional/compliance-summary',
@@ -378,8 +390,8 @@ const ReportsPage = () => {
         });
       }
     } catch (error) {
-      if (error.isPlanGateDenied && error.upgradeDetail) {
-        setUpgradeRequiredDetail(error.upgradeDetail);
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to generate report'));
       } else {
         toast.error('Failed to generate report');
       }
@@ -390,7 +402,7 @@ const ReportsPage = () => {
   };
 
   const downloadDigestPdf = async (digest) => {
-    if (hasReportsPdf && digest.digest_id) {
+    if (canDownloadReports && digest.digest_id) {
       try {
         setDownloadingDigestId(digest.digest_id);
         const res = await api.get(`/portal/digests/${digest.digest_id}/pdf`, { responseType: 'blob' });
@@ -417,13 +429,12 @@ const ReportsPage = () => {
         setDownloadingDigestId(null);
       }
     }
-    toast.info('Server-rendered digest PDF requires portfolio-scale PDF reports. View the digest summary in the portal.', {
-      tier: 'important',
-    });
+    toast.error('Digest PDF download is not available for this account state.');
   };
 
   const createSchedule = async (e) => {
     e.preventDefault();
+    if (!canScheduleReportsWrite) return;
     setCreatingSchedule(true);
     
     try {
@@ -443,8 +454,8 @@ const ReportsPage = () => {
       setScheduleForm({ report_type: 'compliance_summary', frequency: 'weekly', recipients: '' });
       fetchData();
     } catch (error) {
-      if (error.isPlanGateDenied && error.upgradeDetail) {
-        setUpgradeRequiredDetail(error.upgradeDetail);
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to create schedule'));
       } else {
         toast.error(error.response?.data?.detail || 'Failed to create schedule');
       }
@@ -459,8 +470,8 @@ const ReportsPage = () => {
       toast.success(response.data.message);
       fetchData();
     } catch (error) {
-      if (error.isPlanGateDenied && error.upgradeDetail) {
-        setUpgradeRequiredDetail(error.upgradeDetail);
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to toggle schedule'));
       } else {
         toast.error('Failed to toggle schedule');
       }
@@ -477,8 +488,8 @@ const ReportsPage = () => {
       toast.success('Schedule deleted');
       fetchData();
     } catch (error) {
-      if (error.isPlanGateDenied && error.upgradeDetail) {
-        setUpgradeRequiredDetail(error.upgradeDetail);
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to delete schedule'));
       } else {
         toast.error('Failed to delete schedule');
       }
@@ -519,6 +530,7 @@ const ReportsPage = () => {
 
   return (
     <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="reports-page">
+      <PortalModePageBanner />
       <header className="bg-midnight-blue text-white py-4">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -537,26 +549,15 @@ const ReportsPage = () => {
                 <p className="text-sm text-slate-200">Coherent compliance reporting — choose the right export for your audience</p>
               </div>
             </div>
-            {hasScheduledReportsAccess ? (
-              <Button
-                onClick={() => setShowScheduleModal(true)}
-                className="bg-electric-teal hover:bg-teal-600 min-h-11 w-full sm:w-auto shrink-0"
-                data-testid="schedule-report-btn"
-              >
-                <Clock className="w-4 h-4 mr-2" />
-                Schedule report
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                className="min-h-11 w-full shrink-0 border-white/30 text-white hover:bg-white/10 sm:w-auto"
-                onClick={() => navigate(buildSafeQueryPath('/settings/billing', { upgrade_to: 'PLAN_2_PORTFOLIO' }))}
-                data-testid="schedule-report-upgrade-btn"
-              >
-                <Calendar className="mr-2 h-4 w-4" aria-hidden />
-                Scheduling & digests — Billing
-              </Button>
-            )}
+            <Button
+              onClick={() => setShowScheduleModal(true)}
+              disabled={!canScheduleReportsWrite}
+              className="bg-electric-teal hover:bg-teal-600 min-h-11 w-full sm:w-auto shrink-0"
+              data-testid="schedule-report-btn"
+            >
+              <Clock className="w-4 h-4 mr-2" />
+              Schedule report
+            </Button>
           </div>
         </div>
       </header>
@@ -582,7 +583,7 @@ const ReportsPage = () => {
           </CardContent>
         </Card>
 
-        {hasReportsAccess && (
+        {canViewReports && (
           <>
             <Card className="mb-6" data-testid="format-selection-card">
               <CardHeader className="pb-2">
@@ -703,7 +704,7 @@ const ReportsPage = () => {
         <h2 className="text-lg font-semibold text-midnight-blue mb-3" data-testid="reports-section-audit-evidence-packs">
           Audit Evidence Packs
         </h2>
-        {hasReportsPdf && (
+        {canAuditPackRead && (
           <Card className="mb-6 border border-teal-100 bg-teal-50/40" data-testid="reports-audit-evidence-pack-cta">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{REPORT_CATALOG.audit_evidence_pack.canonicalName}</CardTitle>
@@ -718,24 +719,7 @@ const ReportsPage = () => {
             </CardContent>
           </Card>
         )}
-        {upgradeRequiredDetail && (
-          <div className="mb-6" data-testid="reports-upgrade-required">
-            <UpgradeRequired upgradeDetail={upgradeRequiredDetail} showBackToDashboard />
-          </div>
-        )}
-        {/* One discoverability slot: contextual 403 detail OR full reports gate, not both */}
-        {!hasReportsAccess && !upgradeRequiredDetail && (
-          <div className="mb-6" data-testid="reports-upgrade-prompt">
-            <UpgradePrompt
-              featureName="Advanced Reports"
-              featureDescription="Download compliance reports as PDF and CSV documents. Schedule automated reports to be sent to your email."
-              requiredPlan="PLAN_2_PORTFOLIO"
-              requiredPlanName="Portfolio"
-              variant="card"
-            />
-          </div>
-        )}
-        {hasRentOperations && rentOpsSummary && (
+        {canViewRentOperationsSummary && rentOpsSummary && (
           <>
             <h2 className="text-lg font-semibold text-midnight-blue mb-3" data-testid="reports-section-operational-rent">
               Operational rent & expenses
@@ -883,7 +867,7 @@ const ReportsPage = () => {
                             variant="outline"
                             size="sm"
                             className="min-h-11 w-full"
-                            disabled={downloadingDigestId === d.digest_id}
+                            disabled={!canDownloadReports || downloadingDigestId === d.digest_id}
                             onClick={() => {
                               setDownloadingDigestId(d.digest_id);
                               try {
@@ -937,7 +921,7 @@ const ReportsPage = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                disabled={downloadingDigestId === d.digest_id}
+                                disabled={!canDownloadReports || downloadingDigestId === d.digest_id}
                                 onClick={() => {
                                   setDownloadingDigestId(d.digest_id);
                                   try {
@@ -968,7 +952,7 @@ const ReportsPage = () => {
         <h2 className="text-lg font-semibold text-midnight-blue mb-3" data-testid="reports-section-regulatory-system-exports">
           Regulatory/System Exports
         </h2>
-        {hasAuditLogExport ? (
+        {canAuditPackRead ? (
           <Card className="mb-6 border border-gray-200" data-testid="evidence-pack-zip-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1006,7 +990,7 @@ const ReportsPage = () => {
               </div>
               <Button
                 onClick={requestNewEvidencePack}
-                disabled={evidencePackGenerating}
+                disabled={!canAuditPackWrite || evidencePackGenerating}
                 className="bg-electric-teal hover:bg-teal-600"
                 data-testid="evidence-pack-generate-btn"
               >
@@ -1096,7 +1080,7 @@ const ReportsPage = () => {
                 })()}
               </div>
               <div className="p-4 border-t border-gray-200">
-                <Button variant="outline" onClick={() => { downloadDigestPdf(digestView); setDigestView(null); toast.success('Digest PDF downloaded'); }}>
+                <Button variant="outline" disabled={!canDownloadReports} onClick={() => { downloadDigestPdf(digestView); setDigestView(null); toast.success('Digest PDF downloaded'); }}>
                   <Download className="w-4 h-4 mr-2" />
                   Download PDF
                 </Button>
@@ -1105,7 +1089,7 @@ const ReportsPage = () => {
           </div>
         )}
         {/* Evidence Readiness PDF */}
-        {hasReportsAccess && (
+        {canViewReports && (
           <Card className="mb-6" id="evidence-readiness-card" data-testid="evidence-readiness-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 flex-wrap">
@@ -1124,7 +1108,7 @@ const ReportsPage = () => {
             <CardContent className="space-y-4">
               <div className="flex flex-wrap items-center gap-3">
                 <Button
-                  disabled={generating === 'evidence_readiness_portfolio'}
+                  disabled={!canGeneratePdf || generating === 'evidence_readiness_portfolio'}
                   onClick={async () => {
                     setGenerating('evidence_readiness_portfolio');
                     try {
@@ -1140,11 +1124,9 @@ const ReportsPage = () => {
                       toast.success('Evidence Readiness PDF downloaded');
                       fetchData();
                     } catch (err) {
-                      if (err.response?.status === 403)
-                        toast.info('PDF export is included on portfolio-scale plans. Use Billing to compare options.', {
-                          tier: 'important',
-                        });
-                      else toast.error('Failed to generate report');
+                      if (isCapabilityDeniedApiError(err)) {
+                        toast.error(getCapabilityDeniedMessage(err, 'Failed to generate report'));
+                      } else toast.error('Failed to generate report');
                     } finally {
                       setGenerating(null);
                     }
@@ -1170,7 +1152,7 @@ const ReportsPage = () => {
                     ))}
                   </select>
                   <Button
-                    disabled={!selectedPropertyForReport || generating === 'evidence_readiness_property'}
+                    disabled={!canGeneratePdf || !selectedPropertyForReport || generating === 'evidence_readiness_property'}
                     onClick={async () => {
                       setGenerating('evidence_readiness_property');
                       try {
@@ -1186,11 +1168,9 @@ const ReportsPage = () => {
                         toast.success('Evidence Readiness PDF downloaded');
                         fetchData();
                       } catch (err) {
-                        if (err.response?.status === 403)
-                        toast.info('PDF export is included on portfolio-scale plans. Use Billing to compare options.', {
-                          tier: 'important',
-                        });
-                        else toast.error('Failed to generate report');
+                        if (isCapabilityDeniedApiError(err)) {
+                          toast.error(getCapabilityDeniedMessage(err, 'Failed to generate report'));
+                        } else toast.error('Failed to generate report');
                       } finally {
                         setGenerating(null);
                       }
@@ -1207,7 +1187,7 @@ const ReportsPage = () => {
           </Card>
         )}
         {/* Previous Evidence Readiness reports */}
-        {hasReportsAccess && previousReports.length > 0 && (
+        {canViewReports && previousReports.length > 0 && (
           <Card className="mb-6" data-testid="previous-reports-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1235,7 +1215,7 @@ const ReportsPage = () => {
                         size="sm"
                         variant="outline"
                         className="min-h-11 w-full"
-                        disabled={generating === `download_${r.report_id}`}
+                        disabled={!canDownloadReports || generating === `download_${r.report_id}`}
                         onClick={async () => {
                           setGenerating(`download_${r.report_id}`);
                           try {
@@ -1268,7 +1248,7 @@ const ReportsPage = () => {
                         size="sm"
                         variant="ghost"
                         className="min-h-11 w-full text-xs"
-                        disabled={generating === `new_${r.report_id}`}
+                        disabled={!canGeneratePdf || generating === `new_${r.report_id}`}
                         onClick={async () => {
                           setGenerating(`new_${r.report_id}`);
                           try {
@@ -1318,7 +1298,7 @@ const ReportsPage = () => {
                           <Button
                             size="sm"
                             variant="ghost"
-                            disabled={generating === `download_${r.report_id}`}
+                            disabled={!canDownloadReports || generating === `download_${r.report_id}`}
                             onClick={async () => {
                               setGenerating(`download_${r.report_id}`);
                               try {
@@ -1346,7 +1326,7 @@ const ReportsPage = () => {
                             size="sm"
                             variant="ghost"
                             title="New snapshot (current data)"
-                            disabled={generating === `new_${r.report_id}`}
+                            disabled={!canGeneratePdf || generating === `new_${r.report_id}`}
                             onClick={async () => {
                               setGenerating(`new_${r.report_id}`);
                               try {
@@ -1421,6 +1401,7 @@ const ReportsPage = () => {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => toggleSchedule(schedule.schedule_id)}
+                        disabled={!canScheduleReportsWrite}
                         className={`p-1 rounded ${schedule.is_active ? 'text-green-600' : 'text-gray-400'}`}
                         title={schedule.is_active ? 'Disable' : 'Enable'}
                         data-testid={`toggle-schedule-${schedule.schedule_id}`}
@@ -1433,6 +1414,7 @@ const ReportsPage = () => {
                       </button>
                       <button
                         onClick={() => deleteSchedule(schedule.schedule_id)}
+                        disabled={!canScheduleReportsWrite}
                         className="p-1 text-red-500 hover:text-red-700"
                         title="Delete"
                         data-testid={`delete-schedule-${schedule.schedule_id}`}
@@ -1534,7 +1516,7 @@ const ReportsPage = () => {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={creatingSchedule}
+                    disabled={!canScheduleReportsWrite || creatingSchedule}
                     className="flex-1"
                     data-testid="create-schedule-btn"
                   >

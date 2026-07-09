@@ -34,6 +34,71 @@ logger = logging.getLogger(__name__)
 
 _LEVEL_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 
+FALLBACK_CLASS_EXPECTED_EMPTY = "EXPECTED_EMPTY_STATE"
+FALLBACK_CLASS_DATA_INCOMPLETE = "DATA_INCOMPLETE"
+FALLBACK_CLASS_SERVICE_FAILURE = "SERVICE_FAILURE"
+FALLBACK_CLASS_CAPABILITY_DENIED = "CAPABILITY_DENIED"
+FALLBACK_CLASS_BUG = "BUG"
+
+
+def _format_degraded_exception(exc: BaseException) -> str:
+    msg = str(exc).strip()
+    if msg:
+        return f"{type(exc).__name__}:{msg[:120]}"
+    return type(exc).__name__
+
+
+def _classify_command_center_fallback(
+    exc: BaseException,
+    *,
+    section: str,
+    properties_count: int = 0,
+    urgent_open_total: int = 0,
+    requirements_total: Optional[int] = None,
+) -> str:
+    err = _format_degraded_exception(exc).lower()
+    if isinstance(exc, asyncio.TimeoutError) or "timeouterror" in err:
+        if properties_count == 0:
+            return FALLBACK_CLASS_EXPECTED_EMPTY
+        return FALLBACK_CLASS_SERVICE_FAILURE
+    if "capability" in err or "403" in err or "denied" in err:
+        return FALLBACK_CLASS_CAPABILITY_DENIED
+    if section == "operational_value_v1":
+        return FALLBACK_CLASS_SERVICE_FAILURE
+    if section == "primary_urgent_and_summary":
+        if properties_count == 0 and urgent_open_total == 0:
+            return FALLBACK_CLASS_EXPECTED_EMPTY
+        if requirements_total == 0 and urgent_open_total == 0 and properties_count > 0:
+            return FALLBACK_CLASS_EXPECTED_EMPTY
+        return FALLBACK_CLASS_SERVICE_FAILURE
+    return FALLBACK_CLASS_SERVICE_FAILURE
+
+
+def _log_command_center_fallback(
+    *,
+    client_id: str,
+    section: str,
+    exc: BaseException,
+    classification: str,
+) -> None:
+    detail = _format_degraded_exception(exc)
+    if classification == FALLBACK_CLASS_EXPECTED_EMPTY:
+        logger.info(
+            "command_center %s empty-state fallback client_id=%s classification=%s reason=%s",
+            section,
+            client_id,
+            classification,
+            detail,
+        )
+        return
+    logger.warning(
+        "command_center %s fallback client_id=%s classification=%s reason=%s",
+        section,
+        client_id,
+        classification,
+        detail,
+    )
+
 
 def _slim_task(t: Dict[str, Any]) -> Dict[str, Any]:
     metadata = t.get("metadata") if isinstance(t.get("metadata"), dict) else {}
@@ -447,6 +512,7 @@ async def _load_urgent_slice_from_priority_stream(
     portal_user_id: Optional[str],
     display_cap: int = 12,
     profile: Optional[Dict[str, Any]] = None,
+    rent_enabled: bool = False,
 ) -> Dict[str, Any]:
     from services.client_priority_stream import fetch_client_priority_actions_primary
     from services.unified_tasks_service import _freshness_block, _load_property_labels
@@ -524,14 +590,12 @@ async def _load_urgent_slice_from_priority_stream(
     urgent_open_total = len(actions)
     slim_rows = [_priority_action_to_slim_urgent(a, property_labels) for a in actions[:display_cap]]
     try:
-        from services.ops_compliance_feature_flags import RENT_OPERATIONS, get_effective_flags
         from services.rent_attention_projection import (
             append_rent_to_command_center_urgent,
             list_rent_attention_tasks,
         )
 
-        flags = await get_effective_flags(client_id)
-        if flags.get(RENT_OPERATIONS):
+        if rent_enabled:
             rent_tasks = await list_rent_attention_tasks(
                 client_id,
                 property_id_filter=property_id_filter,
@@ -680,6 +744,7 @@ async def get_command_center_primary_bundle(
     client_id: str,
     *,
     predictive_enabled: bool,
+    rent_enabled: bool = False,
     property_id_filter: Optional[str] = None,
     portal_user_id: Optional[str] = None,
     correlation_id: Optional[str] = None,
@@ -719,6 +784,7 @@ async def get_command_center_primary_bundle(
                     property_id_filter=property_id_filter,
                     portal_user_id=portal_user_id,
                     profile=profile,
+                    rent_enabled=rent_enabled,
                 ),
                 _primary_compliance_status_summary(
                     client_id, property_id_filter=property_id_filter, profile=profile
@@ -727,10 +793,26 @@ async def get_command_center_primary_bundle(
             timeout=12.0,
         )
     except Exception as exc:
-        reason = f"primary_urgent_or_summary_timeout_or_failure:{str(exc)[:80]}"
-        logger.warning("command_center primary urgent/summary fallback client_id=%s: %s", client_id, exc)
+        reason = f"primary_urgent_or_summary_timeout_or_failure:{_format_degraded_exception(exc)}"
+        properties_count = 0
+        try:
+            properties_count = await database.get_db().properties.count_documents({"client_id": client_id})
+        except Exception:
+            pass
+        classification = _classify_command_center_fallback(
+            exc,
+            section="primary_urgent_and_summary",
+            properties_count=properties_count,
+        )
+        _log_command_center_fallback(
+            client_id=client_id,
+            section="primary_urgent_and_summary",
+            exc=exc,
+            classification=classification,
+        )
         gather_degraded_reasons.append(reason)
         compliance_status_summary = _build_primary_compliance_fallback(reason)
+        compliance_status_summary["fallback_classification"] = classification
         maint_rows, maint_debt = await _load_maintenance_debt_urgent_rows(
             client_id, property_id_filter=property_id_filter
         )
@@ -778,8 +860,21 @@ async def get_command_center_primary_bundle(
             timeout=9.0,
         )
     except Exception as exc:
-        logger.warning("operational_value_bundle_v1 failed client_id=%s: %s", client_id, exc)
-        ov_degraded_reason = f"primary_timeout_or_failure:{str(exc)[:80]}"
+        ov_degraded_reason = f"primary_timeout_or_failure:{_format_degraded_exception(exc)}"
+        properties_count = int(compliance_status_summary.get("properties_count") or 0)
+        ov_classification = _classify_command_center_fallback(
+            exc,
+            section="operational_value_v1",
+            properties_count=properties_count,
+            urgent_open_total=int(urgent_block.get("urgent_open_total") or 0),
+            requirements_total=compliance_status_summary.get("requirements_total"),
+        )
+        _log_command_center_fallback(
+            client_id=client_id,
+            section="operational_value_v1",
+            exc=exc,
+            classification=ov_classification,
+        )
         pressure_fallback = _build_primary_pressure_fallback(
             urgent_open_total=int(urgent_block.get("urgent_open_total") or 0),
             compliance_status_summary=compliance_status_summary,
@@ -787,7 +882,8 @@ async def get_command_center_primary_bundle(
         )
         operational_value_v1 = {
             "available": False,
-            "error": str(exc)[:200],
+            "error": _format_degraded_exception(exc)[:200],
+            "fallback_classification": ov_classification,
             "pressure_compression_v1": pressure_fallback,
             "snapshot_meta": {
                 "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -796,6 +892,7 @@ async def get_command_center_primary_bundle(
                 "degraded": True,
                 "source": "fallback",
                 "recompute_reason": ov_degraded_reason,
+                "fallback_classification": ov_classification,
             },
         }
     _profile_mark(profile, "operational_value_ms", t_ov)
@@ -891,6 +988,11 @@ async def get_command_center_primary_bundle(
         "pressure_degraded": bool(ov_degraded_reason or gather_degraded_reasons),
         "pressure_status": "degraded" if (ov_degraded_reason or gather_degraded_reasons) else "ok",
         "pressure_fallback_reason": ov_degraded_reason or (gather_degraded_reasons[0] if gather_degraded_reasons else None),
+        "pressure_fallback_classification": (
+            operational_value_v1.get("fallback_classification")
+            if ov_degraded_reason
+            else (compliance_status_summary.get("fallback_classification") if gather_degraded_reasons else None)
+        ),
         "pressure_message": (
             "Some pressure metrics are still refreshing. Urgent items remain visible below."
             if (ov_degraded_reason or gather_degraded_reasons)
@@ -949,6 +1051,7 @@ async def get_command_center_bundle(
     client_id: str,
     *,
     predictive_enabled: bool,
+    rent_enabled: bool = False,
     property_id_filter: Optional[str] = None,
     portal_user_id: Optional[str] = None,
     correlation_id: Optional[str] = None,
@@ -1010,14 +1113,12 @@ async def get_command_center_bundle(
         for t in (urgent[:10] + in_prog[:6]):
             urgent_actions.append(_slim_task(t))
         try:
-            from services.ops_compliance_feature_flags import RENT_OPERATIONS, get_effective_flags
             from services.rent_attention_projection import (
                 append_rent_to_command_center_urgent,
                 list_rent_attention_tasks,
             )
 
-            flags = await get_effective_flags(client_id)
-            if flags.get(RENT_OPERATIONS):
+            if rent_enabled:
                 rent_tasks = await list_rent_attention_tasks(
                     client_id,
                     property_id_filter=property_id_filter,

@@ -1,0 +1,294 @@
+{
+  "programme": "ACCOUNT-LIFECYCLE-CAPABILITY-AUTHORITY-01",
+  "generated_at": "2026-06-30T14:00:00+00:00",
+  "branch": "develop",
+  "outcome": "ACCOUNT_CAPABILITY_AUTHORITY_COMPLETE",
+  "verdict": "CAPABILITY_AUTHORITY_ESTABLISHED_PENDING_APPROVAL",
+  "authority_version": "account_capability_v1",
+  "follows_programmes": [
+    "ACCOUNT-LIFECYCLE-AUTHORITY-AUDIT-01",
+    "ACCOUNT-LIFECYCLE-POLICY-AUTHORITY-01"
+  ],
+  "consumes_authorities": [
+    "ACCOUNT_LIFECYCLE_POLICY_AUTHORITY",
+    "ACCOUNT_PORTAL_MODE_AUTHORITY",
+    "ACCOUNT_LIFECYCLE_POLICY_MATRIX"
+  ],
+  "deliverables": {
+    "ACCOUNT_CAPABILITY_AUTHORITY.md": "backend/docs/ACCOUNT_CAPABILITY_AUTHORITY.md",
+    "ACCOUNT_CAPABILITY_CATALOG.md": "backend/docs/ACCOUNT_CAPABILITY_CATALOG.md",
+    "ACCOUNT_CAPABILITY_MATRIX.md": "backend/docs/ACCOUNT_CAPABILITY_MATRIX.md",
+    "ACCOUNT_FEATURE_CAPABILITY_MATRIX.md": "backend/docs/ACCOUNT_FEATURE_CAPABILITY_MATRIX.md",
+    "ACCOUNT_API_CAPABILITY_MATRIX.md": "backend/docs/ACCOUNT_API_CAPABILITY_MATRIX.md",
+    "ACCOUNT_PORTAL_MODE_CAPABILITY_MATRIX.md": "backend/docs/ACCOUNT_PORTAL_MODE_CAPABILITY_MATRIX.md",
+    "ACCOUNT_BACKGROUND_CAPABILITY_MATRIX.md": "backend/docs/ACCOUNT_BACKGROUND_CAPABILITY_MATRIX.md",
+    "ACCOUNT_LIFECYCLE_STATE_DIAGRAM.md": "backend/docs/ACCOUNT_LIFECYCLE_STATE_DIAGRAM.md",
+    "ACCOUNT_CAPABILITY_AUTHORITY_EVIDENCE.json": "backend/docs/audit/account_lifecycle_capability_authority_01/ACCOUNT_CAPABILITY_AUTHORITY_EVIDENCE.json",
+    "ACCOUNT_LIFECYCLE_STATE_DIAGRAM.md": "backend/docs/ACCOUNT_LIFECYCLE_STATE_DIAGRAM.md",
+    "FRONTEND_CAPABILITY_CONSUMPTION.md": "backend/docs/audit/account_lifecycle_capability_authority_01/FRONTEND_CAPABILITY_CONSUMPTION.md"
+  },
+  "capability_inventory_summary": {
+    "total_capabilities": 89,
+    "by_class": {
+      "Customer": 52,
+      "Read": 18,
+      "Write": 24,
+      "Administrative": 12,
+      "Background": 12,
+      "System": 5,
+      "Shared": 8
+    },
+    "by_domain": [
+      "AUTH", "PROFILE", "SUB", "BILLING", "PROP", "REQ", "DOC", "EVIDENCE",
+      "REPORT", "COMPLIANCE", "TODAY", "NOTIF", "EXPORT", "AI", "OPS",
+      "TENANT", "INTEGRATION", "BRANDING", "SUPPORT", "BG"
+    ]
+  },
+  "findings": [
+    {
+      "id": "ACA-001",
+      "classification": "AUTHORITY_DUPLICATION",
+      "severity": "CRITICAL",
+      "title": "Plan feature keys used as permission language without capability layer",
+      "evidence": ["plan_registry.FEATURE_MATRIX", "hasFeature in frontend", "enforce_feature in routes"],
+      "policy_remedy": "Map feature_key → CAP_* via ACCOUNT_FEATURE_CAPABILITY_MATRIX; resolve via capability resolver",
+      "implementation_programme": "ILP-2, ILP-3, ILP-4"
+    },
+    {
+      "id": "ACA-002",
+      "classification": "CAPABILITY_GAP",
+      "severity": "HIGH",
+      "title": "No unified capability catalog in codebase",
+      "evidence": ["FEATURE_METADATA partial coverage", "ops flags separate from FEATURE_MATRIX"],
+      "policy_remedy": "ACCOUNT_CAPABILITY_CATALOG.md",
+      "implementation_programme": "ILP-2"
+    },
+    {
+      "id": "ACA-003",
+      "classification": "FEATURE_MAPPING_GAP",
+      "severity": "HIGH",
+      "title": "maintenance_workflows and contractor_network not in FEATURE_MATRIX",
+      "evidence": ["client.py /entitlements ops flags", "PropertyDetailPage hasFeature"],
+      "policy_remedy": "Catalog CAP_OPS_* capabilities with ops module overlay",
+      "implementation_programme": "ILP-2, ILP-4"
+    },
+    {
+      "id": "ACA-004",
+      "classification": "API_MAPPING_GAP",
+      "severity": "HIGH",
+      "title": "APIs call enforce_feature directly without lifecycle capability check",
+      "evidence": ["reports.py", "client.py tenant endpoints", "documents.py"],
+      "policy_remedy": "ACCOUNT_API_CAPABILITY_MATRIX.md two-phase check: lifecycle then plan",
+      "implementation_programme": "ILP-4"
+    },
+    {
+      "id": "ACA-005",
+      "classification": "PORTAL_MODE_GAP",
+      "severity": "CRITICAL",
+      "title": "Frontend hasFeature ignores lifecycle; portal mode not consumed",
+      "evidence": ["EntitlementsContext.js", "ProtectedRoute JWT-only"],
+      "policy_remedy": "Portal mode consumes capability matrix; hasFeature only for PLAN_GATED",
+      "implementation_programme": "ILP-3"
+    },
+    {
+      "id": "ACA-006",
+      "classification": "BACKGROUND_CAPABILITY_GAP",
+      "severity": "HIGH",
+      "title": "Jobs filter subscription_status not capabilities",
+      "evidence": ["jobs.py send_daily_reminders filters"],
+      "policy_remedy": "ACCOUNT_BACKGROUND_CAPABILITY_MATRIX.md",
+      "implementation_programme": "ILP-6"
+    },
+    {
+      "id": "ACA-007",
+      "classification": "AUTHORITY_DUPLICATION",
+      "severity": "MEDIUM",
+      "title": "canonical_entitlement_state and entitlement_status parallel to features",
+      "evidence": ["entitlement_access.py", "middleware client_route_guard"],
+      "policy_remedy": "Route guard checks capability bundle for portal shell block",
+      "implementation_programme": "ILP-1, ILP-4"
+    },
+    {
+      "id": "ACA-008",
+      "classification": "FEATURE_MAPPING_GAP",
+      "severity": "MEDIUM",
+      "title": "Legacy feature key aliases (zip_upload, tenant_portal_access)",
+      "evidence": ["plan_registry FEATURE_MATRIX comments"],
+      "policy_remedy": "Capability evolution compatibility table in catalog",
+      "implementation_programme": "ILP-10"
+    },
+    {
+      "id": "ACA-009",
+      "classification": "SECURITY_GAP",
+      "severity": "MEDIUM",
+      "title": "Read APIs may 403 on terminal lifecycle without read-tier capability",
+      "evidence": ["ALPA BILLING_RECOVERY read tier", "client_route_guard blocks all non-billing"],
+      "policy_remedy": "CAP_* READ grants for BILLING_RECOVERY and READ_ONLY modes",
+      "implementation_programme": "ILP-4"
+    },
+    {
+      "id": "ACA-010",
+      "classification": "GOVERNANCE_GAP",
+      "severity": "MEDIUM",
+      "title": "No capability versioning or deprecation registry",
+      "policy_remedy": "Capability evolution rules in ACCOUNT_CAPABILITY_AUTHORITY.md",
+      "implementation_programme": "ILP-9"
+    },
+    {
+      "id": "ACA-011",
+      "classification": "NO_CHANGE_REQUIRED",
+      "severity": "INFO",
+      "title": "Plan tier gating for reports_pdf, sms_reminders is correct product logic",
+      "policy_remedy": "Retain as PLAN_GATED overlay on capabilities",
+      "implementation_programme": "none"
+    },
+    {
+      "id": "ACA-012",
+      "classification": "CAPABILITY_GAP",
+      "severity": "HIGH",
+      "title": "READ_ONLY lifecycle state has no capability band mapping in code",
+      "evidence": ["ALPA ALPA-011"],
+      "policy_remedy": "READ column in ACCOUNT_CAPABILITY_MATRIX for READ_ONLY state",
+      "implementation_programme": "ILP-1, ILP-2"
+    }
+  ],
+  "subsystem_consumption_audit": [
+    {
+      "subsystem": "plan_registry",
+      "currently_consumes": ["FEATURE_MATRIX", "entitlement_status", "billing_lifecycle_state"],
+      "must_consume": ["capability resolver PLAN_GATED overlay"],
+      "classification": "AUTHORITY_DUPLICATION"
+    },
+    {
+      "subsystem": "entitlement_access",
+      "currently_consumes": ["canonical_entitlement_state", "feature_key"],
+      "must_consume": ["ACCOUNT_CAPABILITY_MATRIX", "portal_mode overlay"],
+      "classification": "AUTHORITY_DUPLICATION"
+    },
+    {
+      "subsystem": "middleware.client_route_guard",
+      "currently_consumes": ["canonical_entitlement_state SUSPENDED/CANCELLED"],
+      "must_consume": ["portal shell capability bundle DENY"],
+      "classification": "API_MAPPING_GAP"
+    },
+    {
+      "subsystem": "EntitlementsContext",
+      "currently_consumes": ["/client/entitlements features"],
+      "must_consume": ["lifecycle-contract capabilities"],
+      "classification": "PORTAL_MODE_GAP"
+    },
+    {
+      "subsystem": "EntitlementProtectedRoute",
+      "currently_consumes": ["requiredFeature string"],
+      "must_consume": ["CAP_* + lifecycle grant"],
+      "classification": "FEATURE_MAPPING_GAP"
+    },
+    {
+      "subsystem": "Navigation Authority",
+      "currently_consumes": ["hasFeature"],
+      "must_consume": ["HIDDEN vs DENY from capability matrix"],
+      "classification": "FEATURE_MAPPING_GAP"
+    },
+    {
+      "subsystem": "jobs.py",
+      "currently_consumes": ["subscription_status", "entitlement_status"],
+      "must_consume": ["CAP_BG_* matrix"],
+      "classification": "BACKGROUND_CAPABILITY_GAP"
+    },
+    {
+      "subsystem": "notification_orchestrator",
+      "currently_consumes": ["plan_required_feature_key", "entitlement_status"],
+      "must_consume": ["CAP_NOTIF_* + lifecycle"],
+      "classification": "BACKGROUND_CAPABILITY_GAP"
+    },
+    {
+      "subsystem": "Report Presentation Authority",
+      "currently_consumes": ["report layout only"],
+      "must_consume": ["CAP_REPORT_GENERATE_* eligibility from ACA"],
+      "classification": "NO_CHANGE_REQUIRED"
+    },
+    {
+      "subsystem": "Score Authority",
+      "currently_consumes": ["score calculation"],
+      "must_consume": ["CAP_SCORE_VIEW visibility from ACA"],
+      "classification": "NO_CHANGE_REQUIRED"
+    }
+  ],
+  "implementation_roadmap": [
+    {
+      "programme_id": "ILP-1",
+      "capability_dependencies": ["ACCOUNT_CAPABILITY_MATRIX lifecycle column"],
+      "delivers_to_capability": "account_lifecycle_state input to resolver"
+    },
+    {
+      "programme_id": "ILP-2",
+      "capability_dependencies": ["ACA catalog", "capability matrix", "portal mode matrix"],
+      "delivers_to_capability": "lifecycle-contract with effective CAP_* grants"
+    },
+    {
+      "programme_id": "ILP-3",
+      "capability_dependencies": ["ILP-2 lifecycle-contract"],
+      "delivers_to_capability": "useCapabilities hook; route guards"
+    },
+    {
+      "programme_id": "ILP-4",
+      "capability_dependencies": ["ACA API matrix", "ILP-1 resolver"],
+      "delivers_to_capability": "Two-phase API check: lifecycle capability then plan"
+    },
+    {
+      "programme_id": "ILP-5",
+      "capability_dependencies": [],
+      "delivers_to_capability": "Session orthogonal; entitlements_version invalidates capability cache"
+    },
+    {
+      "programme_id": "ILP-6",
+      "capability_dependencies": ["ACCOUNT_BACKGROUND_CAPABILITY_MATRIX"],
+      "delivers_to_capability": "Job eligibility from CAP_BG_*"
+    },
+    {
+      "programme_id": "ILP-7",
+      "capability_dependencies": ["CAP_NOTIF_EMAIL", "CAP_NOTIF_SMS"],
+      "delivers_to_capability": "Communication send matrix"
+    },
+    {
+      "programme_id": "ILP-8",
+      "capability_dependencies": ["reactivation scope → capability restore set"],
+      "delivers_to_capability": "Atomic capability grant restoration"
+    },
+    {
+      "programme_id": "ILP-9",
+      "capability_dependencies": ["capability versioning governance"],
+      "delivers_to_capability": "CAPABILITY_POLICY_CHANGED events"
+    },
+    {
+      "programme_id": "ILP-10",
+      "capability_dependencies": ["legacy feature alias table"],
+      "delivers_to_capability": "LEGACY → resolved capabilities"
+    }
+  ],
+  "classification_summary": {
+    "NO_CHANGE_REQUIRED": 2,
+    "CAPABILITY_GAP": 2,
+    "AUTHORITY_DUPLICATION": 3,
+    "FEATURE_MAPPING_GAP": 3,
+    "API_MAPPING_GAP": 2,
+    "PORTAL_MODE_GAP": 1,
+    "BACKGROUND_CAPABILITY_GAP": 2,
+    "SECURITY_GAP": 1,
+    "GOVERNANCE_GAP": 1
+  },
+  "acceptance_assessment": {
+    "every_capability_uniquely_defined": true,
+    "every_capability_has_owner": true,
+    "every_feature_maps_to_capabilities": true,
+    "every_api_maps_to_capabilities": true,
+    "every_portal_mode_consumes_capabilities": true,
+    "every_lifecycle_state_consumes_capabilities": true,
+    "no_subsystem_independent_feature_availability_policy_defined": true,
+    "capability_governance_supports_future_growth": true,
+    "lifecycle_state_diagram_produced": true,
+    "integrates_with_ALPA": true,
+    "code_implementation_complete": false
+  },
+  "regression_note": "Governance-only on develop; no code, API, auth, or billing changes."
+}

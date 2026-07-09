@@ -12,6 +12,7 @@ import {
 } from '../utils/adminAccountClassification';
 import api, { adminAPI, openBlobApiResponse } from '../api/client';
 import AdminPaymentHistoryTable from '../components/admin/AdminPaymentHistoryTable';
+import AdminLifecycleOperationsPanel from '../components/admin/AdminLifecycleOperationsPanel';
 import ClientPromoRecoveryControls from '../components/admin/pilot/ClientPromoRecoveryControls';
 import CommercialEntitlementControls from '../components/admin/commercial/CommercialEntitlementControls';
 import { useAuth } from '../contexts/AuthContext';
@@ -842,6 +843,7 @@ const AdminClientControlPanelPage = () => {
         { id: 'compliance', label: 'Compliance' },
         { id: 'operations', label: 'Operations' },
         { id: 'billing', label: 'Billing' },
+        { id: 'lifecycle-ops', label: 'Customer ops' },
         { id: 'activity', label: 'Activity & Audit' },
       ].map((t) => (
         <button
@@ -1811,6 +1813,13 @@ const AdminClientControlPanelPage = () => {
     if (activeTab === 'compliance') return complianceTab;
     if (activeTab === 'operations') return operationsTab;
     if (activeTab === 'billing') return billingTab;
+    if (activeTab === 'lifecycle-ops') {
+      return (
+        <div className="space-y-4">
+          <AdminLifecycleOperationsPanel clientId={clientId} />
+        </div>
+      );
+    }
     if (activeTab === 'activity') return activityAuditTab;
     return null;
   };

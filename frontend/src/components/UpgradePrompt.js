@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import { useLifecycleRuntime } from '../contexts/LifecycleRuntimeContext';
+import { usePortfolioUsageContext } from '../hooks/usePortfolioUsageContext';
+import { ROUTE_CAPABILITY } from '../utils/CapabilityProtectedRoute';
 import { Layers, ArrowUpRight, Sparkles, CheckCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
@@ -168,19 +170,16 @@ const UpgradePrompt = ({
 };
 
 /**
- * Feature Gate — wraps content; shows discoverability when not entitled (no entitlement change).
+ * Capability gate — wraps content; shows discoverability when Runtime Contract denies access.
  */
-export const FeatureGate = ({ feature, entitlements, children, fallback = null }) => {
-  const { usageContext } = useEntitlements();
+export const CapabilityGate = ({ feature, children, fallback = null, action = 'read' }) => {
+  const { capabilityAllowed } = useLifecycleRuntime();
+  const { usageContext } = usePortfolioUsageContext();
   const contextHint = useMemo(() => formatUpgradeUsageContext(usageContext), [usageContext]);
+  const route = ROUTE_CAPABILITY[feature];
+  const allowed = route ? capabilityAllowed(route.capabilityId, action) : true;
 
-  if (!entitlements || !entitlements.features) {
-    return null;
-  }
-
-  const featureData = entitlements.features[feature];
-
-  if (featureData?.enabled) {
+  if (allowed) {
     return children;
   }
 
@@ -188,18 +187,21 @@ export const FeatureGate = ({ feature, entitlements, children, fallback = null }
     return fallback;
   }
 
+  const info = getFeatureDisplayInfo(feature);
   return (
     <UpgradePrompt
-      featureName={featureData?.name || feature}
-      featureDescription={featureData?.description}
-      requiredPlan={featureData?.minimum_plan || 'PLAN_2_PORTFOLIO'}
-      requiredPlanName={getRequiredPlanName(featureData?.minimum_plan)}
-      currentPlan={entitlements.plan_name}
+      featureName={info.featureName}
+      featureDescription={info.featureDescription}
+      requiredPlan={info.requiredPlan}
+      requiredPlanName={info.requiredPlanName}
       variant="card"
       contextHint={contextHint}
     />
   );
 };
+
+/** @deprecated Use CapabilityGate — presentation alias retained for import stability. */
+export const FeatureGate = CapabilityGate;
 
 /**
  * Property limit — authoritative limits preserved; calmer presentation (not a red “error” surface).
@@ -216,7 +218,7 @@ export const PropertyLimitPrompt = ({
   className = '',
 }) => {
   const navigate = useNavigate();
-  const { usageContext } = useEntitlements();
+  const { usageContext } = usePortfolioUsageContext();
   const existingOnAccount =
     typeof usageContext?.property_count === 'number' ? usageContext.property_count : null;
 
@@ -323,6 +325,8 @@ const FEATURE_MIN_PLAN = {
   predictive_maintenance: 'PLAN_2_PORTFOLIO',
   invoicing: 'PLAN_3_PRO',
   rent_operations: 'PLAN_2_PORTFOLIO',
+  ai_assistant: 'PLAN_2_PORTFOLIO',
+  compliance_calendar: 'PLAN_2_PORTFOLIO',
 };
 
 const FEATURE_DISPLAY = {
@@ -364,11 +368,18 @@ const FEATURE_DISPLAY = {
     description:
       'Track expected rent, record payments, monitor arrears, and log property expenses. Operational visibility only — not accounting software.',
   },
+  compliance_calendar: {
+    name: 'Compliance calendar',
+    description: 'View upcoming compliance deadlines and export your timeline.',
+  },
+  ai_assistant: {
+    name: 'AI assistant',
+    description: 'Ask questions about your compliance portfolio and get guided next steps.',
+  },
 };
 
-export function getFeatureDisplayInfo(featureKey, entitlements = null) {
-  const planCode =
-    entitlements?.features?.[featureKey]?.minimum_plan ?? FEATURE_MIN_PLAN[featureKey] ?? 'PLAN_2_PORTFOLIO';
+export function getFeatureDisplayInfo(featureKey, _entitlements = null) {
+  const planCode = FEATURE_MIN_PLAN[featureKey] ?? 'PLAN_2_PORTFOLIO';
   const display = FEATURE_DISPLAY[featureKey] || {
     name: operationalLabelForToken(featureKey, { emptyLabel: 'Feature' }),
     description: '',
@@ -410,11 +421,11 @@ export function UpgradeRequired({
   upgradeDetail = null,
 }) {
   const navigate = useNavigate();
-  const { usageContext, entitlements } = useEntitlements();
+  const { usageContext } = usePortfolioUsageContext();
   const contextHint = useMemo(() => formatUpgradeUsageContext(usageContext), [usageContext]);
   const featureKey = upgradeDetail?.feature ?? upgradeDetail?.feature_key ?? feature;
   const planOverride = plan ?? upgradeDetail?.upgrade_to ?? null;
-  const info = getFeatureDisplayInfo(featureKey, entitlements);
+  const info = getFeatureDisplayInfo(featureKey);
   const requiredPlan = planOverride ?? info.requiredPlan;
   const requiredPlanName = getRequiredPlanName(requiredPlan);
 

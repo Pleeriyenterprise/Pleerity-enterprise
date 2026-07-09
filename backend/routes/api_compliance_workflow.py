@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from database import database
 from middleware import client_route_guard, contractor_route_guard
+from middleware.capability_gating import capability_denied_http_detail, enforce_route_capability
 from models import AuditAction
 from routes.documents import _enforce_document_upload_rate_limit, perform_client_document_upload
 from services import contractor_service
@@ -35,7 +36,7 @@ from services.compliance_workflow_service import (
 )
 from services import work_order_schedule_service as wo_schedule
 from services.client_task_state_service import ACTION_DISMISS, ACTION_RESTORE, ACTION_REVIEWED, ACTION_SNOOZE, apply_task_action
-from services.ops_compliance_feature_flags import COMPLIANCE_ENGINE, CONTRACTOR_NETWORK, MAINTENANCE_WORKFLOWS, get_effective_flags
+from services.account_capability_enforcement import CapabilityEnforcementService
 from services.today_projection_service import build_today_payload_from_unified
 from services.unified_tasks_service import get_unified_tasks_for_client
 from services.work_order_execution_constants import WORK_ORDER_KIND_COMPLIANCE, WORK_ORDER_KIND_MAINTENANCE
@@ -62,32 +63,71 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["compliance-workflow"])
 
 
+async def _enforce_capability(user: Dict[str, Any], capability_id: str, action: str) -> None:
+    await enforce_route_capability(user, capability_id, action)
+
+
 async def _require_client(request: Request) -> Dict[str, Any]:
     return await client_route_guard(request)
 
 
+async def _require_req_view(request: Request) -> Dict[str, Any]:
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_REQ_VIEW", "read")
+    return user
+
+
+async def _require_req_resolve_write(request: Request) -> Dict[str, Any]:
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_REQ_RESOLVE", "write")
+    return user
+
+
+async def _require_req_mark_na_write(request: Request) -> Dict[str, Any]:
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_REQ_MARK_N_A", "write")
+    return user
+
+
+async def _require_doc_upload_write(request: Request) -> Dict[str, Any]:
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_DOC_UPLOAD", "write")
+    return user
+
+
 async def _require_compliance_jobs(request: Request) -> Dict[str, Any]:
     user = await client_route_guard(request)
-    client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client context required")
-    flags = await get_effective_flags(client_id)
-    if not flags.get(COMPLIANCE_ENGINE) or not flags.get(MAINTENANCE_WORKFLOWS):
-        raise HTTPException(
-            status_code=403,
-            detail="Compliance jobs require compliance engine and maintenance workflows for your account",
-        )
+    await _enforce_capability(user, "CAP_OPS_COMPLIANCE_REVIEW", "write")
+    await _enforce_capability(user, "CAP_OPS_MAINTENANCE", "write")
+    return user
+
+
+async def _require_maintenance_jobs_read(request: Request) -> Dict[str, Any]:
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_OPS_MAINTENANCE", "read")
+    return user
+
+
+async def _require_maintenance_jobs_write(request: Request) -> Dict[str, Any]:
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_OPS_MAINTENANCE", "write")
     return user
 
 
 async def _require_maintenance_workflows(request: Request) -> Dict[str, Any]:
+    """Backward-compatible alias for maintenance job mutations (CAP_OPS_MAINTENANCE write)."""
+    return await _require_maintenance_jobs_write(request)
+
+
+async def _require_today_view(request: Request) -> Dict[str, Any]:
     user = await client_route_guard(request)
-    client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client context required")
-    flags = await get_effective_flags(client_id)
-    if not flags.get(MAINTENANCE_WORKFLOWS):
-        raise HTTPException(status_code=403, detail="Maintenance workflows are not enabled for your account")
+    await _enforce_capability(user, "CAP_TODAY_VIEW", "read")
+    return user
+
+
+async def _require_today_act(request: Request) -> Dict[str, Any]:
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_TODAY_ACT", "write")
     return user
 
 
@@ -145,7 +185,7 @@ async def _resolve_portal_job_assignment_profile(contractor_id: str, client_id: 
 
 
 @router.get("/requirements/{requirement_id}")
-async def get_requirement_by_id(request: Request, requirement_id: str, user: Dict[str, Any] = Depends(_require_client)):
+async def get_requirement_by_id(request: Request, requirement_id: str, user: Dict[str, Any] = Depends(_require_req_view)):
     db = database.get_db()
     req = await db.requirements.find_one(
         {"requirement_id": requirement_id.strip(), "client_id": user["client_id"]},
@@ -235,7 +275,7 @@ async def mark_requirement_not_applicable_by_id(
     request: Request,
     requirement_id: str,
     body: MarkNotApplicableBody,
-    user: Dict[str, Any] = Depends(_require_client),
+    user: Dict[str, Any] = Depends(_require_req_mark_na_write),
 ):
     db = database.get_db()
     rid = requirement_id.strip()
@@ -355,7 +395,7 @@ async def mark_requirement_not_applicable_by_id(
 
 
 @router.post("/requirements/{requirement_id}/reopen")
-async def reopen_requirement(request: Request, requirement_id: str, user: Dict[str, Any] = Depends(_require_client)):
+async def reopen_requirement(request: Request, requirement_id: str, user: Dict[str, Any] = Depends(_require_req_resolve_write)):
     db = database.get_db()
     rid = requirement_id.strip()
     req = await db.requirements.find_one(
@@ -465,7 +505,7 @@ async def upload_document_for_requirement(
         None,
         description='Optional JSON object for jurisdiction-aware validation, e.g. {"issue_date":"2024-06-01","engineer_id":"GAS123"}',
     ),
-    user: Dict[str, Any] = Depends(_require_client),
+    user: Dict[str, Any] = Depends(_require_doc_upload_write),
 ):
     await _enforce_document_upload_rate_limit(user["client_id"])
     db = database.get_db()
@@ -497,7 +537,7 @@ async def upload_document_for_requirement(
 
 
 @router.get("/jobs/{job_id}")
-async def get_job_detail(request: Request, job_id: str, user: Dict[str, Any] = Depends(_require_maintenance_workflows)):
+async def get_job_detail(request: Request, job_id: str, user: Dict[str, Any] = Depends(_require_maintenance_jobs_read)):
     wo = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
     if not wo:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -550,12 +590,10 @@ async def get_job_assignable_contractors(
     job_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    user: Dict[str, Any] = Depends(_require_maintenance_workflows),
+    user: Dict[str, Any] = Depends(_require_maintenance_jobs_read),
 ):
     """Contractors visible to the client who pass assignment gates for this work order (trade, location, execution)."""
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account.")
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "read")
     return await contractor_service.list_assignable_contractors_for_work_order(
         client_id=user["client_id"],
         work_order_id=job_id.strip(),
@@ -594,9 +632,7 @@ async def post_workflow_contractor(
     body: WorkflowCreateContractorBody,
     user: Dict[str, Any] = Depends(_require_maintenance_workflows),
 ):
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account.")
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "write")
     if not (body.phone or "").strip() and not (body.email or "").strip():
         raise HTTPException(status_code=400, detail="phone or email is required")
     wid = (body.work_order_id or "").strip()
@@ -652,12 +688,7 @@ async def job_assign_contractor(
     body: AssignContractorBody,
     user: Dict[str, Any] = Depends(_require_maintenance_workflows),
 ):
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(
-            status_code=403,
-            detail="Contractor network is not enabled for your account.",
-        )
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "write")
     wo = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
     if not wo:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -700,9 +731,7 @@ async def job_create_personal_contractor_and_assign(
     Deprecated. Semantics are delegated to `create_contractor_for_client_job_portal` + the same assignment
     profile resolver as `assign-contractor`, so behaviour matches the canonical two-step flow.
     """
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account.")
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "write")
     wo = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
     if not wo:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -1349,9 +1378,7 @@ async def job_verify(request: Request, job_id: str, user: Dict[str, Any] = Depen
                 "then verified→closed)."
             ),
         )
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(COMPLIANCE_ENGINE):
-        raise HTTPException(status_code=403, detail="Compliance jobs require the compliance engine for your account")
+    await _enforce_capability(user, "CAP_OPS_COMPLIANCE_REVIEW", "write")
     if not work_order_has_proof_document(wo):
         raise HTTPException(
             status_code=400,
@@ -1389,7 +1416,7 @@ async def job_cancel(request: Request, job_id: str, user: Dict[str, Any] = Depen
 @router.get("/today/items")
 async def get_today_items(
     request: Request,
-    user: Dict[str, Any] = Depends(_require_client),
+    user: Dict[str, Any] = Depends(_require_today_view),
     property_id: Optional[str] = Query(None, description="Optional scope to one property"),
     include_flat_items: bool = Query(
         False,
@@ -1399,10 +1426,19 @@ async def get_today_items(
     import asyncio
 
     prop_filter = property_id.strip() if property_id else None
+    from services.capability_compatibility import contract_feature_enabled
     from services.rent_attention_projection import (
         list_rent_attention_tasks,
         merge_rent_into_today_payload,
     )
+
+    async def _rent_tasks_for_today():
+        if not contract_feature_enabled(user.get("runtime_contract"), "rent_operations", "read"):
+            return []
+        return await list_rent_attention_tasks(
+            user["client_id"],
+            property_id_filter=prop_filter,
+        )
 
     payload, rent_tasks = await asyncio.gather(
         get_unified_tasks_for_client(
@@ -1412,10 +1448,7 @@ async def get_today_items(
             portal_user_id=user.get("portal_user_id"),
             surface_profile="today",
         ),
-        list_rent_attention_tasks(
-            user["client_id"],
-            property_id_filter=prop_filter,
-        ),
+        _rent_tasks_for_today(),
     )
     out = build_today_payload_from_unified(
         payload,
@@ -1465,7 +1498,7 @@ class DismissBody(BaseModel):
 
 
 @router.post("/today/items/{item_id}/mark-reviewed")
-async def today_mark_reviewed(request: Request, item_id: str, user: Dict[str, Any] = Depends(_require_client)):
+async def today_mark_reviewed(request: Request, item_id: str, user: Dict[str, Any] = Depends(_require_today_act)):
     try:
         return await apply_task_action(
             user["client_id"],
@@ -1482,7 +1515,7 @@ async def today_snooze(
     request: Request,
     item_id: str,
     body: SnoozeBody,
-    user: Dict[str, Any] = Depends(_require_client),
+    user: Dict[str, Any] = Depends(_require_today_act),
 ):
     try:
         return await apply_task_action(
@@ -1501,7 +1534,7 @@ async def today_dismiss(
     request: Request,
     item_id: str,
     body: DismissBody,
-    user: Dict[str, Any] = Depends(_require_client),
+    user: Dict[str, Any] = Depends(_require_today_act),
 ):
     try:
         return await apply_task_action(
@@ -1516,7 +1549,7 @@ async def today_dismiss(
 
 
 @router.post("/today/items/{item_id}/restore")
-async def today_restore(request: Request, item_id: str, user: Dict[str, Any] = Depends(_require_client)):
+async def today_restore(request: Request, item_id: str, user: Dict[str, Any] = Depends(_require_today_act)):
     try:
         return await apply_task_action(
             user["client_id"],

@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from database import database
-from services.plan_registry import plan_registry
+from services.account_capability_enforcement import CapabilityEnforcementService
 from utils.storage_paths import resolve_data_dir
 from utils.branding import (
     COMPANY_NAME,
@@ -317,15 +317,15 @@ async def resolve_branding(
 
     branding_doc = await db.branding_settings.find_one({"client_id": client_id}, {"_id": 0}) or {}
 
-    allowed, err_msg, err_details = await plan_registry.enforce_feature(
-        client_id, "white_label_reports"
+    wl_decision = await CapabilityEnforcementService(db).evaluate(
+        client_id, "CAP_BRANDING_WHITE_LABEL", "read"
     )
-    if not allowed:
-        code = (err_details or {}).get("error_code", BrandingFallbackReason.PLAN_NO_WHITE_LABEL.value)
+    if not wl_decision.allowed:
+        code = wl_decision.reason_code or BrandingFallbackReason.PLAN_NO_WHITE_LABEL.value
         reasons.append(str(code))
         p = _pleerity_with_client_placeholder(client, reasons, context.value, doc_name)
         logger.info(
-            "Branding resolved to pleerity (plan/subscription): %s",
+            "Branding resolved to pleerity (runtime capability): %s",
             reasons,
             extra=log_extra,
         )

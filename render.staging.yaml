@@ -73,3 +73,13 @@ services:
       # Phase 5 P5-S1 — lifecycle-aware KPIs flag (infrastructure; shadow observe-only).
       - key: LIFECYCLE_AWARE_KPIS
         value: "shadow"
+      # CEG Phase 5 — Graph intelligence Tier 1 (staging only; narration/AI remain off).
+      - key: COMPLIANCE_EVIDENCE_GRAPH_MODE
+        value: enabled
+      # CIE-2 — recommendation + priority engines (shadow observe-only; no operational effects).
+      - key: COMPLIANCE_INTELLIGENCE_ENGINE_MODE
+        value: shadow
+      - key: COMPLIANCE_INTELLIGENCE_NARRATION_ENABLED
+        value: "false"
+      - key: AI_ENABLED
+        value: "false"

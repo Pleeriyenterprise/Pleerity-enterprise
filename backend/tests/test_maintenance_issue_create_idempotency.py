@@ -28,12 +28,25 @@ ISSUE_ID_2 = "issue-idem-2"
 
 
 async def _fake_client_guard(request: Request):
-    return {
+    contract = {
+        "client_id": CLIENT_ID,
+        "lifecycle_state": "ACTIVE",
+        "portal_mode": "FULL_ACCESS",
+        "capabilities": {
+            "CAP_OPS_MAINTENANCE": "ALLOW",
+            "CAP_OPS_PREDICTIVE": "ALLOW",
+            "CAP_OPS_CONTRACTORS": "ALLOW",
+        },
+    }
+    user = {
         "client_id": CLIENT_ID,
         "portal_user_id": PORTAL_USER,
         "role": "ROLE_CLIENT",
         "email": "idem@test.com",
+        "runtime_contract": contract,
     }
+    request.state.runtime_contract = contract
+    return user
 
 
 @pytest.fixture
@@ -188,15 +201,9 @@ def test_http_duplicate_post_returns_same_issue_id(client, http_client_guard_ove
             "description": "Duplicate probe",
         }
 
-    flags = {MAINTENANCE_WORKFLOWS: True}
     with (
         patch.object(db_singleton, "get_db", return_value=mock_db),
         patch("routes.client_maintenance.client_route_guard", new=_fake_client_guard),
-        patch(
-            "routes.client_maintenance.get_effective_flags",
-            new_callable=AsyncMock,
-            return_value=flags,
-        ),
         patch("routes.client_maintenance._enforce_maintenance_issue_create_rate_limit", AsyncMock()),
         patch("routes.client_maintenance.maintenance_issues_service.create_issue", side_effect=fake_create_issue),
         patch("services.maintenance_issue_create_idempotency.maintenance_issues_service.get_issue", side_effect=fake_get_issue),
@@ -228,15 +235,9 @@ def test_http_different_description_creates_second_issue(client, http_client_gua
         }
 
     mock_db, _coll = _mock_db_with_dedupe(dedupe_store)
-    flags = {MAINTENANCE_WORKFLOWS: True}
     with (
         patch.object(db_singleton, "get_db", return_value=mock_db),
         patch("routes.client_maintenance.client_route_guard", new=_fake_client_guard),
-        patch(
-            "routes.client_maintenance.get_effective_flags",
-            new_callable=AsyncMock,
-            return_value=flags,
-        ),
         patch("routes.client_maintenance._enforce_maintenance_issue_create_rate_limit", AsyncMock()),
         patch("routes.client_maintenance.maintenance_issues_service.create_issue", side_effect=fake_create_issue),
         patch("routes.client_maintenance.create_audit_log", AsyncMock()),

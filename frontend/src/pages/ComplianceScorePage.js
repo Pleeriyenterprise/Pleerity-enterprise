@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import { useReportCapabilities } from '../utils/reportCapabilityAccess';
 import UpgradePrompt from '../components/UpgradePrompt';
 import api from '../api/client';
 import { toast } from '@/utils/portalNotifications';
@@ -39,6 +39,7 @@ import {
 import { projectResolvedRequirementSemantics } from '../utils/resolvedRequirementViewModel';
 import { useComplianceOutcomeRefresh } from '../utils/useComplianceOutcomeRefresh';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { PortalModePageBanner } from '../components/lifecycle/LifecycleShell';
 import { cn } from '../lib/utils';
 import { requirementDisplayTitle } from '../domain/presentDomain';
 import { complianceRequirementStatusLabel } from '../domain/presentDomain';
@@ -257,10 +258,10 @@ function scoreDriverRequirementTitle(d) {
 }
 
 const ComplianceScorePage = () => {
-  const { hasFeature } = useEntitlements();
   const navigate = useNavigate();
   const { openGuidedEvidence } = useGuidedEvidenceModal();
-  const canExportScore = hasFeature('reports_pdf'); // Portfolio and Professional only
+  const { canGeneratePdf, canGenerateCsv } = useReportCapabilities();
+  const canExportScore = canGeneratePdf || canGenerateCsv;
   const [scoreData, setScoreData] = useState(null);
   const [properties, setProperties] = useState([]);
   const [requirements, setRequirements] = useState([]);
@@ -466,6 +467,7 @@ const ComplianceScorePage = () => {
   return (
     <TooltipProvider>
     <div className={portalPageRoot} data-testid="compliance-score-page">
+      <PortalModePageBanner />
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-4">
           <h1 className="text-xl sm:text-2xl font-bold text-midnight-blue">Compliance score</h1>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">

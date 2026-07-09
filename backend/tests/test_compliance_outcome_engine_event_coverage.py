@@ -73,10 +73,11 @@ async def _run_engine_with_mocks(
 
     with (
         patch("services.compliance_outcome_engine.database.get_db", return_value=db),
-        patch("services.requirement_evidence_authority.sync_requirement_evidence_authority", sync_mock),
+        patch("services.authority_mutation_fanout.authority_sync_with_transition_observability", sync_mock),
         patch("services.compliance_outcome_engine.recalculate_and_persist", recalc_mock),
         patch.object(coe, "_count_active_risk_signals", new_callable=AsyncMock, return_value=0),
         patch.object(coe, "_sync_regenerate_risks_and_operational", new_callable=AsyncMock),
+        patch("services.compliance_evidence_graph.producers.hooks.dispatch_p0_producer", new_callable=AsyncMock),
     ):
         await coe.apply_action_outcome(event)
 

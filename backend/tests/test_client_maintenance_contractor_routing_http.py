@@ -12,7 +12,7 @@ from starlette.requests import Request
 from database import database as db_singleton
 from middleware import client_route_guard as middleware_client_route_guard
 from server import app
-from services.ops_compliance_feature_flags import CONTRACTOR_NETWORK, MAINTENANCE_WORKFLOWS
+from services.account_capability_enforcement import CapabilityDecision, GRANT_ALLOW
 from services.work_order_assignment_constants import (
     ASSIGNMENT_ROUTING_ASSIGNED,
     ASSIGNMENT_ROUTING_PENDING_CLIENT_CONFIRMATION,
@@ -25,6 +25,17 @@ PORTAL_USER = "pu-http-routing"
 WOID = "wo-http-routing"
 
 
+async def _allow_capability_evaluate(client_id, capability_id, action, *, contract=None):
+    return CapabilityDecision(
+        capability_id=capability_id,
+        action=action,
+        grant=GRANT_ALLOW,
+        effective_semantic=GRANT_ALLOW,
+        allowed=True,
+        source="test",
+        reason_code="allowed",
+        reason="test allow",
+    )
 async def _fake_client_guard(request: Request):
     return {
         "client_id": CLIENT_ID,
@@ -120,7 +131,6 @@ def test_http_post_contractor_routing_request_then_confirm(client, http_client_g
         ],
         "routing": {"assignment_urgency": "normal", "routing_messages": []},
     }
-    flags = {MAINTENANCE_WORKFLOWS: True, CONTRACTOR_NETWORK: True}
     send_mock = AsyncMock(return_value={"ok": True})
 
     with (
@@ -130,9 +140,9 @@ def test_http_post_contractor_routing_request_then_confirm(client, http_client_g
             new=_fake_client_guard,
         ),
         patch(
-            "routes.client_maintenance.get_effective_flags",
+            "routes.client_maintenance.CapabilityEnforcementService.evaluate",
             new_callable=AsyncMock,
-            return_value=flags,
+            side_effect=_allow_capability_evaluate,
         ),
         patch(
             "services.work_order_contractor_routing_service.contractor_service.recommend_contractors_for_work_order",
@@ -170,9 +180,9 @@ def test_http_post_contractor_routing_request_then_confirm(client, http_client_g
             new=_fake_client_guard,
         ),
         patch(
-            "routes.client_maintenance.get_effective_flags",
+            "routes.client_maintenance.CapabilityEnforcementService.evaluate",
             new_callable=AsyncMock,
-            return_value=flags,
+            side_effect=_allow_capability_evaluate,
         ),
         patch(
             "services.contractor_service.validate_contractor_for_work_order_assignment",

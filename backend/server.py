@@ -7,7 +7,7 @@ import uuid
 from contextlib import asynccontextmanager
 from database import database
 from routes import auth, intake, onboarding, portal, webhooks, client, client_read_api, admin, admin_client_lifecycle, admin_identity_lifecycle, documents, evidence_review, assistant, profile, properties, rules, compliance_governed_rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, client_billing, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, admin_pilot_invites, admin_pilot_lifecycle, admin_onboarding_recovery, admin_commercial_entitlement, admin_compliance_registry, admin_compliance_truth, analytics, admin_generation_analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads, admin_discovery, discovery_twin_internal, agreements_public, admin_client_agreements, admin_job_execution
-from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_compliance_execution, client_compliance_evidence, compliance_delivery_audit, api_compliance_workflow, client_approvals, client_rent_operations, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre, admin_communications, requirement_workflow_audit_admin, public_legal_content
+from routes import observability, operational_evidence, compliance_graph, compliance_graph_health, compliance_intelligence, ops_compliance, contractors, maintenance, client_maintenance, client_compliance_execution, client_compliance_evidence, compliance_delivery_audit, api_compliance_workflow, client_approvals, client_rent_operations, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre, admin_communications, requirement_workflow_audit_admin, public_legal_content, client_lifecycle_runtime, client_capability_enforcement, client_session_runtime
 from utils.request_ip import get_client_ip as _client_ip
 
 # ClearForm - Separate Product Routes
@@ -27,7 +27,7 @@ from clearform.routes.admin import router as clearform_admin_router
 import os
 import logging
 import asyncio
-from datetime import timezone as dt_timezone
+from datetime import datetime, timezone as dt_timezone
 from pathlib import Path
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -261,6 +261,33 @@ async def lifespan(app: FastAPI):
         # Core readiness: auth/runtime routes may proceed once DB connectivity is verified.
         app.state.db_ready = True
         _set_startup_stage("db_ready")
+
+        try:
+            from services.security_monitoring_service import (
+                clear_all_ip_blocks,
+                ip_blocks_enabled,
+                purge_expired_ip_blocks,
+            )
+            from utils.deployment_environment_guard import resolve_deployment_tier
+
+            purged = await purge_expired_ip_blocks()
+            if purged:
+                logger.info("Purged %s expired security IP block(s)", purged)
+            if (os.environ.get("SECURITY_CLEAR_IP_BLOCKS_ON_STARTUP") or "").strip().lower() in (
+                "1",
+                "true",
+                "yes",
+            ):
+                cleared = await clear_all_ip_blocks()
+                logger.warning("SECURITY_CLEAR_IP_BLOCKS_ON_STARTUP: cleared %s IP block(s)", cleared)
+            elif resolve_deployment_tier() == "staging":
+                cleared = await clear_all_ip_blocks()
+                if cleared:
+                    logger.warning("Staging startup: cleared %s active IP block(s) from prior abuse detection", cleared)
+            elif not ip_blocks_enabled():
+                logger.warning("SECURITY_DISABLE_IP_BLOCKS is enabled — IP blocks are not enforced")
+        except Exception as sec_startup_err:
+            logger.warning("Security block startup maintenance skipped: %s", sec_startup_err)
 
         if True:
             _set_startup_stage("post_db_initialization")
@@ -1135,6 +1162,15 @@ async def lifespan(app: FastAPI):
         )
         scheduler.add_job(
             "job_runner:run_scheduled_job",
+            CronTrigger(hour=3, minute=30, timezone=SCHEDULER_TIMEZONE),
+            id="operational_evidence_maintenance_job",
+            name="Operational Evidence Maintenance (backfill + retention)",
+            replace_existing=True,
+            args=["operational_evidence_maintenance_job"],
+            kwargs={"run_type": "schedule"},
+        )
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
             CronTrigger(minute=35, timezone=SCHEDULER_TIMEZONE),
             id="operational_recovery_processing",
             name="Operational Recovery Orchestration (Phase 2A)",
@@ -1263,6 +1299,24 @@ from utils.cors_origins import resolve_cors_origin_regex, resolve_cors_origins
 
 _cors_origins = resolve_cors_origins()
 _cors_origin_regex = resolve_cors_origin_regex()
+
+
+def _cors_headers_for_origin(request: Request) -> dict:
+    origin = request.headers.get("origin")
+    if not origin:
+        return {}
+    from utils.cors_origins import is_cors_origin_allowed
+
+    if is_cors_origin_allowed(origin, origins=_cors_origins, origin_regex=_cors_origin_regex):
+        return {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Vary": "Origin",
+        }
+    return {}
+
+
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -1273,7 +1327,19 @@ app.add_middleware(
 )
 # Correlation ID for tracing (set or forward X-Correlation-Id on every request/response)
 from middleware import CORRELATION_ID_HEADER, CorrelationIdMiddleware
+from middleware.session_runtime import SessionRuntimeResponseMiddleware
+app.add_middleware(SessionRuntimeResponseMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
+
+
+def _request_has_valid_bearer(request: Request) -> bool:
+    auth_header = (request.headers.get("Authorization") or "").strip()
+    if not auth_header.startswith("Bearer "):
+        return False
+    from auth import decode_access_token
+
+    token = auth_header[7:].strip()
+    return bool(token and decode_access_token(token))
 
 
 @app.middleware("http")
@@ -1282,24 +1348,39 @@ async def _security_monitoring_gate(request: Request, call_next):
     ip = _client_ip(request)
     path = request.url.path or ""
     method = request.method.upper()
-    try:
-        from services.security_monitoring_service import should_block_ip, record_security_event
+    # CORS preflight must reach CORSMiddleware and return 2xx — never short-circuit OPTIONS here.
+    if method != "OPTIONS" and not _request_has_valid_bearer(request):
+        try:
+            from services.security_monitoring_service import get_ip_block_info, record_security_event, should_block_ip
 
-        if await should_block_ip(ip):
-            await record_security_event(
-                event_type="abuse.blocked_request",
-                ip=ip,
-                details={"path": path, "method": method},
-                severity="medium",
-            )
-            return JSONResponse(status_code=429, content={"detail": "Request blocked due to suspicious activity."})
-    except Exception:
-        pass
+            if await should_block_ip(ip):
+                await record_security_event(
+                    event_type="abuse.blocked_request",
+                    ip=ip,
+                    details={"path": path, "method": method},
+                    severity="medium",
+                )
+                headers = _cors_headers_for_origin(request)
+                try:
+                    block = await get_ip_block_info(ip)
+                    if block and block.get("expires_at"):
+                        exp = datetime.fromisoformat(str(block["expires_at"]).replace("Z", "+00:00"))
+                        retry_after = max(1, int((exp - datetime.now(dt_timezone.utc)).total_seconds()))
+                        headers["Retry-After"] = str(retry_after)
+                except Exception:
+                    pass
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Request blocked due to suspicious activity."},
+                    headers=headers,
+                )
+        except Exception:
+            pass
 
     response = await call_next(request)
 
     try:
-        from services.security_monitoring_service import record_security_event
+        from services.security_monitoring_service import is_client_portal_api_path, record_security_event
 
         if path.startswith("/api/admin/"):
             await record_security_event(
@@ -1320,7 +1401,8 @@ async def _security_monitoring_gate(request: Request, call_next):
             )
         elif response.status_code == 403:
             evt = "document.access_denied" if "/documents/" in path else "http.403"
-            await record_security_event(event_type=evt, ip=ip, details={"path": path, "method": method}, severity="medium")
+            if not (is_client_portal_api_path(path) and evt == "http.403"):
+                await record_security_event(event_type=evt, ip=ip, details={"path": path, "method": method}, severity="medium")
         elif response.status_code == 404 and path.startswith("/api/"):
             await record_security_event(event_type="http.404", ip=ip, details={"path": path, "method": method}, severity="low")
         elif response.status_code == 429:
@@ -1406,11 +1488,16 @@ app.include_router(onboarding.router)
 app.include_router(portal.router)
 app.include_router(webhooks.router)
 app.include_router(client.router)
+app.include_router(client_lifecycle_runtime.router)
+app.include_router(client_session_runtime.router)
+app.include_router(client_capability_enforcement.router)
 app.include_router(client_compliance_evidence.router)
 app.include_router(client_read_api.mgmt_router)
 app.include_router(client_read_api.data_router)
 app.include_router(portfolio.router)
 app.include_router(admin_client_lifecycle.router)
+from routes import admin_lifecycle_operations
+app.include_router(admin_lifecycle_operations.router)
 app.include_router(admin_identity_lifecycle.router)
 app.include_router(admin.router)
 app.include_router(admin_compliance_registry.router)
@@ -1492,6 +1579,10 @@ app.include_router(admin_risk_leads.router)  # Admin: risk leads list, export, r
 app.include_router(admin_discovery.router)  # Admin: discovery review workflow (Stage O)
 app.include_router(discovery_twin_internal.router)  # Stage Y: Twin webhook connector (staging, flag-gated)
 app.include_router(observability.router)  # Admin: job-runs, incidents, score-events (observability)
+app.include_router(operational_evidence.router)  # Admin: Operational Evidence Platform (timeline, stories, chains)
+app.include_router(compliance_graph.router)  # Compliance Evidence Graph — Graph Service Layer only
+app.include_router(compliance_graph_health.router)  # CEG Graph Health — admin only (Phase 2A)
+app.include_router(compliance_intelligence.router)  # CEG Intelligence Layer — admin only (Phase 5)
 app.include_router(security_monitoring.router)  # Admin: security monitoring and incident detection
 app.include_router(control_centre.router)  # Admin: unified Control Centre snapshot
 app.include_router(requirement_workflow_audit_admin.router)  # Admin: workflow class drift (read-only)
@@ -1657,6 +1748,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=422,
         content={"detail": errors, "request_id": request_id},
+        headers=_cors_headers_for_origin(request),
     )
 
 
@@ -1664,7 +1756,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def http_exception_handler(request: Request, exc: HTTPException):
     # Security events for HTTP status are recorded in _security_monitoring_gate (response status)
     # and in targeted paths (e.g. auth.role_violation in require_role_in). Avoid duplicate emission here.
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    headers = dict(exc.headers or {})
+    headers.update(_cors_headers_for_origin(request))
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail}, headers=headers)
 
 
 # Global exception handler
@@ -1673,7 +1767,8 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error"}
+        content={"detail": "Internal server error"},
+        headers=_cors_headers_for_origin(request),
     )
 
 if __name__ == "__main__":

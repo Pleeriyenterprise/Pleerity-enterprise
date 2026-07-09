@@ -1,13 +1,16 @@
 """
 Client API for Rent Operations — operational rent tracking and property expenses.
-Gated by RENT_OPERATIONS feature flag. Not accounting software.
+Permission authority: Runtime Contract CAP_OPS_RENT.
 """
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from typing import Optional
 
+from database import database
 from middleware import client_route_guard
+from middleware.capability_gating import capability_denied_http_detail, enforce_route_capability
+from services.account_capability_enforcement import CapabilityEnforcementService
 from models.rent_operations import (
     CreateRentScheduleBody,
     RentSchedulePreviewBody,
@@ -19,7 +22,6 @@ from models.rent_operations import (
     CreateExpenseBody,
     UpdateExpenseBody,
 )
-from services.ops_compliance_feature_flags import get_effective_flags, RENT_OPERATIONS
 from services import rent_ledger_service
 from services import rent_payment_service
 from services import rent_tenancy_authority_service as tenancy_authority
@@ -33,17 +35,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/client", tags=["client-rent-operations"], dependencies=[Depends(client_route_guard)])
 
 
-async def _require_rent_operations_enabled(request: Request):
+async def _enforce_capability(user: dict, capability_id: str, action: str) -> None:
+    await enforce_route_capability(user, capability_id, action)
+
+
+async def _require_rent_operations_enabled(request: Request, action: str = "read") -> dict:
+    """Capability gate for rent operations (CAP_OPS_RENT)."""
     user = await client_route_guard(request)
-    client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client context required")
-    flags = await get_effective_flags(client_id)
-    if not flags.get(RENT_OPERATIONS):
-        raise HTTPException(
-            status_code=403,
-            detail="Rent Operations is not enabled for your account",
-        )
+    await _enforce_capability(user, "CAP_OPS_RENT", action)
     return user
 
 
@@ -94,7 +93,7 @@ def _raise_rent_value_error(code: str) -> None:
     raise HTTPException(status_code=400, detail=code)
 
 
-@router.get("/operations/rent/capabilities", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.get("/operations/rent/capabilities")
 async def get_rent_operations_capabilities(request: Request):
     """Handshake for frontend deploy continuity — tenancy-authority APIs."""
     await _require_rent_operations_enabled(request)
@@ -107,7 +106,7 @@ async def get_rent_operations_capabilities(request: Request):
     }
 
 
-@router.get("/operations/rent/tenancies", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.get("/operations/rent/tenancies")
 async def list_rent_tenancies(
     request: Request,
     property_id: str = Query(..., description="Property scope"),
@@ -125,9 +124,9 @@ async def list_rent_tenancies(
         _raise_rent_value_error(str(e))
 
 
-@router.post("/operations/rent/tenancies", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.post("/operations/rent/tenancies")
 async def create_rent_tenancy(request: Request, body: CreatePropertyTenancyBody):
-    user = await _require_rent_operations_enabled(request)
+    user = await _require_rent_operations_enabled(request, "write")
     try:
         if body.lineage_parent_tenancy_id:
             doc = await tenancy_authority.create_replacement_tenancy(
@@ -154,14 +153,13 @@ async def create_rent_tenancy(request: Request, body: CreatePropertyTenancyBody)
 
 @router.post(
     "/operations/rent/tenancies/{tenancy_id}/close",
-    dependencies=[Depends(_require_rent_operations_enabled)],
 )
 async def close_rent_tenancy(
     request: Request,
     tenancy_id: str,
     body: ClosePropertyTenancyBody,
 ):
-    user = await _require_rent_operations_enabled(request)
+    user = await _require_rent_operations_enabled(request, "write")
     try:
         return await tenancy_authority.close_tenancy_rent_lineage(
             tenancy_id,
@@ -173,7 +171,7 @@ async def close_rent_tenancy(
         _raise_rent_value_error(str(e))
 
 
-@router.post("/operations/rent/schedules/preview", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.post("/operations/rent/schedules/preview")
 async def preview_rent_schedule(request: Request, body: RentSchedulePreviewBody):
     user = await _require_rent_operations_enabled(request)
     try:
@@ -183,7 +181,7 @@ async def preview_rent_schedule(request: Request, body: RentSchedulePreviewBody)
         _raise_rent_value_error(str(e))
 
 
-@router.get("/operations/rent/summary", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.get("/operations/rent/summary")
 async def get_rent_summary(
     request: Request,
     property_id: Optional[str] = Query(None),
@@ -197,7 +195,7 @@ async def get_rent_summary(
         raise
 
 
-@router.get("/operations/rent/schedules", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.get("/operations/rent/schedules")
 async def list_rent_schedules(
     request: Request,
     property_id: Optional[str] = Query(None),
@@ -207,9 +205,9 @@ async def list_rent_schedules(
     return {"schedules": schedules}
 
 
-@router.post("/operations/rent/schedules", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.post("/operations/rent/schedules")
 async def create_rent_schedule(request: Request, body: CreateRentScheduleBody):
-    user = await _require_rent_operations_enabled(request)
+    user = await _require_rent_operations_enabled(request, "write")
     try:
         schedule = await rent_ledger_service.create_rent_schedule(
             user["client_id"],
@@ -227,7 +225,7 @@ async def create_rent_schedule(request: Request, body: CreateRentScheduleBody):
         _raise_rent_value_error(code)
 
 
-@router.get("/operations/rent/ledgers", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.get("/operations/rent/ledgers")
 async def list_rent_ledgers(
     request: Request,
     property_id: Optional[str] = Query(None),
@@ -270,7 +268,7 @@ async def list_rent_ledgers(
         raise
 
 
-@router.get("/operations/rent/ledgers/{ledger_id}", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.get("/operations/rent/ledgers/{ledger_id}")
 async def get_rent_ledger(request: Request, ledger_id: str):
     user = await _require_rent_operations_enabled(request)
     doc = await rent_ledger_service.get_ledger(ledger_id, user["client_id"])
@@ -281,9 +279,9 @@ async def get_rent_ledger(request: Request, ledger_id: str):
     return await attach_cognition_to_rent_ledger(doc)
 
 
-@router.patch("/operations/rent/ledgers/{ledger_id}", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.patch("/operations/rent/ledgers/{ledger_id}")
 async def update_rent_ledger(request: Request, ledger_id: str, body: UpdateRentLedgerBody):
-    user = await _require_rent_operations_enabled(request)
+    user = await _require_rent_operations_enabled(request, "write")
     doc = await rent_ledger_service.update_ledger(
         ledger_id,
         user["client_id"],
@@ -296,9 +294,9 @@ async def update_rent_ledger(request: Request, ledger_id: str, body: UpdateRentL
     return doc
 
 
-@router.post("/operations/rent/payments", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.post("/operations/rent/payments")
 async def record_rent_payment(request: Request, body: RecordPaymentBody):
-    user = await _require_rent_operations_enabled(request)
+    user = await _require_rent_operations_enabled(request, "write")
     try:
         return await rent_payment_service.record_payment(
             user["client_id"],
@@ -310,9 +308,9 @@ async def record_rent_payment(request: Request, body: RecordPaymentBody):
         _raise_rent_value_error(str(e))
 
 
-@router.post("/operations/rent/ledgers/{ledger_id}/payments", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.post("/operations/rent/ledgers/{ledger_id}/payments")
 async def record_ledger_payment(request: Request, ledger_id: str, body: RecordPaymentBody):
-    user = await _require_rent_operations_enabled(request)
+    user = await _require_rent_operations_enabled(request, "write")
     try:
         return await rent_payment_service.record_payment_for_ledger(
             ledger_id,
@@ -327,10 +325,9 @@ async def record_ledger_payment(request: Request, ledger_id: str, body: RecordPa
 
 @router.post(
     "/operations/rent/ledgers/{ledger_id}/reminders/mark-sent",
-    dependencies=[Depends(_require_rent_operations_enabled)],
 )
 async def mark_reminder_sent(request: Request, ledger_id: str, body: MarkReminderSentBody):
-    user = await _require_rent_operations_enabled(request)
+    user = await _require_rent_operations_enabled(request, "write")
     try:
         return await rent_reminder_service.mark_reminder_sent(
             ledger_id,
@@ -345,7 +342,7 @@ async def mark_reminder_sent(request: Request, ledger_id: str, body: MarkReminde
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/operations/expenses/summary", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.get("/operations/expenses/summary")
 async def get_expenses_summary(
     request: Request,
     property_id: Optional[str] = Query(None),
@@ -366,7 +363,7 @@ async def get_expenses_summary(
         raise
 
 
-@router.get("/operations/expenses", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.get("/operations/expenses")
 async def list_expenses(
     request: Request,
     property_id: Optional[str] = Query(None),
@@ -390,9 +387,9 @@ async def list_expenses(
     )
 
 
-@router.post("/operations/expenses", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.post("/operations/expenses")
 async def create_expense(request: Request, body: CreateExpenseBody):
-    user = await _require_rent_operations_enabled(request)
+    user = await _require_rent_operations_enabled(request, "write")
     try:
         return await property_expense_service.create_expense(
             user["client_id"],
@@ -412,9 +409,9 @@ async def create_expense(request: Request, body: CreateExpenseBody):
         raise HTTPException(status_code=400, detail=code)
 
 
-@router.patch("/operations/expenses/{expense_id}", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.patch("/operations/expenses/{expense_id}")
 async def update_expense(request: Request, expense_id: str, body: UpdateExpenseBody):
-    user = await _require_rent_operations_enabled(request)
+    user = await _require_rent_operations_enabled(request, "write")
     doc = await property_expense_service.update_expense(
         expense_id,
         user["client_id"],
@@ -427,9 +424,9 @@ async def update_expense(request: Request, expense_id: str, body: UpdateExpenseB
     return doc
 
 
-@router.delete("/operations/expenses/{expense_id}", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.delete("/operations/expenses/{expense_id}")
 async def delete_expense(request: Request, expense_id: str):
-    user = await _require_rent_operations_enabled(request)
+    user = await _require_rent_operations_enabled(request, "write")
     ok = await property_expense_service.delete_expense(
         expense_id,
         user["client_id"],
@@ -441,7 +438,7 @@ async def delete_expense(request: Request, expense_id: str):
     return {"deleted": True}
 
 
-@router.get("/properties/{property_id}/financial-snapshot", dependencies=[Depends(_require_rent_operations_enabled)])
+@router.get("/properties/{property_id}/financial-snapshot")
 async def get_property_financial_snapshot(request: Request, property_id: str):
     user = await _require_rent_operations_enabled(request)
     try:

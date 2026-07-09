@@ -17,9 +17,15 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({ hasFeature: mockHasFeature }),
-}));
+jest.mock('../utils/propertyCapabilityAccess', () => {
+  const actual = jest.requireActual('../utils/propertyCapabilityAccess');
+  return {
+    ...actual,
+    usePropertyWorkflowCapabilities: jest.fn(),
+  };
+});
+
+const { usePropertyWorkflowCapabilities } = require('../utils/propertyCapabilityAccess');
 
 jest.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({ user: { portal_user_id: 'user-1', role: 'ROLE_CLIENT_ADMIN' } }),
@@ -47,6 +53,9 @@ jest.mock('../components/client/RequirementIntelligenceModal', () => ({
 
 describe('PropertyDetailPage resolve_requirement deeplink', () => {
   beforeEach(() => {
+    usePropertyWorkflowCapabilities.mockImplementation(() =>
+      require('../testUtils/propertyWorkflowTestCapabilities').defaultPropertyWorkflowTestCaps(mockHasFeature),
+    );
     mockNavigate.mockReset();
     jest.spyOn(clientAPI, 'getComplianceDetail').mockResolvedValue({
       data: {

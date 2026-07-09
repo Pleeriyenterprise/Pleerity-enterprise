@@ -1,0 +1,48 @@
+{
+  "programme": "PLATFORM-HYGIENE-CLEANUP-01",
+  "verdict": "PLATFORM_HYGIENE_COMPLETE_WITH_RETAINED_COMPATIBILITY",
+  "branch": "develop",
+  "executed_at": "2026-07-06T21:28:00Z",
+  "files_removed": [
+    "frontend/src/contexts/EntitlementsContext.js"
+  ],
+  "dead_code_removed": [
+    {
+      "symbol": "getEntitlements",
+      "location": "frontend/src/api/client.js",
+      "reason": "Zero production callers; backend /client/entitlements endpoint retained without frontend wrapper"
+    },
+    {
+      "symbol": "EntitlementsProvider / useEntitlements / hasFeature",
+      "location": "frontend/src/contexts/EntitlementsContext.js",
+      "reason": "Obsolete ILP-4 context; not mounted in App.js"
+    },
+    {
+      "symbol": "jest.mock EntitlementsContext",
+      "location": "ClientCommandCenterPage.test.js, ClientDashboard.*.test.js (4 files)",
+      "reason": "Dead mocks — production components never imported EntitlementsContext"
+    }
+  ],
+  "comment_hygiene": [
+    {
+      "file": "frontend/src/components/client/PlanGatingDiscoverability.jsx",
+      "change": "hasFeature reference → Runtime Contract capability checks"
+    }
+  ],
+  "retained_compatibility": [
+    "getEntitlementsContext / usePortfolioUsageContext",
+    "EntitlementProtectedRoute.js",
+    "GET /api/client/entitlements (backend)",
+    "GET /api/client/plan-features (backend)",
+    "middleware/feature_gating.py (TEST_ONLY)",
+    "capability_compatibility.py",
+    "compare_runtime_with_legacy diagnostic endpoint"
+  ],
+  "customer_behaviour_change": false,
+  "tests": {
+    "frontend": "npm test -- --testPathPattern=\"platformHygieneCleanup|ilp10PlatformConvergence|ilp4Completion|BillingPage.capability|ClientDashboard.scoreFreshness|ClientCommandCenterPage\" --watchAll=false",
+    "backend": "pytest tests/test_legacy_residue_verification.py -q",
+    "build": "npm run build"
+  },
+  "commit_message": "refactor(account): remove dead legacy code after convergence"
+}

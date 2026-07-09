@@ -1,0 +1,127 @@
+{
+  "programme": "ACCOUNT-LIFECYCLE-GOVERNANCE-RECONCILIATION-01",
+  "branch": "develop",
+  "executed_at_utc": "2026-07-06T20:15:00Z",
+  "verdict": "GOVERNANCE_RECONCILIATION_COMPLETE",
+  "runtime_changes": false,
+  "authoritative_mapping": "backend/docs/ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md",
+  "files_reviewed": [
+    "ACCOUNT_LIFECYCLE_IMPLEMENTATION_READINESS.md",
+    "ACCOUNT_LIFECYCLE_POLICY_AUTHORITY.md",
+    "ACCOUNT_RUNTIME_VERSIONING.md",
+    "ACCOUNT_CAPABILITY_AUTHORITY.md",
+    "ACCOUNT_RUNTIME_API.md",
+    "ACCOUNT_RUNTIME_SESSION_MODEL.md",
+    "ACCOUNT_SESSION_RUNTIME_AUTHORITY.md",
+    "ACCOUNT_BACKGROUND_RUNTIME_AUTHORITY.md",
+    "ACCOUNT_LIFECYCLE_RESPONSE_AUTHORITY.md",
+    "ACCOUNT_LIFECYCLE_RESPONSE_SCHEMA.md",
+    "ACCOUNT_LIFECYCLE_RECOVERY_GUIDANCE.md",
+    "ACCOUNT_LIFECYCLE_GOVERNANCE_REVIEW.md",
+    "ACCOUNT_LIFECYCLE_STATE_DIAGRAM.md",
+    "ACCOUNT_RUNTIME_CONSUMERS.md",
+    "ACCOUNT_LIFECYCLE_RESOLVER.md",
+    "audit/account_lifecycle_ilp_01/ACCOUNT_LIFECYCLE_ILP_01_REPORT.md",
+    "audit/account_lifecycle_ilp_02/ACCOUNT_LIFECYCLE_ILP_02_REPORT.md",
+    "audit/account_lifecycle_ilp_03/ACCOUNT_LIFECYCLE_ILP_03_REPORT.md",
+    "audit/account_lifecycle_ilp_04/ACCOUNT_LIFECYCLE_ILP_04_REPORT.md",
+    "audit/account_lifecycle_ilp_05/ACCOUNT_LIFECYCLE_ILP_05_REPORT.md",
+    "audit/account_lifecycle_ilp_06/ACCOUNT_LIFECYCLE_ILP_06_REPORT.md",
+    "audit/account_lifecycle_ilp_07/ACCOUNT_LIFECYCLE_ILP_07_REPORT.md"
+  ],
+  "files_created": [
+    "ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md",
+    "audit/account_lifecycle_governance_reconciliation/GOVERNANCE_RECONCILIATION_REPORT.md",
+    "audit/account_lifecycle_governance_reconciliation/GOVERNANCE_RECONCILIATION_EVIDENCE.json"
+  ],
+  "files_updated": [
+    "ACCOUNT_LIFECYCLE_IMPLEMENTATION_READINESS.md",
+    "ACCOUNT_LIFECYCLE_POLICY_AUTHORITY.md",
+    "ACCOUNT_CAPABILITY_AUTHORITY.md",
+    "ACCOUNT_RUNTIME_VERSIONING.md",
+    "ACCOUNT_LIFECYCLE_STATE_DIAGRAM.md",
+    "ACCOUNT_RUNTIME_CONSUMERS.md",
+    "ACCOUNT_LIFECYCLE_GOVERNANCE_REVIEW.md",
+    "ACCOUNT_LIFECYCLE_RESOLVER.md",
+    "ACCOUNT_RUNTIME_API.md",
+    "ACCOUNT_LIFECYCLE_RESPONSE_AUTHORITY.md",
+    "ACCOUNT_BACKGROUND_RUNTIME_AUTHORITY.md",
+    "ACCOUNT_RUNTIME_SESSION_MODEL.md",
+    "ACCOUNT_SESSION_RUNTIME_AUTHORITY.md"
+  ],
+  "issues_identified_pre_reconciliation": [
+    {
+      "id": "GR-01",
+      "issue": "IMPLEMENTATION_READINESS status READY FOR ILP-1 with ILP-7 kickoff incomplete",
+      "resolution": "Replaced with ILP-1-7 complete, ILP-8-10 pending"
+    },
+    {
+      "id": "GR-02",
+      "issue": "Duplicated ILP numbering between governance and implementation tracks",
+      "resolution": "Authoritative mapping document with dual-column table"
+    },
+    {
+      "id": "GR-03",
+      "issue": "Governance ILP-8 Background Services shown as pending while ILP-6 implemented",
+      "resolution": "Mapped to implementation ILP-6; reconciled ILP-8 renamed Customer Communications"
+    },
+    {
+      "id": "GR-04",
+      "issue": "ACCOUNT_CAPABILITY_AUTHORITY roadmap used mixed implementation/governance numbers",
+      "resolution": "Status table with mapping reference"
+    },
+    {
+      "id": "GR-05",
+      "issue": "RUNTIME_VERSIONING deprecation referenced governance ILP-6/8 not implementation",
+      "resolution": "Updated with implementation delivery notes and ILP-10 removal"
+    },
+    {
+      "id": "GR-06",
+      "issue": "RUNTIME_CONSUMERS migration columns showed all work as future",
+      "resolution": "Updated key rows to implemented status; ILP-10 for remainder"
+    },
+    {
+      "id": "GR-07",
+      "issue": "STATE_DIAGRAM lacked implemented authority stack",
+      "resolution": "Added implemented + remaining mermaid; preserved historical diagram"
+    }
+  ],
+  "mappings_established": {
+    "governance_ilp_1": "implementation_ilp_1",
+    "governance_ilp_2": "implementation_ilp_2",
+    "governance_ilp_3": "implementation_ilp_3",
+    "governance_ilp_4": "implementation_ilp_4",
+    "governance_ilp_5_frontend_shell": "implementation_ilp_3_plus_ilp_5",
+    "governance_ilp_6_api_responses": "implementation_ilp_7",
+    "governance_ilp_7_session": "implementation_ilp_5",
+    "governance_ilp_8_background": "implementation_ilp_6",
+    "reconciled_ilp_8": "customer_communications_and_reactivation_pending",
+    "reconciled_ilp_9": "lifecycle_events_pending",
+    "reconciled_ilp_10": "platform_convergence_pending"
+  },
+  "implementation_complete": ["ILP-1", "ILP-2", "ILP-3", "ILP-4", "ILP-5", "ILP-6", "ILP-7"],
+  "remaining_programmes": {
+    "ILP-8": {
+      "name": "Customer Communications & Reactivation",
+      "depends_on": ["ILP-1", "ILP-2", "ILP-4", "ILP-5", "ILP-6", "ILP-7"]
+    },
+    "ILP-9": {
+      "name": "Lifecycle Events",
+      "depends_on": ["ILP-1", "ILP-2", "ILP-3", "ILP-4", "ILP-5", "ILP-6", "ILP-7", "ILP-8"]
+    },
+    "ILP-10": {
+      "name": "Platform Convergence",
+      "depends_on": ["ILP-1", "ILP-2", "ILP-3", "ILP-4", "ILP-5", "ILP-6", "ILP-7", "ILP-8", "ILP-9"]
+    }
+  },
+  "history_preserved": true,
+  "ilp_reports_unchanged": true,
+  "validation": {
+    "no_completed_ilp_marked_incomplete": true,
+    "no_pending_ilp_duplicates_completed_work": true,
+    "dependency_graph_consistent": true,
+    "architecture_diagram_matches_implementation": true,
+    "no_runtime_or_api_changes": true
+  },
+  "ilp8_implementation_blocked_until_review": true
+}

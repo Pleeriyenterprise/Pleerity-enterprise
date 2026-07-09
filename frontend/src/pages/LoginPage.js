@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, getRedirectPathForRole } from '../contexts/AuthContext';
+import { formatApiErrorDetail } from '../utils/capabilityRuntime';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -30,7 +31,7 @@ const LoginPage = () => {
         const path = getRedirectPathForRole(result.user?.role);
         navigate(path);
       } else {
-        setError(result.error);
+        setError(formatApiErrorDetail(result.error, 'Login failed'));
       }
     } catch (err) {
       setError('An unexpected error occurred');

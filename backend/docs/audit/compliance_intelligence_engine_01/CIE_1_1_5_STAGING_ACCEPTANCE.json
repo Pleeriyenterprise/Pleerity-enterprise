@@ -1,0 +1,174 @@
+{
+  "programme": "CIE-1-AND-CIE-1.5-STAGING-FOUNDATION-ACCEPTANCE",
+  "run_tag": "20260629T150411Z",
+  "validated_at": "2026-06-29T15:04:11.615049+00:00",
+  "expected_commit_sha_prefix": "935cf3f4",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "checks": [
+    {
+      "name": "staging_deploy_sha_aligned",
+      "passed": true,
+      "deploy": {
+        "sha": "935cf3f49007b5e025630a26081b8cd98fb321c6",
+        "latency_ms": 1931.54,
+        "checked_at": "2026-06-29T15:04:13.547349+00:00"
+      }
+    },
+    {
+      "name": "cie_mode_defaults_disabled",
+      "passed": true,
+      "mode": "disabled"
+    },
+    {
+      "name": "registry_v1_seeds_validate",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "envelope_response_hash_on_generate",
+      "passed": true
+    },
+    {
+      "name": "envelope_response_hash_on_replay",
+      "passed": true
+    },
+    {
+      "name": "envelope_response_hash_on_compare",
+      "passed": true
+    },
+    {
+      "name": "no_cie_customer_route_file",
+      "passed": true
+    },
+    {
+      "name": "no_domain_engines_package",
+      "passed": true
+    },
+    {
+      "name": "cie_local_pytest",
+      "passed": true,
+      "pytest": {
+        "exit_code": 0,
+        "passed": 67,
+        "failed": 0,
+        "output_tail": "...................................................................      [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n67 passed, 4 warnings in 3.18s\n"
+      }
+    },
+    {
+      "name": "ceg_graph_regression_pytest",
+      "passed": true,
+      "pytest": {
+        "exit_code": 0,
+        "passed": 22,
+        "failed": 0,
+        "output_tail": "......................                                                   [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n22 passed, 4 warnings in 0.70s\n"
+      }
+    },
+    {
+      "name": "staging_admin_login",
+      "passed": true,
+      "meta": "pro***"
+    },
+    {
+      "name": "http_regression_graph_health",
+      "passed": true,
+      "status": 200,
+      "latency_ms": 10399.31
+    },
+    {
+      "name": "http_regression_graph_health_summary",
+      "passed": true,
+      "status": 200,
+      "latency_ms": 10169.43
+    },
+    {
+      "name": "http_regression_system_health",
+      "passed": true,
+      "status": 200,
+      "latency_ms": 16422.42
+    },
+    {
+      "name": "http_regression_control_centre",
+      "passed": true,
+      "status": 200,
+      "latency_ms": 43974.96
+    },
+    {
+      "name": "http_regression_oe_timeline",
+      "passed": true,
+      "status": 200,
+      "latency_ms": 1675.0
+    },
+    {
+      "name": "http_regression_platform_status",
+      "passed": true,
+      "status": 200,
+      "latency_ms": 710.42
+    },
+    {
+      "name": "http_regression_decision_explorer",
+      "passed": false,
+      "status": 422,
+      "latency_ms": 1406.87
+    },
+    {
+      "name": "no_cie_engine_http_route",
+      "passed": true,
+      "status": 404
+    }
+  ],
+  "regression_http": [
+    {
+      "name": "graph_health",
+      "status": 200,
+      "latency_ms": 10399.31,
+      "passed": true
+    },
+    {
+      "name": "graph_health_summary",
+      "status": 200,
+      "latency_ms": 10169.43,
+      "passed": true
+    },
+    {
+      "name": "system_health",
+      "status": 200,
+      "latency_ms": 16422.42,
+      "passed": true
+    },
+    {
+      "name": "control_centre",
+      "status": 200,
+      "latency_ms": 43974.96,
+      "passed": true
+    },
+    {
+      "name": "oe_timeline",
+      "status": 200,
+      "latency_ms": 1675.0,
+      "passed": true
+    },
+    {
+      "name": "platform_status",
+      "status": 200,
+      "latency_ms": 710.42,
+      "passed": true
+    }
+  ],
+  "deploy": {
+    "sha": "935cf3f49007b5e025630a26081b8cd98fb321c6",
+    "latency_ms": 1931.54,
+    "checked_at": "2026-06-29T15:04:13.547349+00:00"
+  },
+  "local_cie": {
+    "mode_default": "disabled",
+    "registry_seeds_ok": true,
+    "registry_seed_errors": [],
+    "generate_response_hash": "sha256:24dd896d7d440e66e07cff3e067f17c3f87dd4900abe885bf5c951a7ce947405",
+    "replay_response_hash": "sha256:0f40b3082bddd2efbc11c32e0663a9d3b107bb68c063ce8d782d8424df8d4272",
+    "compare_response_hash": "sha256:48bbacdd904fa2be6a3a2e24b0a5a28fc2a53efed80e7fa499c588dc2f3b34d9",
+    "isl_replay_response_hash": "sha256:390eabc67d07531aa55afb54e805e938324ae4977c662a5408a8171afc42b3e9"
+  },
+  "elapsed_seconds": 109.19,
+  "verdict": "CIE_1_1_5_STAGING_ACCEPTED"
+}

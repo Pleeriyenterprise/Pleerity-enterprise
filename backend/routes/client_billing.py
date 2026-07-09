@@ -14,6 +14,7 @@ from fastapi.responses import Response
 
 from database import database
 from middleware import client_route_guard
+from middleware.capability_gating import assert_client_capability
 from models import AuditAction
 from services.order_receipt_service import (
     CVP_SUBSCRIPTION_RENEWAL_RECEIPTS,
@@ -146,6 +147,7 @@ async def _find_receipt_for_client(client_id: str, receipt_id: str) -> Optional[
 @router.get("/receipts")
 async def list_subscription_receipts(current_user: dict = Depends(client_route_guard)):
     """Subscription checkout and renewal receipts for this client (newest first by issued date)."""
+    await assert_client_capability(current_user, "CAP_BILLING_INVOICES", "read")
     client_id = current_user.get("client_id")
     if not client_id:
         raise HTTPException(status_code=400, detail="Missing client context")
@@ -210,6 +212,7 @@ async def list_subscription_receipts(current_user: dict = Depends(client_route_g
 @router.get("/receipt/latest")
 async def get_latest_subscription_receipt(current_user: dict = Depends(client_route_guard)):
     """Most recent checkout or renewal receipt, or synthetic row from client `last_subscription_*` if both empty."""
+    await assert_client_capability(current_user, "CAP_BILLING_INVOICES", "read")
     client_id = current_user.get("client_id")
     if not client_id:
         raise HTTPException(status_code=400, detail="Missing client context")
@@ -266,6 +269,7 @@ async def get_latest_subscription_receipt(current_user: dict = Depends(client_ro
 @router.get("/receipt/{receipt_id}")
 async def get_subscription_receipt(receipt_id: str, current_user: dict = Depends(client_route_guard)):
     """Single receipt metadata by invoice number (or Stripe session id `cs_...`)."""
+    await assert_client_capability(current_user, "CAP_BILLING_INVOICES", "read")
     client_id = current_user.get("client_id")
     if not client_id:
         raise HTTPException(status_code=400, detail="Missing client context")
@@ -282,6 +286,7 @@ async def download_subscription_receipt(
     current_user: dict = Depends(client_route_guard),
 ):
     """Stream PDF; restricted to owning client."""
+    await assert_client_capability(current_user, "CAP_BILLING_INVOICES", "read")
     client_id = current_user.get("client_id")
     if not client_id:
         raise HTTPException(status_code=400, detail="Missing client context")

@@ -23,6 +23,26 @@ SECURITY_INCIDENTS_COLLECTION = "security_incidents"
 SECURITY_LOCKS_COLLECTION = "security_locks"
 SECURITY_BLOCKS_COLLECTION = "security_blocks"
 
+_CLIENT_PORTAL_API_PREFIXES = (
+    "/api/client/",
+    "/api/profile/",
+    "/api/today",
+    "/api/account-lifecycle",
+    "/api/portal/",
+    "/api/auth/",
+    "/api/session-runtime",
+)
+
+
+def ip_blocks_enabled() -> bool:
+  raw = (os.environ.get("SECURITY_DISABLE_IP_BLOCKS") or "").strip().lower()
+  return raw not in ("1", "true", "yes")
+
+
+def is_client_portal_api_path(path: str) -> bool:
+    p = (path or "").strip()
+    return any(p.startswith(prefix) for prefix in _CLIENT_PORTAL_API_PREFIXES)
+
 # High volume of admin API responses from one IP (possible automation / probing).
 def _admin_route_spike_limit() -> int:
     raw = (os.environ.get("SECURITY_ADMIN_ROUTE_SPIKE_PER_IP") or "").strip()
@@ -215,6 +235,8 @@ async def clear_auth_lock(*, email: str, portal: str, reason: str = "login_succe
 
 
 async def should_block_ip(ip: Optional[str]) -> bool:
+    if not ip_blocks_enabled():
+        return False
     if not ip:
         return False
     db = database.get_db()
@@ -223,6 +245,45 @@ async def should_block_ip(ip: Optional[str]) -> bool:
         {"_id": 0, "ip": 1},
     )
     return bool(hit)
+
+
+async def get_ip_block_info(ip: Optional[str]) -> Optional[Dict[str, Any]]:
+    if not ip:
+        return None
+    db = database.get_db()
+    return await db[SECURITY_BLOCKS_COLLECTION].find_one(
+        {"ip": ip, "expires_at": {"$gt": _iso()}},
+        {"_id": 0, "ip": 1, "reason": 1, "expires_at": 1},
+    )
+
+
+async def purge_expired_ip_blocks() -> int:
+    db = database.get_db()
+    res = await db[SECURITY_BLOCKS_COLLECTION].delete_many({"expires_at": {"$lte": _iso()}})
+    return int(res.deleted_count or 0)
+
+
+async def clear_all_ip_blocks() -> int:
+    db = database.get_db()
+    res = await db[SECURITY_BLOCKS_COLLECTION].delete_many({})
+    return int(res.deleted_count or 0)
+
+
+async def clear_ip_block(ip: str) -> bool:
+    if not (ip or "").strip():
+        return False
+    db = database.get_db()
+    res = await db[SECURITY_BLOCKS_COLLECTION].delete_one({"ip": ip.strip()})
+    return bool(res.deleted_count)
+
+
+async def list_active_ip_blocks(limit: int = 100) -> Dict[str, Any]:
+    db = database.get_db()
+    rows = await db[SECURITY_BLOCKS_COLLECTION].find(
+        {"expires_at": {"$gt": _iso()}},
+        {"_id": 0},
+    ).sort("expires_at", -1).limit(max(1, min(limit, 500))).to_list(max(1, min(limit, 500)))
+    return {"items": rows, "total": len(rows)}
 
 
 async def record_security_event(
@@ -433,11 +494,14 @@ async def record_security_event(
                     details={"count_10m": int(count), "grouped_by_ip": bool(ip)},
                 )
 
-        # Endpoint probing
-        if event_type in ("http.404", "http.403", "http.401"):
+        # Endpoint probing — only count 404s on API paths. Portal 401/403 churn must not block users.
+        if event_type == "http.404":
+            path = (details.get("path") or "").strip()
+            if not path.startswith("/api/"):
+                return event_id
             since = (now - timedelta(minutes=10)).isoformat()
             count = await db[SECURITY_EVENTS_COLLECTION].count_documents(
-                {"event_type": {"$in": ["http.404", "http.403", "http.401"]}, "ip": ip, "timestamp": {"$gte": since}}
+                {"event_type": "http.404", "ip": ip, "timestamp": {"$gte": since}}
             )
             if count >= 25:
                 await _upsert_incident(
@@ -445,7 +509,7 @@ async def record_security_event(
                     severity="medium",
                     user_id=user_id,
                     ip=ip,
-                    details={"count_10m": int(count)},
+                    details={"count_10m": int(count), "path_sample": path},
                 )
                 await _block_ip(ip or "", 30, "endpoint_probing")
 

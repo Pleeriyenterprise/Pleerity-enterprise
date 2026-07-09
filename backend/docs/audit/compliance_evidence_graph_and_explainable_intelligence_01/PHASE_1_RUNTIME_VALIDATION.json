@@ -1,0 +1,53 @@
+{
+  "programme": "COMPLIANCE-EVIDENCE-GRAPH-PHASE-1",
+  "validated_at": "2026-06-28T15:32:13.882694+00:00",
+  "run_tag": "20260628T153213Z",
+  "feature_flag": {
+    "mode": "phase1_validation",
+    "producers_enabled": false
+  },
+  "checks": [
+    {
+      "name": "fixture_emit",
+      "passed": true,
+      "dec1": "dec_b72025dfeeda4ca1a4f8955e458af081",
+      "dec2": "dec_fbbe528782f140b0b4136c0b888e3b27",
+      "latency_ms": 810.31
+    },
+    {
+      "name": "explain_decision",
+      "passed": true,
+      "latency_ms": 108.81,
+      "has_snapshot_ref": true
+    },
+    {
+      "name": "replay_decision",
+      "passed": true,
+      "latency_ms": 216.97
+    },
+    {
+      "name": "compare_decision",
+      "passed": true,
+      "latency_ms": 228.91
+    },
+    {
+      "name": "find_historical_decision",
+      "passed": true,
+      "resolved": "dec_fbbe528782f140b0b4136c0b888e3b27"
+    },
+    {
+      "name": "snapshot_immutable_exists",
+      "passed": true
+    },
+    {
+      "name": "edge_provenance_complete",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 0,
+    "overall": true,
+    "recommendation": "PHASE_2_READY"
+  }
+}

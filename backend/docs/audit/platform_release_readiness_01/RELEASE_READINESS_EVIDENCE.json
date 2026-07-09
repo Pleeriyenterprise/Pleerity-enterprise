@@ -1,0 +1,282 @@
+{
+  "programme": "PLATFORM-WIDE-RELEASE-READINESS-AUDIT-01",
+  "generated_at": "2026-07-09T11:15:01Z",
+  "target_sha": "b4fa9a15",
+  "phases": {
+    "0_deployment": {
+      "phase": 0,
+      "pass": true,
+      "backend_version": {
+        "commit_sha": "b4fa9a1587315a709360222e0130f59d44c0bb1c",
+        "environment": "staging"
+      },
+      "backend_health": {
+        "status": "healthy",
+        "environment": "staging",
+        "readiness": {
+          "stage": "ready",
+          "degraded": false,
+          "last_error": null
+        }
+      },
+      "frontend": {
+        "homepage_status": 200,
+        "main_scripts": [
+          "main.ac04419e.js"
+        ],
+        "bundle": "main.ac04419e.js",
+        "bundle_bytes": 5227472,
+        "has_target_sha": true,
+        "has_customer_ops": true,
+        "has_lifecycle_runtime": true
+      },
+      "expected_sha": "b4fa9a1587315a709360222e0130f59d44c0bb1c"
+    },
+    "phase1_architecture": {
+      "phase": 1,
+      "pass": true,
+      "pytest": {
+        "pass": true,
+        "exit_code": 0,
+        "stdout": "...............                                                          [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n15 passed, 4 warnings in 0.43s\n"
+      }
+    },
+    "phase3_lifecycle": {
+      "phase": 3,
+      "pass": true,
+      "customers": [
+        {
+          "label": "active",
+          "email": "lere@yopmail.com",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "status": 200,
+          "lifecycle_state": "ACTIVE",
+          "portal_mode": "FULL_ACCESS",
+          "runtime_version": 1824736577,
+          "has_capabilities": true
+        },
+        {
+          "label": "suspended",
+          "email": "allison@yopmail.com",
+          "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+          "status": 200,
+          "lifecycle_state": "SUSPENDED",
+          "portal_mode": "SUSPENDED",
+          "runtime_version": 1085437416,
+          "has_capabilities": true
+        }
+      ],
+      "customer_ops_status": 200,
+      "health": "Healthy"
+    },
+    "phase4_billing": {
+      "phase": 4,
+      "pass": true,
+      "billing_snapshot_status": 200,
+      "stripe_subscription_id": "sub_1Tr2krCF0O5oqdUz7MKqoIDt",
+      "reconcile_available": true
+    },
+    "phase6_operational": {
+      "phase": 6,
+      "pass": true,
+      "checks": {
+        "health_summary": {
+          "status": 200,
+          "ok": true
+        },
+        "framework_audit": {
+          "status": 200,
+          "ok": true
+        },
+        "customer_ops": {
+          "ok": true,
+          "health": "Healthy",
+          "authority_chain_len": 10,
+          "timeline_len": 40
+        }
+      }
+    },
+    "phase8_permissions_api": {
+      "phase": 8,
+      "pass": true,
+      "rows": [
+        {
+          "label": "active",
+          "lifecycle_state": "ACTIVE",
+          "cap_sample": [
+            "CAP_PROFILE_VIEW",
+            "CAP_CALENDAR_VIEW",
+            "CAP_PROP_VIEW",
+            "CAP_REQ_VIEW",
+            "CAP_DOC_VIEW"
+          ],
+          "cap_count": 71
+        },
+        {
+          "label": "suspended",
+          "lifecycle_state": "SUSPENDED",
+          "cap_sample": [
+            "CAP_PROFILE_VIEW",
+            "CAP_CALENDAR_VIEW",
+            "CAP_PROP_VIEW",
+            "CAP_REQ_VIEW",
+            "CAP_DOC_VIEW"
+          ],
+          "cap_count": 71
+        }
+      ]
+    },
+    "phase12_browser": {
+      "phase": 12,
+      "pass": true,
+      "pages": [
+        {
+          "path": "/admin/dashboard",
+          "status": "ok",
+          "title": "Pleerity | AI-Driven Solutions & Compliance"
+        },
+        {
+          "path": "/admin/billing",
+          "status": "ok",
+          "title": "Pleerity | AI-Driven Solutions & Compliance"
+        },
+        {
+          "path": "/admin/system-health",
+          "status": "ok",
+          "title": "Pleerity | AI-Driven Solutions & Compliance"
+        },
+        {
+          "path": "/admin/clients/ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "status": "ok",
+          "title": "Pleerity | AI-Driven Solutions & Compliance"
+        },
+        {
+          "path": "/admin/clients/:id/customer-ops",
+          "status": "ok"
+        }
+      ],
+      "console_errors": []
+    },
+    "phase12_browser_customer": {
+      "phase": "12b_customer",
+      "pass": true,
+      "pages": [
+        {
+          "path": "/login/client",
+          "status": "ok",
+          "cap_leak": false
+        },
+        {
+          "path": "/dashboard",
+          "status": "ok",
+          "cap_leak": false
+        },
+        {
+          "path": "/today",
+          "status": "ok",
+          "cap_leak": false
+        },
+        {
+          "path": "/command-center",
+          "status": "ok",
+          "cap_leak": false
+        },
+        {
+          "path": "/properties",
+          "status": "ok",
+          "cap_leak": false
+        },
+        {
+          "path": "/requirements",
+          "status": "ok",
+          "cap_leak": false
+        },
+        {
+          "path": "/documents",
+          "status": "ok",
+          "cap_leak": false
+        },
+        {
+          "path": "/reports",
+          "status": "ok",
+          "cap_leak": false
+        },
+        {
+          "path": "/settings/billing",
+          "status": "ok",
+          "cap_leak": false
+        },
+        {
+          "path": "/settings/profile",
+          "status": "ok",
+          "cap_leak": false
+        },
+        {
+          "path": "/calendar",
+          "status": "ok",
+          "cap_leak": false
+        }
+      ],
+      "console_errors": []
+    }
+  },
+  "verdict": "PRODUCTION_PILOT_READY",
+  "phase_summary": {
+    "0_deployment": true,
+    "phase1_architecture": true,
+    "phase2_customer_journeys": true,
+    "phase3_lifecycle": true,
+    "phase4_billing": true,
+    "phase5_compliance_smoke": true,
+    "phase6_operational": true,
+    "phase7_communications_authority": true,
+    "phase8_permissions_api": true,
+    "phase9_ui_ux_smoke": true,
+    "phase10_performance_smoke": true,
+    "phase11_security_smoke": true,
+    "phase12_browser": true,
+    "phase12_browser_customer": true,
+    "phase13_evidence": true
+  },
+  "conditions": [
+    "C1_greenfield_registration_not_rerun",
+    "C2_not_all_lifecycle_branches_live",
+    "C3_compliance_report_digest_not_rerun",
+    "C4_communications_live_send_not_rerun",
+    "C5_performance_load_test_not_executed",
+    "C6_security_pen_test_not_executed"
+  ],
+  "production_blockers": [],
+  "evidence_pack": {
+    "directory": "backend/docs/audit/platform_release_readiness_01",
+    "documents": [
+      "DEPLOYMENT_AUTHORITY.md",
+      "ARCHITECTURE_VALIDATION.md",
+      "CUSTOMER_JOURNEYS.md",
+      "ADMIN_JOURNEYS.md",
+      "LIFECYCLE_VALIDATION.md",
+      "BILLING_VALIDATION.md",
+      "COMPLIANCE_VALIDATION.md",
+      "OPERATIONAL_VALIDATION.md",
+      "COMMUNICATION_VALIDATION.md",
+      "PERMISSION_MATRIX.md",
+      "SECURITY_VALIDATION.md",
+      "PERFORMANCE_VALIDATION.md",
+      "BROWSER_E2E.md",
+      "PRODUCTION_BLOCKERS.md",
+      "RELEASE_READINESS_SCORECARD.md",
+      "RELEASE_READINESS_EVIDENCE.json"
+    ],
+    "complete": true
+  },
+  "prior_programmes": [
+    "legacy_residue_verification_01",
+    "p0_subscription_lifecycle_final_operational_convergence_01",
+    "admin_customer_operations_centre_phase2_01"
+  ],
+  "staging": {
+    "api_base": "https://pleerity-enterprise.onrender.com/api",
+    "frontend": "https://pleerity-enterprise-9jjg.vercel.app"
+  },
+  "harness_rerun_at": "2026-07-09T11:21:00Z"
+}

@@ -1,6 +1,6 @@
 """
-Client API for maintenance work orders. Gated by MAINTENANCE_WORKFLOWS.
-List own work orders, create new (client or property manager).
+Client API for maintenance work orders and contractor routing.
+Permission authority: Runtime Contract CAP_OPS_MAINTENANCE, CAP_OPS_CONTRACTORS, CAP_OPS_PREDICTIVE.
 """
 import logging
 
@@ -11,6 +11,8 @@ from typing import Optional, List
 
 from database import database
 from middleware import client_route_guard
+from middleware.capability_gating import capability_denied_http_detail, enforce_route_capability
+from services.account_capability_enforcement import CapabilityEnforcementService
 from services import maintenance_service
 from services import maintenance_issues_service
 from services.maintenance_issue_create_idempotency import (
@@ -29,10 +31,6 @@ from services.maintenance_wo_from_issue_idempotency import (
 from services import contractor_service
 from services import work_order_contractor_routing_service as wo_contractor_routing
 from services.ops_compliance_feature_flags import (
-    get_effective_flags,
-    MAINTENANCE_WORKFLOWS,
-    PREDICTIVE_MAINTENANCE,
-    CONTRACTOR_NETWORK,
     COMPLIANCE_ENGINE,
 )
 from services.work_order_execution_constants import WORK_ORDER_KIND_COMPLIANCE
@@ -124,30 +122,52 @@ async def _require_maintenance_work_order_not_compliance(work_order_id: str, cli
         )
 
 
-async def _require_maintenance_enabled(request: Request):
-    """Ensure client has MAINTENANCE_WORKFLOWS enabled."""
+async def _enforce_capability(user: dict, capability_id: str, action: str) -> None:
+    await enforce_route_capability(user, capability_id, action)
+
+
+async def _require_maintenance_enabled(request: Request, action: str = "read") -> dict:
+    """Capability gate for maintenance domain (CAP_OPS_MAINTENANCE)."""
     user = await client_route_guard(request)
-    client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client context required")
-    flags = await get_effective_flags(client_id)
-    if not flags.get(MAINTENANCE_WORKFLOWS):
-        raise HTTPException(
-            status_code=403,
-            detail="Maintenance workflows are not enabled for your account",
-        )
+    await _enforce_capability(user, "CAP_OPS_MAINTENANCE", action)
     return user
 
 
-async def _require_maintenance_and_predictive(request: Request):
-    """Maintenance + predictive (operational suggestions and risk-backed flows)."""
-    user = await _require_maintenance_enabled(request)
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(PREDICTIVE_MAINTENANCE):
-        raise HTTPException(
-            status_code=403,
-            detail="Predictive maintenance is not enabled for your account",
-        )
+async def _require_contractors_enabled(request: Request, action: str = "read") -> dict:
+    """Capability gate for contractor network (CAP_OPS_CONTRACTORS)."""
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", action)
+    return user
+
+
+async def _require_maintenance_and_predictive(request: Request, action: str = "read") -> dict:
+    """Maintenance + predictive operational suggestions."""
+    user = await _require_maintenance_enabled(request, action)
+    await _enforce_capability(user, "CAP_OPS_PREDICTIVE", action)
+    return user
+
+
+async def _require_predictive_enabled(request: Request, action: str = "read") -> dict:
+    """Capability gate for predictive maintenance (CAP_OPS_PREDICTIVE)."""
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_OPS_PREDICTIVE", action)
+    return user
+
+
+async def _require_assets_enabled(request: Request, action: str = "read") -> dict:
+    """Assets when maintenance or predictive read is granted."""
+    user = await client_route_guard(request)
+    if user.get("role") == "ROLE_OWNER":
+        return user
+    client_id = user.get("client_id")
+    if not client_id:
+        raise HTTPException(status_code=403, detail="Client context required")
+    service = CapabilityEnforcementService(database.get_db())
+    maintenance = await service.evaluate(client_id, "CAP_OPS_MAINTENANCE", action)
+    predictive = await service.evaluate(client_id, "CAP_OPS_PREDICTIVE", action)
+    if not maintenance.allowed and not predictive.allowed:
+        deny = maintenance if not maintenance.allowed else predictive
+        raise HTTPException(status_code=403, detail=capability_denied_http_detail(deny))
     return user
 
 
@@ -200,7 +220,7 @@ async def create_work_order(request: Request, body: CreateWorkOrderBody):
     """Create a work order for a property. Requires MAINTENANCE_WORKFLOWS.
     Optional risk_signal_id must belong to this client and property; provenance is stored server-side.
     """
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     client_id = user["client_id"]
     await _enforce_maintenance_work_order_create_rate_limit(client_id)
     db = database.get_db()
@@ -306,7 +326,7 @@ class CreateIssueBody(BaseModel):
 @router.post("/maintenance/issues")
 async def create_issue(request: Request, body: CreateIssueBody):
     """Create a maintenance issue (triage runs automatically). Requires MAINTENANCE_WORKFLOWS."""
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     client_id = user["client_id"]
     await _enforce_maintenance_issue_create_rate_limit(client_id)
     db = database.get_db()
@@ -442,7 +462,7 @@ async def list_operational_issue_suggestions(
     Read-only list of backend **suggested** follow-ups (tier B automation — not auto-created issues).
     Requires MAINTENANCE_WORKFLOWS and PREDICTIVE_MAINTENANCE.
     """
-    user = await _require_maintenance_and_predictive(request)
+    user = await _require_maintenance_and_predictive(request, "write")
     client_id = user["client_id"]
     if property_id:
         db = database.get_db()
@@ -475,7 +495,7 @@ async def dismiss_operational_issue_suggestion(
     Dismiss a pending suggestion (tier B — user declines the suggested follow-up).
     Requires MAINTENANCE_WORKFLOWS and PREDICTIVE_MAINTENANCE.
     """
-    user = await _require_maintenance_and_predictive(request)
+    user = await _require_maintenance_and_predictive(request, "write")
     client_id = user["client_id"]
     try:
         doc = await operational_issue_suggestions_service.dismiss_issue_suggestion(
@@ -501,7 +521,7 @@ async def convert_operational_issue_suggestion(
     Mark a suggestion as acted on by linking an issue you created for the same property.
     Requires MAINTENANCE_WORKFLOWS and PREDICTIVE_MAINTENANCE.
     """
-    user = await _require_maintenance_and_predictive(request)
+    user = await _require_maintenance_and_predictive(request, "write")
     client_id = user["client_id"]
     if not (body.issue_id or "").strip():
         raise HTTPException(status_code=400, detail="issue_id is required")
@@ -557,7 +577,7 @@ class UpdateIssueBody(BaseModel):
 @router.patch("/maintenance/issues/{issue_id}")
 async def update_issue(request: Request, issue_id: str, body: UpdateIssueBody):
     """Update issue status and/or description, category. Requires MAINTENANCE_WORKFLOWS. Audits status changes."""
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     try:
         doc = await maintenance_issues_service.update_issue(
             issue_id=issue_id,
@@ -583,7 +603,7 @@ async def update_issue(request: Request, issue_id: str, body: UpdateIssueBody):
 @router.post("/maintenance/issues/{issue_id}/create-work-order")
 async def create_work_order_from_issue(request: Request, issue_id: str):
     """Create a work order from an issue; links issue_id to the work order. Requires MAINTENANCE_WORKFLOWS."""
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     client_id = user["client_id"]
     actor_id = user.get("portal_user_id")
     issue = await maintenance_issues_service.get_issue(issue_id, client_id=client_id)
@@ -716,7 +736,7 @@ class UpdateWorkOrderBody(BaseModel):
 @router.patch("/maintenance/work-orders/{work_order_id}")
 async def update_my_work_order(request: Request, work_order_id: str, body: UpdateWorkOrderBody):
     """Update work order status and/or assign contractor (own client only). Requires MAINTENANCE_WORKFLOWS."""
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     existing = await maintenance_service.get_work_order(work_order_id)
     if not existing or existing.get("client_id") != user["client_id"]:
         raise HTTPException(status_code=404, detail="Work order not found")
@@ -759,7 +779,7 @@ def _client_schedule_actor(request: Request) -> tuple[str, Optional[str], Option
 @router.post("/maintenance/work-orders/{work_order_id}/schedule/propose")
 async def client_schedule_propose(request: Request, work_order_id: str, body: ScheduleProposeBody):
     """Propose a visit time (client). Notifies contractor when assigned."""
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     actor_type, actor_id, role = _client_schedule_actor(request)
     try:
         return await wo_schedule.propose_schedule(
@@ -783,7 +803,7 @@ async def client_schedule_propose(request: Request, work_order_id: str, body: Sc
 @router.post("/maintenance/work-orders/{work_order_id}/schedule/confirm")
 async def client_schedule_confirm(request: Request, work_order_id: str):
     """Confirm a proposed visit (client, when contractor proposed; or after admin proposal)."""
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     actor_type, actor_id, role = _client_schedule_actor(request)
     try:
         return await wo_schedule.confirm_schedule(
@@ -803,7 +823,7 @@ async def client_schedule_confirm(request: Request, work_order_id: str):
 
 @router.post("/maintenance/work-orders/{work_order_id}/schedule/reschedule-request")
 async def client_schedule_reschedule_request(request: Request, work_order_id: str, body: ScheduleRescheduleRequestBody):
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     actor_type, actor_id, role = _client_schedule_actor(request)
     try:
         return await wo_schedule.request_reschedule(
@@ -824,7 +844,7 @@ async def client_schedule_reschedule_request(request: Request, work_order_id: st
 
 @router.post("/maintenance/work-orders/{work_order_id}/schedule/cancel")
 async def client_schedule_cancel(request: Request, work_order_id: str):
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     actor_type, actor_id, role = _client_schedule_actor(request)
     try:
         return await wo_schedule.cancel_schedule(
@@ -871,11 +891,9 @@ async def recommend_contractors_for_work_order(
     Ranked recommendations (same engine as admin): eligible contractors only, workload/SLA-aware routing metadata,
     explainable scores. Requires MAINTENANCE_WORKFLOWS and CONTRACTOR_NETWORK.
     """
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "read")
     client_id = user["client_id"]
-    flags = await get_effective_flags(client_id)
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "read")
     await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
     result = await contractor_service.recommend_contractors_for_work_order(
         work_order_id=work_order_id,
@@ -937,12 +955,10 @@ async def get_work_order_contractor_routing(request: Request, work_order_id: str
 
 @router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/generate")
 async def generate_work_order_contractor_recommendation(request: Request, work_order_id: str):
-    """Run routing engine, set pending recommendation, notify client (not contractor). Requires CONTRACTOR_NETWORK."""
-    user = await _require_maintenance_enabled(request)
+    """Run routing engine, set pending recommendation, notify client (not contractor). Requires CAP_OPS_CONTRACTORS."""
+    user = await _require_maintenance_enabled(request, "write")
     client_id = user["client_id"]
-    flags = await get_effective_flags(client_id)
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "write")
     await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
     try:
@@ -962,7 +978,7 @@ async def request_contractor_for_maintenance_work_order(http_request: Request, w
 @router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/confirm")
 async def confirm_work_order_recommended_contractor(request: Request, work_order_id: str):
     """Confirm the pending recommendation; assigns contractor and sends contractor notification."""
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     client_id = user["client_id"]
     await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
@@ -976,7 +992,7 @@ async def confirm_work_order_recommended_contractor(request: Request, work_order
 
 @router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/decline")
 async def decline_work_order_recommendation(request: Request, work_order_id: str, body: DeclineRecommendationBody):
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     client_id = user["client_id"]
     await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
@@ -990,7 +1006,7 @@ async def decline_work_order_recommendation(request: Request, work_order_id: str
 
 @router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/confirm-alternate")
 async def confirm_alternate_work_order_contractor(request: Request, work_order_id: str, body: ConfirmAlternateBody):
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     client_id = user["client_id"]
     await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
@@ -1004,7 +1020,7 @@ async def confirm_alternate_work_order_contractor(request: Request, work_order_i
 
 @router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/request-admin")
 async def request_admin_contractor_routing(request: Request, work_order_id: str, body: RequestAdminRoutingBody):
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     client_id = user["client_id"]
     await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
@@ -1019,7 +1035,7 @@ async def request_admin_contractor_routing(request: Request, work_order_id: str,
 @router.post("/maintenance/work-orders/{work_order_id}/contractor-routing/personal-contractor")
 async def add_personal_contractor_and_assign_work_order(request: Request, work_order_id: str, body: PersonalContractorBody):
     """Create client-supplied contractor record and assign (portal optional)."""
-    user = await _require_maintenance_enabled(request)
+    user = await _require_maintenance_enabled(request, "write")
     client_id = user["client_id"]
     await _require_maintenance_work_order_not_compliance(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
@@ -1039,50 +1055,11 @@ async def add_personal_contractor_and_assign_work_order(request: Request, work_o
 
 @router.get("/maintenance/predictive-insights")
 async def get_my_predictive_insights(request: Request):
-    """Get predictive maintenance insights for the authenticated client's properties. Requires PREDICTIVE_MAINTENANCE."""
-    user = await client_route_guard(request)
-    client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client context required")
-    flags = await get_effective_flags(client_id)
-    if not flags.get(PREDICTIVE_MAINTENANCE):
-        raise HTTPException(
-            status_code=403,
-            detail="Predictive maintenance is not enabled for your account",
-        )
+    """Get predictive maintenance insights for the authenticated client's properties. Requires CAP_OPS_PREDICTIVE."""
+    user = await _require_predictive_enabled(request, "read")
     from services.predictive_service import get_insights_for_client
-    result = await get_insights_for_client(client_id)
+    result = await get_insights_for_client(user["client_id"])
     return result
-
-
-async def _require_predictive_enabled(request: Request):
-    """Ensure client has PREDICTIVE_MAINTENANCE enabled."""
-    user = await client_route_guard(request)
-    client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client context required")
-    flags = await get_effective_flags(client_id)
-    if not flags.get(PREDICTIVE_MAINTENANCE):
-        raise HTTPException(
-            status_code=403,
-            detail="Predictive maintenance is not enabled for your account",
-        )
-    return user
-
-
-async def _require_assets_enabled(request: Request):
-    """Allow assets when MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE (Assets tab visible with maintenance)."""
-    user = await client_route_guard(request)
-    client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client context required")
-    flags = await get_effective_flags(client_id)
-    if not flags.get(MAINTENANCE_WORKFLOWS) and not flags.get(PREDICTIVE_MAINTENANCE):
-        raise HTTPException(
-            status_code=403,
-            detail="Maintenance or predictive maintenance is required to access assets",
-        )
-    return user
 
 
 @router.get("/maintenance/properties/{property_id}/assets")
@@ -1114,7 +1091,7 @@ class AddAssetBody(BaseModel):
 @router.post("/maintenance/properties/{property_id}/assets")
 async def add_property_asset(request: Request, property_id: str, body: AddAssetBody):
     """Add an asset for a property. Requires MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE."""
-    user = await _require_assets_enabled(request)
+    user = await _require_assets_enabled(request, "write")
     doc = await property_assets_service.add_asset(
         property_id=property_id,
         client_id=user["client_id"],
@@ -1137,7 +1114,7 @@ async def add_property_asset(request: Request, property_id: str, body: AddAssetB
 @router.post("/maintenance/properties/{property_id}/assets/ensure-defaults")
 async def ensure_default_assets_route(request: Request, property_id: str):
     """Create default assets for the property if missing (idempotent). For backfill / Initialise Assets. Requires MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE."""
-    user = await _require_assets_enabled(request)
+    user = await _require_assets_enabled(request, "write")
     db = database.get_db()
     prop = await db.properties.find_one({"property_id": property_id, "client_id": user["client_id"]}, {"_id": 1})
     if not prop:
@@ -1175,7 +1152,7 @@ class UpdateAssetBody(BaseModel):
 @router.patch("/maintenance/properties/{property_id}/assets/{asset_id}")
 async def update_property_asset(request: Request, property_id: str, asset_id: str, body: UpdateAssetBody):
     """Update an asset. Requires MAINTENANCE_WORKFLOWS or PREDICTIVE_MAINTENANCE."""
-    user = await _require_assets_enabled(request)
+    user = await _require_assets_enabled(request, "write")
     doc = await property_assets_service.update_asset(
         property_id=property_id,
         asset_id=asset_id,
@@ -1234,7 +1211,7 @@ class AddEventBody(BaseModel):
 @router.post("/maintenance/properties/{property_id}/events")
 async def add_property_event(request: Request, property_id: str, body: AddEventBody):
     """Add a maintenance event (e.g. boiler service). Requires PREDICTIVE_MAINTENANCE."""
-    user = await _require_predictive_enabled(request)
+    user = await _require_predictive_enabled(request, "write")
     doc = await property_assets_service.add_event(
         property_id=property_id,
         client_id=user["client_id"],
@@ -1357,7 +1334,7 @@ async def get_risk_signal_explanation_route(request: Request, signal_id: str):
 @router.post("/maintenance/risk-signals/recalculate/{property_id}")
 async def recalculate_property_risk_signals(request: Request, property_id: str):
     """Regenerate risk signals for a property. Requires PREDICTIVE_MAINTENANCE."""
-    user = await _require_predictive_enabled(request)
+    user = await _require_predictive_enabled(request, "write")
     client_id = user["client_id"]
     db = database.get_db()
     prop = await db.properties.find_one({"property_id": property_id, "client_id": client_id}, {"_id": 1})
@@ -1402,7 +1379,7 @@ class UpdateRiskSignalStatusBody(BaseModel):
 @router.patch("/maintenance/risk-signals/{signal_id}")
 async def update_risk_signal_status(request: Request, signal_id: str, body: UpdateRiskSignalStatusBody):
     """Set risk signal status to acknowledged or resolved. Requires PREDICTIVE_MAINTENANCE."""
-    user = await _require_predictive_enabled(request)
+    user = await _require_predictive_enabled(request, "write")
     try:
         updated = await risk_signal_service.update_signal_status(
             signal_id=signal_id,
@@ -1424,8 +1401,8 @@ class CreateFromRiskSignalBody(BaseModel):
 @router.post("/maintenance/risk-signals/{signal_id}/create-issue")
 async def create_issue_from_risk_signal_route(request: Request, signal_id: str, body: Optional[CreateFromRiskSignalBody] = None):
     """Create a maintenance issue from this risk signal (user-confirmed). Requires PREDICTIVE_MAINTENANCE and MAINTENANCE_WORKFLOWS."""
-    user = await _require_predictive_enabled(request)
-    await _require_maintenance_enabled(request)
+    user = await _require_predictive_enabled(request, "write")
+    await _enforce_capability(user, "CAP_OPS_MAINTENANCE", "write")
     try:
         issue = await risk_signal_service.create_issue_from_risk_signal(
             signal_id=signal_id,
@@ -1441,8 +1418,8 @@ async def create_issue_from_risk_signal_route(request: Request, signal_id: str, 
 @router.post("/maintenance/risk-signals/{signal_id}/create-work-order")
 async def create_work_order_from_risk_signal_route(request: Request, signal_id: str, body: Optional[CreateFromRiskSignalBody] = None):
     """Create a work order from this risk signal (user-confirmed). Requires PREDICTIVE_MAINTENANCE and MAINTENANCE_WORKFLOWS."""
-    user = await _require_predictive_enabled(request)
-    await _require_maintenance_enabled(request)
+    user = await _require_predictive_enabled(request, "write")
+    await _enforce_capability(user, "CAP_OPS_MAINTENANCE", "write")
     try:
         wo = await risk_signal_service.create_work_order_from_risk_signal(
             signal_id=signal_id,
@@ -1467,10 +1444,12 @@ class ArrangeInspectionBody(BaseModel):
 async def _arrange_compliance_inspection_from_risk_signal(
     request: Request, signal_id: str, body: ArrangeInspectionBody
 ) -> dict:
-    user = await _require_predictive_enabled(request)
-    await _require_maintenance_enabled(request)
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(COMPLIANCE_ENGINE):
+    user = await _require_predictive_enabled(request, "write")
+    await _enforce_capability(user, "CAP_OPS_MAINTENANCE", "write")
+    contract = user.get("runtime_contract")
+    from services.capability_compatibility import contract_feature_enabled
+
+    if not contract_feature_enabled(contract, "compliance_engine", "write"):
         raise HTTPException(
             status_code=400,
             detail="Compliance execution is not enabled. Use a maintenance job or enable compliance execution for your account.",
@@ -1519,8 +1498,8 @@ async def log_inspection_issue_from_risk_signal_route(
     Explicit maintenance path: create an inspection-labelled maintenance issue (not a compliance job).
     Use arrange-compliance-inspection to start a regulatory compliance inspection job.
     """
-    user = await _require_predictive_enabled(request)
-    await _require_maintenance_enabled(request)
+    user = await _require_predictive_enabled(request, "write")
+    await _enforce_capability(user, "CAP_OPS_MAINTENANCE", "write")
     try:
         issue = await risk_signal_service.create_inspection_issue_from_risk_signal(
             signal_id=signal_id,

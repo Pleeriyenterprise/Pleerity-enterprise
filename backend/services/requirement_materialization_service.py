@@ -132,6 +132,7 @@ async def materialize_requirements_for_property(
     property_id: str,
     *,
     reconcile_obsolete: bool = True,
+    materialization_trigger: str = "materialization",
 ) -> Dict[str, Any]:
     """
     Load the latest property + client docs, build the registry plan, upsert all rows,
@@ -365,7 +366,7 @@ async def materialize_requirements_for_property(
             )
             reconciled += 1
 
-    return {
+    result = {
         "ok": True,
         "property_id": property_id,
         "planned_types": sorted(planned_types),
@@ -373,6 +374,32 @@ async def materialize_requirements_for_property(
         "reopened_from_not_required": reopened_from_not_required,
         "reconciled_obsolete": reconciled,
     }
+    try:
+        from services.compliance_evidence_graph.producers.hooks import dispatch_p1_producer
+        from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+        pub_version = None
+        if published and isinstance(published, dict):
+            pub_version = published.get("version")
+        await dispatch_p1_producer(
+            ProducerContext(
+                mutation_kind="requirement_materialization",
+                client_id=client_id,
+                source_collection="requirements",
+                source_id=property_id,
+                property_id=property_id,
+                mutation_timestamp=now.isoformat(),
+                authoritative_payload={
+                    **result,
+                    "trigger": materialization_trigger,
+                    "jurisdiction": property_doc.get("jurisdiction"),
+                    "registry_publish_version": pub_version,
+                },
+            )
+        )
+    except Exception:
+        pass
+    return result
 
 
 def serialize_registry_plan_items(

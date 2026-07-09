@@ -1,0 +1,119 @@
+{
+  "phase": 7,
+  "verdict": "PASS",
+  "pages": {
+    "/today": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/today",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/dashboard": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/dashboard",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/command-center": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/command-center",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/properties": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/properties",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/requirements": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/requirements",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/documents": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/documents",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/maintenance": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/operations/work-orders",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/issues": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/jobs": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/contractors": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/operations/contractors",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/reports": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/reports",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/settings/billing": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/settings/billing",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/settings/profile": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/settings/profile",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/settings": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/settings/profile",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/calendar": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/calendar",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    },
+    "/analytics": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app/",
+      "login_redirect": false,
+      "cap_leaks": [],
+      "has_lifecycle_shell": false,
+      "past_access_date": false
+    }
+  },
+  "cap_leaks_unique": []
+}

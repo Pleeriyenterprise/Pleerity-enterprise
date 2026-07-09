@@ -1,6 +1,13 @@
 import axios from 'axios';
 import { getAuthToken, getContractorToken } from './authStorage';
 import { buildClientLoginSessionExpiredUrl, isClientPortalPath } from '../utils/clientLoginRedirect';
+import {
+  getSessionRuntimeVersionHeaders,
+  requestSessionRuntimeRefresh,
+  responseForceReauth,
+  responseIndicatesSessionRefresh,
+} from '../utils/sessionRuntimeStore';
+import { isApiCircuitOpen, recordApiCircuitFailure } from '../utils/apiRequestCircuit';
 
 export { getAuthToken, getContractorToken } from './authStorage';
 export { classifyAxiosError, classifyHttpStatus, ADMIN_FETCH_STATE } from '../utils/adminFetchState';
@@ -95,6 +102,18 @@ let firstRequestLogged = false;
 apiClient.interceptors.request.use(
   (config) => {
     applyPortalAuthHeader(config);
+    const path = normalizedApiUrlPath(config);
+    if (!path.startsWith('contractor/') && !path.startsWith('job/') && isApiCircuitOpen(path)) {
+      return Promise.reject(
+        Object.assign(new Error('Request paused after repeated failures. Try again shortly.'), {
+          code: 'API_CIRCUIT_OPEN',
+          config,
+        }),
+      );
+    }
+    if (!path.startsWith('contractor/') && !path.startsWith('job/')) {
+      Object.assign(config.headers, getSessionRuntimeVersionHeaders());
+    }
     // FormData must use multipart/form-data with boundary; do not send application/json
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
@@ -124,6 +143,25 @@ apiClient.interceptors.response.use(
     if (fullUrl.includes('/intake/submit') || fullUrl.includes('/intake/checkout') || fullUrl.includes('/intake/agreement-preview')) {
       logIntakeDebug(response.config?.method?.toUpperCase() || 'GET', fullUrl, response.status, response.data);
     }
+    const path = normalizedApiUrlPath(response.config || {});
+    if (
+      !path.startsWith('contractor/') &&
+      !path.startsWith('job/') &&
+      !path.includes('session-runtime/refresh')
+    ) {
+      if (responseForceReauth(response)) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        if (typeof window !== 'undefined' && isClientPortalPath(window.location.pathname || '')) {
+          window.location.href = buildClientLoginSessionExpiredUrl(
+            window.location.pathname,
+            window.location.search || '',
+          );
+        }
+      } else if (responseIndicatesSessionRefresh(response)) {
+        requestSessionRuntimeRefresh('api_response_header');
+      }
+    }
     return response;
   },
   (error) => {
@@ -138,10 +176,13 @@ apiClient.interceptors.response.use(
       logIntakeDebug(error.config?.method?.toUpperCase() || 'GET', fullUrl, status, data);
     }
     setLastApiError(status, typeof message === 'string' ? message : JSON.stringify(detail ?? message));
+    const errPath = normalizedApiUrlPath(error.config || {});
+    if (status === 403 || status === 429) {
+      recordApiCircuitFailure(errPath, status, typeof message === 'string' ? message : '');
+    }
     if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
       error.structuredDetail = detail;
     }
-    const errPath = normalizedApiUrlPath(error.config || {});
     if (errPath.startsWith('contractor/') && typeof window !== 'undefined') {
       if (process.env.NODE_ENV !== 'production' || window.__CVP_CONTRACTOR_DEBUG) {
         console.warn('[CVP][Contractor] API error', {
@@ -328,7 +369,7 @@ export function parseApiError(err, fallback = 'Something went wrong. Please try 
   if (d && typeof d === 'object') {
     if (typeof d.message === 'string' && d.message.trim()) {
       let msg = d.message.trim();
-      if (d.retry_suggested === true) msg = `${msg} You can try again.`;
+      if (d.retry_suggested === true || d.safe_to_retry === true) msg = `${msg} You can try again.`;
       const em = d.evidence_match && typeof d.evidence_match === 'object' ? d.evidence_match : null;
       const extra = Array.isArray(em?.user_messages) ? em.user_messages.filter(Boolean).join(' ') : '';
       if (extra) msg = `${msg} ${extra}`.trim();
@@ -542,7 +583,15 @@ export const clientAPI = {
   getOpenIssuesCount: () => apiClient.get('/client/maintenance/issues/open-count'),
   /** Paid invoice total this UTC month (maintenance/contractor). Requires INVOICING. */
   getMaintenanceSpendThisMonth: () => apiClient.get('/client/finance/maintenance-spend-this-month'),
-  getEntitlements: () => apiClient.get('/client/entitlements'),
+  /** Governed lifecycle runtime contract (ILP-2); presentation-only consumption in ILP-3. */
+  getLifecycleRuntime: () => apiClient.get('/client/lifecycle-runtime'),
+  /** Session runtime validation status (ILP-5). */
+  getSessionRuntimeStatus: () => apiClient.get('/client/session-runtime/status'),
+  validateSessionRuntime: (body) => apiClient.post('/client/session-runtime/validate', body),
+  refreshSessionRuntime: (reason = 'client_refresh') =>
+    apiClient.post('/client/session-runtime/refresh', null, {
+      headers: { 'X-Session-Refresh-Reason': reason },
+    }),
   getProperties: () => apiClient.get('/client/properties'),
   /** PATCH /api/properties/{id} — partial property update (e.g. jurisdiction). */
   patchProperty: (propertyId, body) => apiClient.patch(`/properties/${encodeURIComponent(propertyId)}`, body),
@@ -925,6 +974,14 @@ export const adminAPI = {
   retryDocumentExtraction: (documentId, body, config = {}) =>
     apiClient.post(`/admin/documents/${encodeURIComponent(documentId)}/retry-extraction`, body, config),
   getClientControlPanel: (clientId) => apiClient.get(`/admin/clients/${clientId}/control-panel`),
+  getClientLifecycleOperations: (clientId) => apiClient.get(`/admin/clients/${clientId}/lifecycle-operations`),
+  postClientLifecycleOperation: (clientId, action, body, config = {}) =>
+    apiClient.post(`/admin/clients/${clientId}/lifecycle-operations/${action}`, body, config),
+  exportClientSupportBundle: (clientId, body, config = {}) =>
+    apiClient.post(`/admin/clients/${clientId}/lifecycle-operations/export-support-bundle`, body, {
+      ...config,
+      responseType: 'blob',
+    }),
   getClientAgreementsSummary: (clientId) => apiClient.get(`/admin/clients/${clientId}/agreements/summary`),
   downloadClientIssuedAgreementPdf: (clientId, issuedId) =>
     apiClient.get(`/admin/clients/${clientId}/agreements/issued/${encodeURIComponent(issuedId)}/pdf`, {
@@ -1074,6 +1131,27 @@ export const adminAPI = {
     }),
   getDeliveryStateDefinitions: () => apiClient.get('/admin/observability/delivery-state-definitions'),
   getIncidents: (params = {}) => apiClient.get('/admin/observability/incidents', { params }),
+  getOperationalEvidenceEvents: (params = {}) => apiClient.get('/admin/observability/evidence/events', { params }),
+  getOperationalEvidenceStory: (params = {}) => apiClient.get('/admin/observability/evidence/stories', { params }),
+  getOperationalEvidenceChain: (params = {}) => apiClient.get('/admin/observability/evidence/chains', { params }),
+  getOperationalEvidenceIncidentView: (incidentId) =>
+    apiClient.get(`/admin/observability/evidence/views/incident/${incidentId}`),
+  getOperationalEvidenceJobRunView: (jobRunId) =>
+    apiClient.get(`/admin/observability/evidence/views/job-run/${jobRunId}`),
+  getOperationalEvidenceIntelligence: (params = {}) =>
+    apiClient.get('/admin/observability/evidence/intelligence/shortcuts', { params }),
+  getOperationalEvidencePortfolioView: (clientId, params = {}) =>
+    apiClient.get(`/admin/observability/evidence/views/portfolio/${clientId}`, { params }),
+  getOperationalEvidenceAnnotations: (params = {}) =>
+    apiClient.get('/admin/observability/evidence/annotations', { params }),
+  createOperationalEvidenceAnnotation: (body) =>
+    apiClient.post('/admin/observability/evidence/annotations', body),
+  getOperationalEvidenceRetentionStats: () =>
+    apiClient.get('/admin/observability/evidence/retention/stats'),
+  applyOperationalEvidenceRetention: (body = {}) =>
+    apiClient.post('/admin/observability/evidence/retention/apply', body),
+  runOperationalEvidenceBackfill: (body = {}) =>
+    apiClient.post('/admin/observability/evidence/backfill', body),
   getIncident: (incidentId) => apiClient.get(`/admin/observability/incidents/${incidentId}`),
   acknowledgeIncident: (incidentId, note) =>
     apiClient.post(`/admin/observability/incidents/${incidentId}/ack`, note != null ? { note } : {}),

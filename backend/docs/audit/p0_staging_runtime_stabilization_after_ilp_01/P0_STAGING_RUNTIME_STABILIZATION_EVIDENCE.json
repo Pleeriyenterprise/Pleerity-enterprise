@@ -1,0 +1,71 @@
+{
+  "programme": "P0-STAGING-RUNTIME-STABILIZATION-AFTER-ILP-01",
+  "branch": "develop",
+  "executed_at_utc": "2026-07-06T23:45:00Z",
+  "verdict": "STAGING_RUNTIME_STABILIZED_WITH_CONDITIONS",
+  "production_ready": false,
+  "root_causes": [
+    {
+      "id": "react_error_31",
+      "summary": "Pages passed structured 403 lifecycle/capability detail objects into ErrorBanner state",
+      "severity": "P0"
+    },
+    {
+      "id": "retry_storm",
+      "summary": "ClientPortalLayout portal-context retried 4x per load + 180s interval; combined with page fetches caused 429 storms",
+      "severity": "P0"
+    },
+    {
+      "id": "guard_event_emission",
+      "summary": "ILP-10 guard called resolve_runtime_contract_for_client with event publication on every API request",
+      "severity": "P1"
+    },
+    {
+      "id": "cors_on_429",
+      "summary": "Security monitoring 429 responses could lack CORS headers, appearing as CORS failures in browser",
+      "severity": "P1"
+    },
+    {
+      "id": "lifecycle_denial_ui",
+      "summary": "LifecycleRuntimeContext ignored structured 403 denial payloads; showed generic unavailable message",
+      "severity": "P1"
+    }
+  ],
+  "affected_pages": [
+    "Dashboard", "Today", "Command Centre", "Properties", "Requirements",
+    "Documents", "Reports", "Billing", "Settings"
+  ],
+  "affected_endpoints": [
+    "/api/client/lifecycle-runtime",
+    "/api/client/portal-context",
+    "/api/client/entitlements",
+    "/api/client/entitlements/context",
+    "/api/client/dashboard",
+    "/api/today/items",
+    "/api/profile/me"
+  ],
+  "fixes_applied": [
+    "formatApiErrorDetail + ErrorBanner string coercion",
+    "ClientTasksPage uses formatApiErrorMessage",
+    "LifecycleRuntimeContext applies customer_experience from 403 denial payload",
+    "apiRequestCircuit breaker on repeated 403/429",
+    "ClientPortalLayout portal-context retry reduced + circuit breaker",
+    "client_route_guard: billing early return restored, emit_events=False",
+    "resolve_runtime_contract_for_client emit_events flag",
+    "Security 429 responses include CORS headers"
+  ],
+  "targeted_tests_passed": {
+    "backend": {"total": 26, "suites": ["test_p0_staging_runtime_stabilization.py", "test_platform_convergence.py", "test_cors_origins.py"]},
+    "frontend": {"total": 4, "suite": "p0StagingRuntimeStabilization.test.js"}
+  },
+  "staging_smoke": {
+    "status": "PENDING_POST_DEPLOY",
+    "note": "Requires Render/Vercel redeploy of develop; manual browser validation checklist in report"
+  },
+  "remaining_risks": [
+    "BillingPage still calls deprecated /client/entitlements for plan display",
+    "Accounts legitimately in lifecycle block states will see recovery UI not full portal",
+    "Full regression deferred until Platform Release Readiness programme"
+  ],
+  "release_readiness_gate": "BLOCKED until staging browser smoke passes post-deploy"
+}

@@ -27,6 +27,8 @@ import {
 import { toast } from '@/utils/portalNotifications';
 import api, { openBlobApiResponse } from '../api/client';
 import { buildEntityRoute, resolveClientPortalPath } from '../utils/clientPortalNavigation';
+import { useCalendarCapabilities } from '../utils/calendarCapabilityAccess';
+import { UpgradeRequired } from '../components/UpgradePrompt';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 import { operationalLabelForToken } from '../utils/presentationLanguage';
@@ -269,6 +271,7 @@ function formatEventWhen(event) {
 
 const CalendarPage = () => {
   const navigate = useNavigate();
+  const { canViewCalendar, canExportCalendar } = useCalendarCapabilities();
   const [view, setView] = useState(initialViewMode);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarData, setCalendarData] = useState(null);
@@ -307,6 +310,10 @@ const CalendarPage = () => {
   }, [filtersEnabled]);
 
   const handleDownloadIcs = useCallback(async () => {
+    if (!canExportCalendar) {
+      toast.error('Calendar export is not available on your account');
+      return;
+    }
     try {
       const params = { days: 365, lookback_days: 365 };
       if (filtersQuery) params.filters = filtersQuery;
@@ -324,9 +331,13 @@ const CalendarPage = () => {
     } catch {
       toast.error('Failed to download calendar');
     }
-  }, [filtersQuery, urgentOnly]);
+  }, [filtersQuery, urgentOnly, canExportCalendar]);
 
   const fetchCalendarData = useCallback(async () => {
+    if (!canViewCalendar) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const params = { year: currentYear, month: currentMonth };
@@ -347,9 +358,13 @@ const CalendarPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentYear, currentMonth, filtersQuery, urgentOnly]);
+  }, [currentYear, currentMonth, filtersQuery, urgentOnly, canViewCalendar]);
 
   const fetchTimelineData = useCallback(async () => {
+    if (!canViewCalendar) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const params = { days: daysAhead };
@@ -368,15 +383,19 @@ const CalendarPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [daysAhead, filtersQuery, urgentOnly]);
+  }, [daysAhead, filtersQuery, urgentOnly, canViewCalendar]);
 
   useEffect(() => {
+    if (!canViewCalendar) {
+      setLoading(false);
+      return;
+    }
     if (view === 'calendar') {
       fetchCalendarData();
     } else {
       fetchTimelineData();
     }
-  }, [view, fetchCalendarData, fetchTimelineData]);
+  }, [view, fetchCalendarData, fetchTimelineData, canViewCalendar]);
 
   const toggleFilter = (key) => {
     setFiltersEnabled((prev) => {
@@ -462,6 +481,16 @@ const CalendarPage = () => {
     return null;
   }, [summary, view, urgentRequirementMonth, weekAttentionCount]);
 
+  if (!canViewCalendar) {
+    return (
+      <div className={cn(portalPageRoot, 'bg-gray-50 flex items-center justify-center p-6')} data-testid="calendar-gate">
+        <div className="w-full max-w-md">
+          <UpgradeRequired feature="compliance_calendar" showBackToDashboard variant="card" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="calendar-page">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
@@ -495,6 +524,7 @@ const CalendarPage = () => {
                 size="sm"
                 className="min-h-[44px] gap-2 border-gray-200"
                 onClick={handleDownloadIcs}
+                disabled={!canExportCalendar}
                 data-testid="download-calendar-ics"
               >
                 <Download className="w-4 h-4 shrink-0" />

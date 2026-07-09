@@ -22,7 +22,7 @@ import { Switch } from '../components/ui/switch';
 import { Input } from '../components/ui/input';
 import { toast } from '@/utils/portalNotifications';
 import api from '../api/client';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import { useProfileCapabilities } from '../utils/accountCapabilityAccess';
 import { DiscoverabilityHint } from '../components/client/PlanGatingDiscoverability';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
@@ -221,7 +221,7 @@ const SMSNotificationsSection = ({ preferences, setPreferences, handleToggle, se
 
 const NotificationPreferencesPage = () => {
   const navigate = useNavigate();
-  const { hasFeature } = useEntitlements();
+  const { canEditProfile, canUseSmsNotifications } = useProfileCapabilities();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState({
@@ -294,6 +294,7 @@ const NotificationPreferencesPage = () => {
   };
 
   const savePreferences = async () => {
+    if (!canEditProfile) return;
     setSaving(true);
     try {
       await api.put('/profile/notifications', preferences);
@@ -392,7 +393,7 @@ const NotificationPreferencesPage = () => {
             </div>
             <Button
               onClick={savePreferences}
-              disabled={!hasChanges || saving}
+              disabled={!hasChanges || saving || !canEditProfile}
               className={`${hasChanges ? 'bg-electric-teal hover:bg-teal-600' : 'bg-gray-300'}`}
               data-testid="save-preferences-btn"
             >
@@ -552,7 +553,7 @@ const NotificationPreferencesPage = () => {
         </section>
 
         {/* SMS Notifications Section (Portfolio and above; pricing page) */}
-        {hasFeature('sms_reminders') ? (
+        {canUseSmsNotifications ? (
           <SMSNotificationsSection 
             preferences={preferences}
             setPreferences={setPreferences}
@@ -659,7 +660,7 @@ const NotificationPreferencesPage = () => {
             <Button
               size="sm"
               onClick={savePreferences}
-              disabled={saving}
+              disabled={saving || !canEditProfile}
               className="bg-electric-teal hover:bg-teal-600"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}

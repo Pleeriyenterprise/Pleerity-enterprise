@@ -177,6 +177,20 @@ async def create_issue(
         )
     except Exception as outcome_err:
         logger.debug("Action outcome issue_created skip: %s", outcome_err)
+    try:
+        from services.compliance_evidence_graph.producers.ceg_dispatch import try_dispatch_p2
+
+        await try_dispatch_p2(
+            mutation_kind="maintenance_issue_lifecycle",
+            client_id=client_id,
+            source_collection="maintenance_issues",
+            source_id=issue_id,
+            property_id=property_id,
+            mutation_timestamp=now,
+            authoritative_payload={"lifecycle": "created", "status": doc.get("status")},
+        )
+    except Exception:
+        pass
     return doc
 
 
@@ -330,6 +344,42 @@ async def update_issue(
             metadata={"old_status": old_status, "new_status": updates["status"]},
         )
     updated = await get_issue(issue_id, client_id=client_id)
+    if updates.get("status") and updates["status"] != old_status:
+        new_status = updates["status"]
+        if new_status in (STATUS_RESOLVED, STATUS_CLOSED, STATUS_CANCELLED):
+            try:
+                from services.compliance_evidence_graph.producers.ceg_dispatch import try_dispatch_p2
+
+                wo = await db.work_orders.find_one(
+                    {"issue_id": issue_id, "client_id": client_id},
+                    {"work_order_id": 1},
+                )
+                resolved_at = (
+                    updates.get("resolved_at")
+                    or updates.get("closed_at")
+                    or updates.get("updated_at")
+                )
+                lifecycle = "resolved" if new_status == STATUS_RESOLVED else "closed"
+                await try_dispatch_p2(
+                    mutation_kind="maintenance_issue_lifecycle",
+                    client_id=client_id,
+                    source_collection="maintenance_issues",
+                    source_id=issue_id,
+                    property_id=issue.get("property_id"),
+                    mutation_timestamp=resolved_at,
+                    correlation_id=f"ISSUE:{issue_id}:{new_status}:{resolved_at}",
+                    authoritative_payload={
+                        "lifecycle": lifecycle,
+                        "status": new_status,
+                        "previous_status": old_status,
+                        "resolved_at": resolved_at,
+                        "actor_id": updated_by_id,
+                        "work_order_id": (wo or {}).get("work_order_id"),
+                        "authority_component": "update_issue",
+                    },
+                )
+            except Exception:
+                pass
     if updates.get("status") in (STATUS_RESOLVED, STATUS_CLOSED):
         try:
             from services.compliance_outcome_engine import apply_action_outcome, EVENT_ISSUE_RESOLVED

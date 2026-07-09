@@ -147,8 +147,48 @@ async def log_score_change(
     }
     if correlation_id:
         doc["correlation_id"] = correlation_id
-    await db[COLLECTION].insert_one(doc)
+    ins = await db[COLLECTION].insert_one(doc)
     logger.debug("Score ledger entry client_id=%s property_id=%s trigger=%s delta=%s", client_id, property_id, trigger_type_final, delta)
+    try:
+        from services.compliance_evidence_graph.producers.hooks import dispatch_p0_producer
+        from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+        await dispatch_p0_producer(
+            ProducerContext(
+                mutation_kind="score_ledger_write",
+                client_id=client_id,
+                source_collection="score_ledger_events",
+                source_id=str(ins.inserted_id),
+                property_id=property_id,
+                requirement_id=requirement_id,
+                correlation_id=correlation_id,
+                mutation_timestamp=doc["created_at"],
+                authoritative_payload={
+                    **doc,
+                    "ledger_object_id": ins.inserted_id,
+                    "trigger_type": trigger_type_final,
+                    "trigger_label": trigger_label_final,
+                    "actor_id": actor_id,
+                },
+            )
+        )
+    except Exception as ceg_err:
+        logger.debug("ceg score_ledger_write producer skipped: %s", ceg_err)
+    try:
+        from services.operational_evidence.producers import emit_score_ledger_change
+
+        await emit_score_ledger_change(
+            ledger_id=str(ins.inserted_id),
+            client_id=client_id,
+            property_id=property_id,
+            correlation_id=correlation_id,
+            before_score=before_score,
+            after_score=after_score,
+            trigger_label=trigger_label_final,
+            requirement_id=requirement_id,
+        )
+    except Exception as emit_err:
+        logger.debug("operational_evidence score ledger emit skipped: %s", emit_err)
 
 
 async def list_ledger(

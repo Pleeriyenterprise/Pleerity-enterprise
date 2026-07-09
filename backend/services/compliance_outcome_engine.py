@@ -192,13 +192,10 @@ async def _mark_related_risk_acknowledged(event: Dict[str, Any]) -> None:
 
 async def _sync_regenerate_risks_and_operational(client_id: str, property_id: str) -> None:
     """After compliance recalc from an outcome event: refresh heuristic signals + automation (same worker, no extra queue)."""
-    from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
+    from services.capability_compatibility import feature_enabled_for_client
 
     db = database.get_db()
-    client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "billing_plan": 1})
-    billing = (client_doc or {}).get("billing_plan")
-    flags = await get_effective_flags(client_id, billing)
-    if not flags.get(PREDICTIVE_MAINTENANCE):
+    if not await feature_enabled_for_client(db, client_id, "predictive_maintenance", "read"):
         return
     from services import risk_signal_service
     from services.operational_automation_service import evaluate_operational_automation_after_risk_refresh
@@ -434,6 +431,31 @@ async def apply_action_outcome(event: Dict[str, Any]) -> Dict[str, Any]:
         "correlation_id": outcome_correlation_id,
     }
     await db.compliance_activity_log.insert_one(activity_doc)
+
+    try:
+        from services.compliance_evidence_graph.producers.hooks import dispatch_p0_producer
+        from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+        await dispatch_p0_producer(
+            ProducerContext(
+                mutation_kind="outcome_engine_event",
+                client_id=event["client_id"],
+                source_collection="compliance_activity_log",
+                source_id=dedupe_key,
+                property_id=event["property_id"],
+                correlation_id=outcome_correlation_id,
+                mutation_timestamp=created_at,
+                authoritative_payload={
+                    **activity_doc,
+                    "event_type": event_type,
+                    "actor_id": event.get("actor_id"),
+                    "actor_role": event.get("actor_role"),
+                    "requirement_type": event.get("requirement_type"),
+                },
+            )
+        )
+    except Exception as ceg_err:
+        logger.debug("ceg outcome_engine_event producer skipped: %s", ceg_err)
 
     return {
         "score_change": score_change,

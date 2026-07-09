@@ -20,8 +20,18 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({ hasFeature: mockHasFeature }),
+jest.mock('../utils/propertyCapabilityAccess', () => {
+  const actual = jest.requireActual('../utils/propertyCapabilityAccess');
+  return {
+    ...actual,
+    usePropertyWorkflowCapabilities: jest.fn(),
+  };
+});
+
+const { usePropertyWorkflowCapabilities } = require('../utils/propertyCapabilityAccess');
+
+jest.mock('../contexts/AuthContext', () => ({
+  useAuth: () => ({ user: { portal_user_id: 'user-1', role: 'ROLE_CLIENT_ADMIN' } }),
 }));
 
 jest.mock('../context/GuidedEvidenceModalContext', () => ({
@@ -37,6 +47,9 @@ describe('PropertyDetailPage async honesty (stored vs preview)', () => {
     jest.restoreAllMocks();
     mockNavigate.mockReset();
     mockOpenGuidedEvidence.mockReset();
+    usePropertyWorkflowCapabilities.mockImplementation(() =>
+      require('../testUtils/propertyWorkflowTestCapabilities').defaultPropertyWorkflowTestCaps(mockHasFeature),
+    );
 
     jest.spyOn(clientAPI, 'getProperties').mockResolvedValue({
       data: { properties: [{ property_id: 'prop-1', nickname: 'Prop 1', address_line_1: '1 Street' }] },

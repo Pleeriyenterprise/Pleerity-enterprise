@@ -1,0 +1,140 @@
+{
+  "programme": "CIE-1-FOUNDATION-LOCAL-VALIDATION-GATE",
+  "run_tag": "20260629T130106Z",
+  "validated_at": "2026-06-29T13:01:06.598953+00:00",
+  "checks": [
+    {
+      "name": "feature_flag_defaults_disabled",
+      "passed": true,
+      "mode": "disabled"
+    },
+    {
+      "name": "hashing_deterministic",
+      "passed": true,
+      "digest": "sha256:43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777"
+    },
+    {
+      "name": "artefact_schema_validates",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "no_customer_facing_cie_routes",
+      "passed": true
+    },
+    {
+      "name": "no_production_cie_flag_in_render",
+      "passed": true
+    },
+    {
+      "name": "isl_disabled_unavailable_envelope",
+      "passed": true,
+      "envelope": {
+        "enabled": false,
+        "service": "generate_recommendations",
+        "engine_version": "cie-1.0.0",
+        "insufficient_evidence": true,
+        "reason": "COMPLIANCE_INTELLIGENCE_ENGINE_MODE_DISABLED",
+        "artefact_type": "recommendation",
+        "tier1": null,
+        "artefacts": [],
+        "authoritative_references": {
+          "artefact_ids": [],
+          "decision_ids": [],
+          "snapshot_ids": []
+        }
+      }
+    },
+    {
+      "name": "isl_get_disabled_safe",
+      "passed": true,
+      "envelope": {
+        "service": "get_intelligence",
+        "enabled": false,
+        "engine_version": "cie-1.0.0",
+        "insufficient_evidence": true,
+        "reason": "COMPLIANCE_INTELLIGENCE_ENGINE_MODE_DISABLED",
+        "artefact_id": null,
+        "artefact_type": null,
+        "artefacts": [],
+        "tier1": null,
+        "authoritative_references": {
+          "artefact_ids": [],
+          "decision_ids": [],
+          "snapshot_ids": []
+        },
+        "graph_service_response_hash": null,
+        "tier2": null,
+        "response_hash": "sha256:5e29683fe5d3151df3165fb52c1a1738e8e93e2f833b3da2f51c6a3eeefb9551"
+      }
+    },
+    {
+      "name": "storage_bootstrap_safe_stub",
+      "passed": true
+    },
+    {
+      "name": "no_domain_engines_package",
+      "passed": true
+    },
+    {
+      "name": "cie_pytest_suite",
+      "passed": true,
+      "pytest": {
+        "exit_code": 0,
+        "passed": 39,
+        "failed": 0,
+        "output_tail": ".......................................                                  [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n39 passed, 4 warnings in 5.06s\n"
+      }
+    },
+    {
+      "name": "ceg_regression_pytest",
+      "passed": true,
+      "pytest": {
+        "exit_code": 0,
+        "passed": 12,
+        "failed": 0,
+        "output_tail": "............                                                             [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n12 passed, 4 warnings in 0.93s\n"
+      }
+    }
+  ],
+  "sections": {
+    "isl_envelopes": {
+      "disabled_generate": {
+        "enabled": false,
+        "service": "generate_recommendations",
+        "engine_version": "cie-1.0.0",
+        "insufficient_evidence": true,
+        "reason": "COMPLIANCE_INTELLIGENCE_ENGINE_MODE_DISABLED",
+        "artefact_type": "recommendation",
+        "tier1": null,
+        "artefacts": [],
+        "authoritative_references": {
+          "artefact_ids": [],
+          "decision_ids": [],
+          "snapshot_ids": []
+        }
+      },
+      "disabled_get": {
+        "service": "get_intelligence",
+        "enabled": false,
+        "engine_version": "cie-1.0.0",
+        "insufficient_evidence": true,
+        "reason": "COMPLIANCE_INTELLIGENCE_ENGINE_MODE_DISABLED",
+        "artefact_id": null,
+        "artefact_type": null,
+        "artefacts": [],
+        "tier1": null,
+        "authoritative_references": {
+          "artefact_ids": [],
+          "decision_ids": [],
+          "snapshot_ids": []
+        },
+        "graph_service_response_hash": null,
+        "tier2": null,
+        "response_hash": "sha256:5e29683fe5d3151df3165fb52c1a1738e8e93e2f833b3da2f51c6a3eeefb9551"
+      }
+    }
+  },
+  "elapsed_seconds": 22.85,
+  "verdict": "CIE_1_FOUNDATION_VALIDATED"
+}

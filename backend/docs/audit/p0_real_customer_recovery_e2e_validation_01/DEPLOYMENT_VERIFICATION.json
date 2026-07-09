@@ -1,0 +1,47 @@
+{
+  "checked_at": "2026-07-08T17:55:14Z",
+  "programme": "P0-OPS-DEPLOYMENT-CORRECTION-01",
+  "expected_commit_sha": "aac35cbd54b5d29aa8402b852ca78135566e248e",
+  "expected_commit_short": "aac35cbd",
+  "github_develop_head": "aac35cbd54b5d29aa8402b852ca78135566e248e",
+  "backend": {
+    "url": "https://pleerity-enterprise.onrender.com",
+    "health": "200",
+    "version_endpoint": "/api/version",
+    "deployed_sha": "faa3b83fdd877e1435b3a3fb405bbef81abb5645",
+    "deployed_message": "fix(lifecycle): unify recovery UX and remove CAP identifiers from customer UI",
+    "environment": "staging",
+    "match": false,
+    "gap": "Render staging still on faa3b83f after aac35cbd push (~16:44Z). Extended poll 20x/5min unchanged. No RENDER_API_KEY locally to force POST /v1/services/{id}/deploys.",
+    "force_redeploy_attempted": false,
+    "force_redeploy_blocker": "RENDER_API_KEY or RENDER_API_TOKEN not available in environment or backend/.env"
+  },
+  "frontend": {
+    "stable_url": "https://pleerity-enterprise-9jjg.vercel.app",
+    "project": "pleerity-enterprise-9jjg",
+    "deployment_id": "dpl_p36zEkUCCQpS9FibrWCZZVBsKzhw",
+    "deployment_url": "https://pleerity-enterprise-9jjg-ivlmmwcxg-victory-aigbochies-projects.vercel.app",
+    "alias_action": "vercel alias set pleerity-enterprise-9jjg-ivlmmwcxg-victory-aigbochies-projects.vercel.app pleerity-enterprise-9jjg.vercel.app",
+    "bundle": "main.ca6af175.js",
+    "bundle_sha256": "951baf0c37a88feb85debc2f47813d30d6c0aeb942e1fcce55e106d9b19cce8d",
+    "serves_stale_main_0d2f6082": false,
+    "has_expected_commit": true,
+    "billing_recovery_markers_present": {
+      "checkout_url": true,
+      "recovery_guidance": true,
+      "fallback_checkout": true
+    },
+    "match": true
+  },
+  "deployment_authority": {
+    "backend": "FAIL",
+    "frontend": "PASS",
+    "overall": "FAIL"
+  },
+  "verdict": "FAIL",
+  "action_required": [
+    "Manual Render dashboard redeploy OR provide RENDER_API_KEY for pleerity-api / pleerity-api-staging from develop @ aac35cbd",
+    "Verify GET /api/version commit_sha starts with aac35cbd",
+    "Re-run backend/tmp_p0_real_customer_recovery_e2e_validation_01.py on lere@yopmail.com"
+  ]
+}

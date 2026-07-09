@@ -47,6 +47,16 @@ MODE_UNVERIFIED = "MODE_UNVERIFIED"
 CONFIDENCE_UNKNOWN = "unknown"
 CONFIDENCE_AUTHORITATIVE = "authoritative"
 
+# Portal preflight failures that may fall back to governed deployment Checkout (billing recovery).
+PORTAL_DRIFT_RECOVERY_FALLBACK_ACTIONS = frozenset(
+    {
+        "MODE_UNVERIFIED",
+        "backfill_stripe_mode_or_regenerate_checkout",
+        "regenerate_checkout",
+        "admin_billing_refresh",
+    }
+)
+
 
 def requires_deployment_checkout_for_plan_change(
     billing: Optional[Dict[str, Any]],
@@ -98,11 +108,14 @@ class StripeModeDriftError(Exception):
         self.recovery_action = recovery_action
 
     def to_customer_detail(self) -> Dict[str, Any]:
-        return {
+        detail = {
             "error_code": self.error_code,
             "message": self.customer_message,
             "recovery_action": self.recovery_action,
         }
+        if self.recovery_action in PORTAL_DRIFT_RECOVERY_FALLBACK_ACTIONS:
+            detail["fallback"] = "checkout"
+        return detail
 
     def to_admin_detail(self) -> Dict[str, Any]:
         return {

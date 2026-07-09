@@ -349,6 +349,8 @@ PLAN_DEFINITIONS = {
 # SOLO: Core + Basic AI. PORTFOLIO: SOLO + ZIP bulk, PDF reports, Scheduled reports.
 # PROFESSIONAL: PORTFOLIO + Advanced AI, Review UI, CSV, SMS, Tenant portal,
 # Webhooks (includes scoped read API keys under /api/client-data/v1), White label, Audit log export.
+# Operations (maintenance, contractors, predictive, rent) are plan-gated here and consumed by
+# Runtime Contract _CAP_PLAN_KEYS — must stay aligned with ops module flag keys.
 # Legacy keys (zip_upload, compliance_calendar, extraction_review_ui, tenant_portal)
 # kept for backward compatibility with existing enforce_feature/require_feature.
 # ============================================================================
@@ -364,6 +366,16 @@ FEATURE_MATRIX = {
         "multi_file_upload": True,
         "score_trending": True,
         "ai_extraction_basic": True,
+        # Operations — Solo: compliance engine only
+        "compliance_engine": True,
+        "compliance_packs": True,
+        "maintenance_workflows": False,
+        "predictive_maintenance": False,
+        "contractor_network": False,
+        "contractor_self_registration": False,
+        "rent_operations": False,
+        "invoicing": False,
+        "ai_assistant": False,
         # Portfolio additions -> False for Solo
         "document_upload_bulk_zip": False,
         "zip_upload": False,
@@ -392,6 +404,16 @@ FEATURE_MATRIX = {
         "multi_file_upload": True,
         "score_trending": True,
         "ai_extraction_basic": True,
+        # Operations — Portfolio: maintenance + predictive + rent
+        "compliance_engine": True,
+        "compliance_packs": True,
+        "maintenance_workflows": True,
+        "predictive_maintenance": True,
+        "contractor_network": False,
+        "contractor_self_registration": False,
+        "rent_operations": True,
+        "invoicing": False,
+        "ai_assistant": True,
         # Portfolio additions
         "document_upload_bulk_zip": True,
         "zip_upload": True,
@@ -421,6 +443,16 @@ FEATURE_MATRIX = {
         "multi_file_upload": True,
         "score_trending": True,
         "ai_extraction_basic": True,
+        # Operations — Professional: full ops suite including contractors
+        "compliance_engine": True,
+        "compliance_packs": True,
+        "maintenance_workflows": True,
+        "predictive_maintenance": True,
+        "contractor_network": True,
+        "contractor_self_registration": False,
+        "rent_operations": True,
+        "invoicing": False,
+        "ai_assistant": True,
         # Portfolio
         "document_upload_bulk_zip": True,
         "zip_upload": True,
@@ -560,6 +592,51 @@ FEATURE_METADATA = {
         "description": "Export audit logs for compliance review",
         "category": "advanced",
     },
+    "compliance_engine": {
+        "name": "Compliance Engine",
+        "description": "Operational compliance workflows and approvals",
+        "category": "operations",
+    },
+    "compliance_packs": {
+        "name": "Compliance Packs",
+        "description": "Packaged compliance workflow templates",
+        "category": "operations",
+    },
+    "maintenance_workflows": {
+        "name": "Maintenance Workflows",
+        "description": "Jobs, issues, and work-order management",
+        "category": "operations",
+    },
+    "predictive_maintenance": {
+        "name": "Predictive Maintenance",
+        "description": "Risk signals and predictive operational insights",
+        "category": "operations",
+    },
+    "contractor_network": {
+        "name": "Contractor Network",
+        "description": "Contractor directory and assignment workflows",
+        "category": "operations",
+    },
+    "contractor_self_registration": {
+        "name": "Contractor Self-Registration",
+        "description": "Allow contractors to register without admin invite",
+        "category": "operations",
+    },
+    "rent_operations": {
+        "name": "Rent Operations",
+        "description": "Rent collection and arrears workflows",
+        "category": "operations",
+    },
+    "invoicing": {
+        "name": "Invoicing",
+        "description": "Operational invoicing workflows",
+        "category": "operations",
+    },
+    "ai_assistant": {
+        "name": "AI Assistant",
+        "description": "In-portal AI compliance assistant",
+        "category": "ai",
+    },
 }
 
 
@@ -580,7 +657,13 @@ MINIMUM_PLAN_FOR_FEATURE = {
     "scheduled_reports": PlanCode.PLAN_2_PORTFOLIO,
     # PLAN_2_PORTFOLIO and above (pricing: Portfolio + Pro include SMS reminders)
     "sms_reminders": PlanCode.PLAN_2_PORTFOLIO,
+    # Operations — Portfolio+
+    "maintenance_workflows": PlanCode.PLAN_2_PORTFOLIO,
+    "predictive_maintenance": PlanCode.PLAN_2_PORTFOLIO,
+    "rent_operations": PlanCode.PLAN_2_PORTFOLIO,
+    "ai_assistant": PlanCode.PLAN_2_PORTFOLIO,
     # PLAN_3_PRO only
+    "contractor_network": PlanCode.PLAN_3_PRO,
     "ai_extraction_advanced": PlanCode.PLAN_3_PRO,
     "extraction_review_ui": PlanCode.PLAN_3_PRO,
     "ai_review_interface": PlanCode.PLAN_3_PRO,
@@ -1051,17 +1134,24 @@ class PlanRegistryService:
         return self._resolve_plan_code(code_str)
 
     def _resolve_plan_code(self, code_str: str) -> PlanCode:
-        """Resolve string to PlanCode, handling legacy codes."""
+        """Resolve string to PlanCode, handling legacy codes and display aliases."""
+        normalized = (code_str or "").strip().upper()
         legacy_mapping = {
             "PLAN_1": PlanCode.PLAN_1_SOLO,
             "PLAN_2_5": PlanCode.PLAN_2_PORTFOLIO,
             "PLAN_6_15": PlanCode.PLAN_3_PRO,
+            # Display / marketing aliases (globally normalized to canonical codes)
+            "SOLO": PlanCode.PLAN_1_SOLO,
+            "STARTER": PlanCode.PLAN_1_SOLO,
+            "PORTFOLIO": PlanCode.PLAN_2_PORTFOLIO,
+            "PROFESSIONAL": PlanCode.PLAN_3_PRO,
+            "PRO": PlanCode.PLAN_3_PRO,
         }
 
         try:
             return PlanCode(code_str)
         except ValueError:
-            return legacy_mapping.get(code_str, PlanCode.PLAN_1_SOLO)
+            return legacy_mapping.get(normalized, PlanCode.PLAN_1_SOLO)
     
     # -------------------------------------------------------------------------
     # Stripe Price ID Mappings

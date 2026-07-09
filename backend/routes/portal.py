@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 from database import database
 from middleware import get_current_user, client_route_guard
+from middleware.capability_gating import assert_client_capability
 from models import AuditAction
 from utils.audit import create_audit_log
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
@@ -477,6 +478,7 @@ async def list_portal_digests(
     Returns digests sorted by sent_at descending.
     """
     user = await client_route_guard(request)
+    await assert_client_capability(user, "CAP_REPORT_VIEW", "read")
     client_id = user["client_id"]
     db = database.get_db()
     cursor = db.digest_logs.find(
@@ -503,6 +505,7 @@ async def get_portal_digest(request: Request, digest_id: str):
     Get a single digest by id. Returns 404 if not found or not owned by the client.
     """
     user = await client_route_guard(request)
+    await assert_client_capability(user, "CAP_REPORT_VIEW", "read")
     client_id = user["client_id"]
     db = database.get_db()
     doc = await db.digest_logs.find_one(
@@ -530,6 +533,7 @@ async def download_portal_digest_pdf(request: Request, digest_id: str):
     File is served only when a stored path exists under DATA_DIR.
     """
     user = await client_route_guard(request)
+    await assert_client_capability(user, "CAP_REPORT_DOWNLOAD", "read")
     client_id = user["client_id"]
     db = database.get_db()
     doc = await db.digest_logs.find_one(

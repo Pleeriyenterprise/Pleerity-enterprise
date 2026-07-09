@@ -1,0 +1,58 @@
+{
+  "programme": "LEGACY-RESIDUE-VERIFICATION-01",
+  "verdict": "LEGACY_RESIDUE_REMOVED",
+  "branch": "develop",
+  "executed_at": "2026-07-06T21:14:00Z",
+  "scan_scope": [
+    "backend routes/services/middleware/jobs",
+    "frontend pages/components/hooks/layouts",
+    "compatibility layers",
+    "test classification"
+  ],
+  "production_legacy_consumers_found": 2,
+  "production_legacy_consumers_fixed": 2,
+  "fixes": [
+    {
+      "file": "backend/services/branding_resolver_service.py",
+      "from": "plan_registry.enforce_feature(white_label_reports)",
+      "to": "CapabilityEnforcementService CAP_BRANDING_WHITE_LABEL read"
+    },
+    {
+      "file": "backend/services/jobs.py",
+      "from": "billing.entitlement_status skip",
+      "to": "gate_client_background_job(renewal_reminders|subscription_lifecycle)"
+    }
+  ],
+  "customer_frontend_legacy_permission": {
+    "useEntitlements": 0,
+    "EntitlementsContext_imports_in_App": 0,
+    "hasFeature_permission_calls": 0,
+    "client_entitlements_page_calls": 0
+  },
+  "customer_backend_legacy_permission": {
+    "route_require_feature": 0,
+    "route_enforce_feature": 0,
+    "service_enforce_feature_callers": 0
+  },
+  "authority_stack_verified": [
+    "account_lifecycle_state_resolver",
+    "account_lifecycle_runtime_contract",
+    "account_capability_enforcement",
+    "account_session_runtime_service",
+    "account_lifecycle_response_authority",
+    "account_customer_communication_authority",
+    "account_lifecycle_event_authority",
+    "LifecycleRuntimeContext"
+  ],
+  "tests": {
+    "command": "pytest tests/test_legacy_residue_verification.py tests/test_branding_resolver.py tests/test_platform_convergence.py tests/test_account_background_runtime_authority.py -q",
+    "passed": 39,
+    "failed": 0
+  },
+  "artifacts": [
+    "backend/docs/audit/legacy_residue_verification_01/LEGACY_RESIDUE_VERIFICATION_REPORT.md",
+    "backend/docs/audit/legacy_residue_verification_01/LEGACY_RESIDUE_INVENTORY.json",
+    "backend/docs/audit/legacy_residue_verification_01/LEGACY_RESIDUE_VERIFICATION_EVIDENCE.json",
+    "backend/tests/test_legacy_residue_verification.py"
+  ]
+}

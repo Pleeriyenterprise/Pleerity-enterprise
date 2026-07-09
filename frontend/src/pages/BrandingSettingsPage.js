@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import api, { openBlobApiResponse } from '../api/client';
 import UpgradePrompt from '../components/UpgradePrompt';
+import { useBrandingCapabilities } from '../utils/accountCapabilityAccess';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 
@@ -31,6 +32,7 @@ function logoUrlRequiresAuthenticatedFetch(url) {
 
 const BrandingSettingsPage = () => {
   const navigate = useNavigate();
+  const { canUseWhiteLabelBranding, canEditBranding } = useBrandingCapabilities();
   const [branding, setBranding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -224,7 +226,8 @@ const BrandingSettingsPage = () => {
     );
   }
 
-  const isLocked = !branding?.feature_enabled;
+  const isLocked = !canUseWhiteLabelBranding;
+  const canMutateBranding = canEditBranding && canUseWhiteLabelBranding;
 
   return (
     <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="branding-settings-page">
@@ -256,7 +259,7 @@ const BrandingSettingsPage = () => {
                 variant="outline"
                 className="min-h-11 w-full sm:w-auto"
                 onClick={handleReset}
-                disabled={isLocked || saving}
+                disabled={isLocked || saving || !canMutateBranding}
                 data-testid="reset-btn"
               >
                 <RefreshCcw className="w-4 h-4 mr-2" />
@@ -265,7 +268,7 @@ const BrandingSettingsPage = () => {
               <Button
                 className="min-h-11 w-full sm:w-auto"
                 onClick={handleSave}
-                disabled={isLocked || saving || !hasChanges}
+                disabled={isLocked || saving || !hasChanges || !canMutateBranding}
                 data-testid="save-btn"
               >
                 <Save className="w-4 h-4 mr-2" />

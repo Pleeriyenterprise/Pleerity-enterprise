@@ -28,7 +28,12 @@ export function PropertyEvidenceRegistrySections({
   onPreview,
   onDownload,
   formatDate,
+  canViewEvidence = true,
+  canDownloadEvidence = true,
+  canUploadDocuments = true,
 }) {
+  if (!canViewEvidence) return null;
+
   const sections = groupDocumentsForPropertyRegistry(
     evidenceData?.documents || [],
     evidenceData?.registry,
@@ -94,11 +99,13 @@ export function PropertyEvidenceRegistrySections({
                             <Button variant="outline" size="sm" className="text-electric-teal border-electric-teal" onClick={() => onPreview(doc)} data-testid={`property-doc-preview-open-${doc.document_id}`}>
                               <Eye className="w-3 h-3 mr-1" /> View
                             </Button>
+                            {canDownloadEvidence ? (
                             <Button variant="outline" size="sm" onClick={() => onDownload(doc)}><Download className="w-3 h-3 mr-1" /> Download</Button>
-                            {isPendingConfirmation(doc) ? (
+                            ) : null}
+                            {canUploadDocuments && isPendingConfirmation(doc) ? (
                               <Button variant="outline" size="sm" className="border-amber-300 text-amber-700" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}>Confirm details</Button>
                             ) : null}
-                            {linkageReconciliationRequired(doc) ? (
+                            {canUploadDocuments && linkageReconciliationRequired(doc) ? (
                               <Button variant="outline" size="sm" className="border-orange-300 text-orange-800" onClick={() => navigate(resolveDocumentsPath(propertyId))}>Resolve linkage</Button>
                             ) : null}
                           </div>
@@ -124,8 +131,10 @@ export function PropertyEvidenceRegistrySections({
                   <div className="text-xs text-gray-600 mt-1">{[doc.document_type ? documentTypeLabel(doc.document_type) : null, evidencePrimary, reqLabel !== '—' ? reqLabel : null].filter(Boolean).join(' · ')}</div>
                   <div className="flex flex-wrap gap-1 mt-2">
                     <Button variant="outline" size="sm" onClick={() => onPreview(doc)}>View</Button>
+                    {canDownloadEvidence ? (
                     <Button variant="outline" size="sm" onClick={() => onDownload(doc)}>Download</Button>
-                    {linkageReconciliationRequired(doc) ? (
+                    ) : null}
+                    {canUploadDocuments && linkageReconciliationRequired(doc) ? (
                       <Button variant="outline" size="sm" onClick={() => navigate(resolveDocumentsPath(propertyId))}>Resolve linkage</Button>
                     ) : null}
                   </div>

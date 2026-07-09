@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { clientAPI } from '../../api/client';
-import { useEntitlements } from '../../contexts/EntitlementsContext';
+import { usePropertyCapabilities } from '../../utils/propertyCapabilityAccess';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { PortalLoadingPanel } from '../client/ClientPortalPatterns';
@@ -61,14 +61,14 @@ function AlertRow({ alert }) {
  * Property-scoped occupancy/tenancy operational layer (derived; no duplicate rent authority).
  */
 export default function PropertyOccupancyTenancyPanel({ propertyId }) {
-  const { hasFeature } = useEntitlements();
+  const { canUseTenantPortal, canUseOpsRent, canUseOpsMaintenance } = usePropertyCapabilities();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const hasTenantPortal = hasFeature('tenant_portal');
-  const hasRent = hasFeature('rent_operations');
-  const hasMaintenance = hasFeature('maintenance_workflows');
+  const hasTenantPortal = canUseTenantPortal;
+  const hasRent = canUseOpsRent;
+  const hasMaintenance = canUseOpsMaintenance;
 
   useEffect(() => {
     if (!propertyId) return;

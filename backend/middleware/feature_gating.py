@@ -1,7 +1,10 @@
 """
-Feature Gating Middleware
-Server-side enforcement of plan-based feature access.
-Uses plan_registry as single source of truth; reads client from DB by client_id only.
+Feature Gating Middleware (OBSOLETE — ILP-10).
+
+No production route applies ``require_feature``; customer permission authority is
+``account_capability_enforcement`` via Runtime Contract (ILP-4).
+
+Retained for governance regression tests only. Do not use for new endpoints.
 """
 from fastapi import HTTPException, Request
 from database import database

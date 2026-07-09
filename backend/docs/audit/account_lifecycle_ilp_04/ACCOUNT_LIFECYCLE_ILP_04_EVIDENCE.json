@@ -1,0 +1,1565 @@
+{
+  "programme": "ILP-4-CAPABILITY-ENFORCEMENT-01",
+  "phase": "ilp4_closeout_complete",
+  "verdict": "ILP_04_PRODUCTION_READY",
+  "latest_milestone": "ilp4_closeout_validation",
+  "branch": "develop",
+  "date": "2026-07-06",
+  "prior_phases": {
+    "phase_0_1": {
+      "verdict": "ILP_04_PHASE_01_COMPLETE",
+      "summary": "Enforcement service, compatibility layer, diagnostics"
+    },
+    "phase_2a": {
+      "verdict": "ILP_04_PHASE_2A_PILOT_COMPLETE",
+      "summary": "Four pilot endpoints on client.py properties, reports download, documents list"
+    },
+    "phase_2b_wave_1": {
+      "verdict": "ILP_04_PHASE_2B_WAVE_1_COMPLETE",
+      "summary": "Full migration of client_compliance_evidence.py, reports.py, documents.py"
+    },
+    "phase_2c_1": {
+      "verdict": "ILP_04_PHASE_2C_1_COMPLETE",
+      "summary": "properties.py, portfolio.py, client.py score/requirement subset"
+    }
+  },
+  "governance_decisions": {
+    "mark_not_applicable": {
+      "option": "A",
+      "capability_id": "CAP_REQ_MARK_N_A",
+      "aliased_to_cap_req_resolve": false,
+      "note": "Evidence write routes remain on CAP_REQ_RESOLVE"
+    }
+  },
+  "enforcement_semantics": {
+    "contract_read_grant": "READ",
+    "enforcement_read_only_semantic": "READ_ONLY",
+    "read_action": "view and download without mutation",
+    "write_action": "create update delete and other mutations",
+    "plan_gated_resolution": "Runtime Contract plan overlay only — no enforce_feature in migrated modules"
+  },
+  "runtime_contract_extensions": {
+    "schema_modified": false,
+    "wave_1_new_capability_rows": [
+      "CAP_REPORT_GENERATE_CSV",
+      "CAP_AUDIT_LOG_EXPORT",
+      "CAP_REPORT_AUDIT_PACK",
+      "CAP_DOC_BULK_ZIP",
+      "CAP_AI_EXTRACTION_ADVANCED"
+    ],
+    "phase_2c_1_new_capability_rows": [
+      "CAP_PROP_ARCHIVE",
+      "CAP_PROP_DELETE",
+      "CAP_PROP_IMPORT",
+      "CAP_REQ_MARK_N_A",
+      "CAP_REQ_COMPLETE",
+      "CAP_SCORE_EXPLAIN",
+      "CAP_SCORE_TREND",
+      "CAP_SCORE_SNAPSHOT",
+      "CAP_COMPLIANCE_ACTIVITY"
+    ],
+    "plan_keys": {
+      "CAP_REPORT_GENERATE_CSV": "reports_csv",
+      "CAP_AUDIT_LOG_EXPORT": "audit_log_export",
+      "CAP_REPORT_AUDIT_PACK": "audit_log_export",
+      "CAP_DOC_BULK_ZIP": "zip_upload",
+      "CAP_AI_EXTRACTION_ADVANCED": "ai_extraction_advanced",
+      "CAP_PROP_IMPORT": "document_upload_bulk_zip",
+      "CAP_SCORE_EXPLAIN": "compliance_score",
+      "CAP_SCORE_SNAPSHOT": "compliance_score",
+      "CAP_SCORE_TREND": "score_trending",
+      "CAP_COMPLIANCE_ACTIVITY": "compliance_dashboard",
+      "CAP_DASHBOARD_VIEW": "compliance_dashboard",
+      "CAP_CMD_CTR_VIEW": "compliance_dashboard",
+      "CAP_LEDGER_EXPORT": "reports_csv"
+    },
+    "phase_2c_2_new_capability_rows": [
+      "CAP_LEDGER_VIEW",
+      "CAP_LEDGER_EXPORT"
+    ],
+    "portal_ceiling_updates": ["BILLING_RECOVERY", "READ_ONLY", "SUSPENDED"]
+  },
+  "phase_2c_1_migrated_modules": [
+    {
+      "module": "routes/properties.py",
+      "migration": "full",
+      "enforce_feature_removed": true,
+      "client_route_guard_removed": true,
+      "conditional_assert_capability": [
+        {
+          "endpoint": "PATCH /api/properties/{property_id}",
+          "pattern": "is_active=false -> CAP_PROP_ARCHIVE write"
+        },
+        {
+          "endpoint": "PATCH /api/properties/{property_id}/requirements/{requirement_id}",
+          "pattern": "applicability=NOT_REQUIRED -> CAP_REQ_MARK_N_A write"
+        }
+      ],
+      "routes": [
+        { "endpoint": "POST /api/properties/create", "capability_id": "CAP_PROP_CREATE", "action": "write" },
+        { "endpoint": "PATCH /api/properties/{property_id}", "capability_id": "CAP_PROP_EDIT", "action": "write" },
+        { "endpoint": "POST /api/properties/{property_id}/requirements/mark-not-applicable", "capability_id": "CAP_REQ_MARK_N_A", "action": "write" },
+        { "endpoint": "PATCH /api/properties/{property_id}/requirements/{requirement_id}", "capability_id": "CAP_REQ_RESOLVE", "action": "write" },
+        { "endpoint": "GET /api/properties/list", "capability_id": "CAP_PROP_VIEW", "action": "read" },
+        { "endpoint": "POST /api/properties/bulk-import", "capability_id": "CAP_PROP_IMPORT", "action": "write" },
+        { "endpoint": "GET /api/properties/upcoming-deadlines", "capability_id": "CAP_REQ_VIEW", "action": "read" },
+        { "endpoint": "GET /api/properties/{property_id}/requirements", "capability_id": "CAP_REQ_VIEW", "action": "read" },
+        { "endpoint": "POST /api/properties/{property_id}/requirements/sync", "capability_id": "CAP_REQ_RESOLVE", "action": "write" }
+      ],
+      "matrix_only_capabilities": ["CAP_PROP_DELETE"]
+    },
+    {
+      "module": "routes/portfolio.py",
+      "migration": "full",
+      "enforce_feature_removed": true,
+      "client_route_guard_removed": true,
+      "routes": [
+        { "endpoint": "GET /api/portfolio/compliance-summary", "capability_id": "CAP_SCORE_VIEW", "action": "read" },
+        { "endpoint": "GET /api/portfolio/properties/{property_id}/compliance-detail", "capability_id": "CAP_PROP_VIEW", "action": "read" },
+        { "endpoint": "GET /api/portfolio/properties/{property_id}/score-history", "capability_id": "CAP_SCORE_TREND", "action": "read" },
+        { "endpoint": "GET /api/portfolio/properties/{property_id}/timeline", "capability_id": "CAP_REQ_VIEW", "action": "read" },
+        { "endpoint": "GET /api/portfolio/properties/{property_id}/evidence", "capability_id": "CAP_EVIDENCE_VIEW", "action": "read" },
+        { "endpoint": "GET /api/portfolio/audit-timeline", "capability_id": "CAP_COMPLIANCE_ACTIVITY", "action": "read" }
+      ]
+    },
+    {
+      "module": "routes/client.py",
+      "migration": "subset_2c_1_only",
+      "router_level_client_route_guard": "retained_for_non_migrated_routes",
+      "routes": [
+        { "endpoint": "GET /api/client/compliance-score", "capability_id": "CAP_SCORE_VIEW", "action": "read" },
+        { "endpoint": "GET /api/client/compliance-score/trend", "capability_id": "CAP_SCORE_TREND", "action": "read" },
+        { "endpoint": "GET /api/client/score/timeline", "capability_id": "CAP_SCORE_TREND", "action": "read" },
+        { "endpoint": "GET /api/client/score-trend/portfolio", "capability_id": "CAP_SCORE_TREND", "action": "read" },
+        { "endpoint": "GET /api/client/score-trend/property/{property_id}", "capability_id": "CAP_SCORE_TREND", "action": "read" },
+        { "endpoint": "GET /api/client/score/changes", "capability_id": "CAP_SCORE_TREND", "action": "read" },
+        { "endpoint": "GET /api/client/compliance/activity", "capability_id": "CAP_COMPLIANCE_ACTIVITY", "action": "read" },
+        { "endpoint": "GET /api/client/compliance-score/explanation", "capability_id": "CAP_SCORE_EXPLAIN", "action": "read" },
+        { "endpoint": "GET /api/client/properties/{property_id}/compliance-score/explanation", "capability_id": "CAP_SCORE_EXPLAIN", "action": "read" },
+        { "endpoint": "POST /api/client/compliance-score/snapshot", "capability_id": "CAP_SCORE_SNAPSHOT", "action": "write" },
+        { "endpoint": "GET /api/client/properties", "capability_id": "CAP_PROP_VIEW", "action": "read" },
+        { "endpoint": "GET /api/client/properties/{property_id}/requirements", "capability_id": "CAP_REQ_VIEW", "action": "read" },
+        { "endpoint": "GET /api/client/properties/{property_id}/requirements/explanation", "capability_id": "CAP_REQ_VIEW", "action": "read" },
+        { "endpoint": "GET /api/client/requirements", "capability_id": "CAP_REQ_VIEW", "action": "read" },
+        { "endpoint": "POST /api/client/properties/{property_id}/requirements/mark-not-applicable", "capability_id": "CAP_REQ_MARK_N_A", "action": "write" }
+      ]
+    }
+  ],
+  "phase_2c_2_migrated_routes": {
+    "module": "routes/client.py",
+    "migration": "subset_2c_2_dashboard_command_centre_today_ledger",
+    "enforce_feature_removed_in_subset": true,
+    "conditional_assert_capability": [
+      {
+        "endpoint": "GET /api/client/dashboard",
+        "pattern": "include_score_headline=true -> CAP_SCORE_VIEW read"
+      }
+    ],
+    "routes": [
+      { "endpoint": "GET /api/client/dashboard", "capability_id": "CAP_DASHBOARD_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/dashboard/roi-summary", "capability_id": "CAP_DASHBOARD_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/command-center", "capability_id": "CAP_CMD_CTR_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/protection-snapshot", "capability_id": "CAP_CMD_CTR_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/priority-actions", "capability_id": "CAP_TODAY_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/tasks/digest", "capability_id": "CAP_TODAY_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/tasks", "capability_id": "CAP_TODAY_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/priorities", "capability_id": "CAP_TODAY_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/work-queue", "capability_id": "CAP_TODAY_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/tasks/activity", "capability_id": "CAP_TODAY_VIEW", "action": "read" },
+      { "endpoint": "POST /api/client/tasks/record-intent", "capability_id": "CAP_TODAY_ACT", "action": "write" },
+      { "endpoint": "POST /api/client/tasks/override", "capability_id": "CAP_TODAY_ACT", "action": "write" },
+      { "endpoint": "GET /api/client/ledger", "capability_id": "CAP_LEDGER_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
+    ]
+  },
+  "latest_milestone": "frontend_reports_capability_migration",
+  "runtime_contract_extensions_backend_completion": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_KNOWLEDGE_CENTRE",
+      "CAP_SUPPORT_REQUEST"
+    ],
+    "existing_capability_rows_consumed": [
+      "CAP_PROFILE_VIEW",
+      "CAP_PROFILE_JURISDICTION",
+      "CAP_DASHBOARD_VIEW",
+      "CAP_BILLING_CHECKOUT",
+      "CAP_DOC_VIEW",
+      "CAP_REPORT_VIEW",
+      "CAP_REPORT_DOWNLOAD",
+      "CAP_SUPPORT_ACCESS"
+    ],
+    "runtime_resolver_count": 69
+  },
+  "ilp4_backend_completion_migrated_routes": {
+    "modules": [
+      "routes/client.py",
+      "routes/client_lifecycle_runtime.py",
+      "routes/portal.py",
+      "routes/knowledge_base.py",
+      "routes/support.py",
+      "routes/client_capability_enforcement.py"
+    ],
+    "migration": "backend_completion",
+    "intentionally_deferred": [
+      "routes/client_orders.py",
+      "routes/onboarding.py",
+      "middleware client_route_guard shell lifecycle",
+      "jobs notification_orchestrator branding_resolver enforce_feature wrappers",
+      "admin contractor tenant frontend"
+    ],
+    "legacy_route_permission_paths_removed": [
+      "client.py guard-only onboarding entitlements jurisdiction portal-context value-insights documents plan-features"
+    ]
+  },
+  "ilp4_backend_completion_regression_checkpoint": {
+    "verdict": "PASS",
+    "executed_at_utc": "2026-06-30T23:09:00Z",
+    "duration_seconds": 14640,
+    "tests_passed": 903,
+    "tests_failed": 0,
+    "exit_code": 0,
+    "log_path": "backend/tmp_ilp4_regression_checkpoint.log",
+    "scope_excluded": ["frontend_tests", "frontend_capability_page_migration"],
+    "suites": [
+      "tests/test_account_lifecycle_state_resolver.py",
+      "tests/test_account_lifecycle_runtime_contract.py",
+      "tests/test_account_capability_enforcement.py",
+      "tests/test_account_capability_enforcement_pilot.py",
+      "tests/test_account_capability_enforcement_wave1.py",
+      "tests/test_account_capability_enforcement_wave2c1.py",
+      "tests/test_account_capability_enforcement_wave2c2.py",
+      "tests/test_account_capability_enforcement_evidence_analytics.py",
+      "tests/test_account_capability_enforcement_compliance.py",
+      "tests/test_account_capability_enforcement_rent_approvals.py",
+      "tests/test_account_capability_enforcement_maintenance.py",
+      "tests/test_account_capability_enforcement_tenant_branding.py",
+      "tests/test_account_capability_enforcement_profile_assistant_calendar.py",
+      "tests/test_account_capability_enforcement_read_api_webhooks.py",
+      "tests/test_account_capability_enforcement_billing_client.py",
+      "tests/test_account_capability_enforcement_backend_completion.py",
+      "tests/test_billing_recovery_operations.py"
+    ],
+    "frontend_capability_primitives_started": true,
+    "frontend_capability_primitives": [
+      "frontend/src/utils/capabilityRuntime.js",
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.js (capabilities, useCapability)"
+    ],
+    "frontend_capability_primitives_tests": {
+      "verdict": "PASS",
+      "executed_at_utc": "2026-07-05T08:58:00Z",
+      "tests_passed": 20,
+      "tests_failed": 0,
+      "suites": [
+        "frontend/src/utils/capabilityRuntime.test.js",
+        "frontend/src/contexts/LifecycleRuntimeContext.test.js"
+      ]
+    }
+  },
+  "ilp4_frontend_documents_capability_migration": {
+    "domain": "documents",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T11:44:00Z",
+    "capabilities_consumed": [
+      "CAP_DOC_VIEW",
+      "CAP_DOC_UPLOAD",
+      "CAP_DOC_BULK_ZIP",
+      "CAP_AI_EXTRACTION_ADVANCED"
+    ],
+    "legacy_removed": [
+      "hasFeature(ai_extraction_advanced)",
+      "hasFeature(zip_upload)",
+      "useEntitlements on DocumentsPage",
+      "useEntitlements on BulkUploadPage",
+      "UpgradeRequired plan-gate UX on document pages"
+    ],
+    "frontend_files": [
+      "frontend/src/pages/DocumentsPage.js",
+      "frontend/src/pages/BulkUploadPage.js",
+      "frontend/src/utils/documentCapabilityAccess.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/documentCapabilityAccess.test.js",
+      "frontend/src/pages/DocumentsPage.capability.test.js",
+      "frontend/src/pages/DocumentsPage.layout.test.js",
+      "frontend/src/pages/BulkUploadPage.capability.test.js"
+    ]
+  },
+  "ilp4_frontend_reports_capability_migration": {
+    "domain": "reports",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T12:26:00Z",
+    "capabilities_consumed": [
+      "CAP_REPORT_VIEW",
+      "CAP_REPORT_DOWNLOAD",
+      "CAP_REPORT_GENERATE_PDF",
+      "CAP_REPORT_GENERATE_CSV",
+      "CAP_REPORT_SCHEDULE",
+      "CAP_REPORT_AUDIT_PACK",
+      "CAP_OPS_RENT"
+    ],
+    "legacy_removed": [
+      "hasFeature(reports_pdf)",
+      "hasFeature(reports_csv)",
+      "hasFeature(scheduled_reports)",
+      "hasFeature(audit_log_export)",
+      "hasFeature(rent_operations) on ReportsPage rent summary",
+      "useEntitlements on ReportsPage",
+      "useEntitlements on ReportsAuditPackPage",
+      "UpgradeRequired and UpgradePrompt on ReportsPage"
+    ],
+    "frontend_files": [
+      "frontend/src/pages/ReportsPage.js",
+      "frontend/src/pages/ReportsAuditPackPage.js",
+      "frontend/src/utils/reportCapabilityAccess.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/reportCapabilityAccess.test.js",
+      "frontend/src/pages/ReportsPage.capability.test.js",
+      "frontend/src/pages/ReportsPage.catalog.test.js",
+      "frontend/src/pages/ReportsPage.auditPackCta.test.js"
+    ]
+  },
+  "ilp4_frontend_billing_capability_migration": {
+    "domain": "billing",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T12:45:00Z",
+    "capabilities_consumed": [
+      "CAP_BILLING_VIEW",
+      "CAP_BILLING_INVOICES",
+      "CAP_BILLING_PAYMENT_METHODS",
+      "CAP_BILLING_CHECKOUT",
+      "CAP_SUB_MANAGE",
+      "CAP_SUB_CANCEL"
+    ],
+    "legacy_removed": [
+      "useEntitlements on BillingPage",
+      "hasFeature() permission decisions on BillingPage",
+      "UpgradePrompt on BillingPage",
+      "has_subscription used for permission gating (retained for display only)"
+    ],
+    "recovery_lifecycles_validated": [
+      "ACTIVE",
+      "TRIAL",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "READ_ONLY",
+      "SUSPENDED",
+      "ARCHIVED",
+      "ACCOUNT_DELETED",
+      "UNKNOWN"
+    ],
+    "frontend_files": [
+      "frontend/src/pages/BillingPage.js",
+      "frontend/src/utils/billingCapabilityAccess.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/billingCapabilityAccess.test.js",
+      "frontend/src/pages/BillingPage.capability.test.js"
+    ]
+  },
+  "ilp4_frontend_operational_capability_migration": {
+    "domain": "dashboard_today_command_centre",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T14:30:00Z",
+    "capabilities_consumed": {
+      "dashboard": [
+        "CAP_DASHBOARD_VIEW",
+        "CAP_SCORE_VIEW",
+        "CAP_CMD_CTR_VIEW",
+        "CAP_TODAY_VIEW",
+        "CAP_OPS_MAINTENANCE",
+        "CAP_OPS_PREDICTIVE",
+        "CAP_OPS_CONTRACTORS",
+        "CAP_OPS_APPROVALS"
+      ],
+      "today": [
+        "CAP_TODAY_VIEW",
+        "CAP_TODAY_ACT",
+        "CAP_OPS_MAINTENANCE",
+        "CAP_OPS_PREDICTIVE",
+        "CAP_OPS_APPROVALS",
+        "CAP_OPS_RENT"
+      ],
+      "command_centre": [
+        "CAP_CMD_CTR_VIEW",
+        "CAP_OPS_MAINTENANCE",
+        "CAP_OPS_PREDICTIVE",
+        "CAP_OPS_CONTRACTORS",
+        "CAP_OPS_APPROVALS"
+      ]
+    },
+    "legacy_removed": [
+      "useEntitlements on ClientDashboard.js",
+      "useEntitlements on ClientTasksPage.js",
+      "useEntitlements on ClientCommandCenterPage.js",
+      "hasFeature(maintenance_workflows|predictive_maintenance|contractor_network|invoicing|compliance_engine) permission decisions"
+    ],
+    "secondary_actions_audited": [
+      "Today snooze/dismiss/restore/mark-reviewed",
+      "Today risk follow-up issue/work order",
+      "Today compliance booking",
+      "Dashboard ops KPI fetches and contractor network banner",
+      "Command Centre maintenance work order secondary load"
+    ],
+    "recovery_lifecycles_validated": [
+      "ACTIVE",
+      "TRIAL",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "READ_ONLY",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "frontend_files": [
+      "frontend/src/pages/ClientDashboard.js",
+      "frontend/src/pages/ClientTasksPage.js",
+      "frontend/src/pages/ClientCommandCenterPage.js",
+      "frontend/src/utils/operationalCapabilityAccess.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/operationalCapabilityAccess.test.js",
+      "frontend/src/pages/ClientDashboard.capability.test.js",
+      "frontend/src/pages/ClientTasksPage.capability.test.js",
+      "frontend/src/pages/ClientCommandCenterPage.capability.test.js",
+      "frontend/src/pages/ClientDashboard.scoreWidgetLabels.test.js",
+      "frontend/src/pages/ClientDashboard.slaKpi.test.js",
+      "frontend/src/pages/ClientDashboard.workQueueEntry.test.js",
+      "frontend/src/pages/ClientDashboard.scoreFreshness.test.js",
+      "frontend/src/pages/ClientCommandCenterPage.test.js"
+    ],
+    "tests_passed": 51,
+    "tests_failed": 0
+  },
+  "latest_milestone_frontend_operational": "frontend_operational_capability_migration",
+  "ilp4_frontend_capability_architecture_checkpoint": {
+    "verdict": "PASS",
+    "executed_at_utc": "2026-07-05T13:11:00Z",
+    "scope": {
+      "migrated_domains": ["documents", "reports", "billing"],
+      "primitives": [
+        "frontend/src/utils/capabilityRuntime.js",
+        "frontend/src/contexts/LifecycleRuntimeContext.js"
+      ],
+      "domain_helpers": [
+        "frontend/src/utils/documentCapabilityAccess.js",
+        "frontend/src/utils/reportCapabilityAccess.js",
+        "frontend/src/utils/billingCapabilityAccess.js"
+      ]
+    },
+    "architecture_verification": {
+      "runtime_contract_sole_permission_source": true,
+      "portal_mode_presentation_only": true,
+      "useEntitlements_removed_from_migrated_pages": true,
+      "hasFeature_removed_from_migrated_pages": true,
+      "backend_frontend_capability_alignment": true,
+      "capability_denied_safe_rendering": true,
+      "billing_recovery_journeys_preserved": true,
+      "read_write_semantics_consistent": true
+    },
+    "capability_mapping_summary": {
+      "documents": {
+        "CAP_DOC_VIEW": "read",
+        "CAP_DOC_UPLOAD": "write",
+        "CAP_DOC_BULK_ZIP": "write",
+        "CAP_AI_EXTRACTION_ADVANCED": "write"
+      },
+      "reports": {
+        "CAP_REPORT_VIEW": "read",
+        "CAP_REPORT_DOWNLOAD": "read",
+        "CAP_REPORT_GENERATE_PDF": "write",
+        "CAP_REPORT_GENERATE_CSV": "write",
+        "CAP_REPORT_SCHEDULE": "read/write",
+        "CAP_REPORT_AUDIT_PACK": "read/write",
+        "CAP_OPS_RENT": "read"
+      },
+      "billing": {
+        "CAP_BILLING_VIEW": "read",
+        "CAP_BILLING_INVOICES": "read",
+        "CAP_BILLING_PAYMENT_METHODS": "read",
+        "CAP_BILLING_CHECKOUT": "write",
+        "CAP_SUB_MANAGE": "write",
+        "CAP_SUB_CANCEL": "write"
+      }
+    },
+    "portal_mode_interaction": {
+      "DocumentsPage": "PortalModePageBanner only (no permission gating)",
+      "ReportsPage": "PortalModePageBanner only (no permission gating)",
+      "BillingPage": "PortalPageWithLifecyclePresentation (presentation shell only)",
+      "LifecycleRuntimeContext": "portalMode separate from capabilityAllowed(); capabilities from runtime.capabilities map"
+    },
+    "read_write_semantics": {
+      "shared_primitive": "isGrantActionAllowed in capabilityRuntime.js",
+      "read_grants": ["ALLOW", "READ", "LIMITED"],
+      "write_grants": ["ALLOW", "LIMITED"],
+      "deny_grants": ["DENY", "HIDDEN", "PLAN_GATED"]
+    },
+    "billing_recovery_lifecycles": {
+      "recovery_allowed": [
+        "ACTIVE",
+        "TRIAL",
+        "GRACE_PERIOD",
+        "CANCELLATION_SCHEDULED",
+        "CANCELLED_IMMEDIATE",
+        "SUBSCRIPTION_EXPIRED",
+        "READ_ONLY",
+        "SUSPENDED"
+      ],
+      "recovery_denied": ["ARCHIVED", "ACCOUNT_DELETED", "UNKNOWN"]
+    },
+    "tests": {
+      "verdict": "PASS",
+      "suites_passed": 9,
+      "tests_passed": 48,
+      "tests_failed": 0,
+      "suites": [
+        "frontend/src/utils/capabilityRuntime.test.js",
+        "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+        "frontend/src/utils/documentCapabilityAccess.test.js",
+        "frontend/src/pages/DocumentsPage.capability.test.js",
+        "frontend/src/pages/BulkUploadPage.capability.test.js",
+        "frontend/src/utils/reportCapabilityAccess.test.js",
+        "frontend/src/pages/ReportsPage.capability.test.js",
+        "frontend/src/utils/billingCapabilityAccess.test.js",
+        "frontend/src/pages/BillingPage.capability.test.js"
+      ]
+    },
+    "observations": [
+      "BillingPage retains GET /client/entitlements for plan comparison display only — not permission gating",
+      "documentCapabilityAccess and reportCapabilityAccess getCapabilityDeniedMessage return null without message; billing helper falls back — cosmetic inconsistency only"
+    ],
+    "next_milestone": {
+      "id": "ilp4_frontend_dashboard_today_command_centre_capability_migration",
+      "domains": ["dashboard", "today", "command_centre"],
+      "target_pages": [
+        "frontend/src/pages/ClientDashboard.js",
+        "frontend/src/pages/ClientTasksPage.js",
+        "frontend/src/pages/ClientCommandCenterPage.js"
+      ],
+      "backend_capabilities": {
+        "dashboard": ["CAP_DASHBOARD_VIEW", "CAP_SCORE_VIEW"],
+        "today": ["CAP_TODAY_VIEW", "CAP_TODAY_ACT"],
+        "command_centre": ["CAP_CMD_CTR_VIEW"]
+      },
+      "legacy_to_remove": [
+        "useEntitlements on ClientDashboard.js",
+        "hasFeature(contractor_network|maintenance_workflows|predictive_maintenance|invoicing) on ClientDashboard.js",
+        "useEntitlements on ClientTasksPage.js",
+        "hasFeature(invoicing|predictive_maintenance|maintenance_workflows|compliance_engine) on ClientTasksPage.js",
+        "useEntitlements on ClientCommandCenterPage.js",
+        "hasFeature(predictive_maintenance|maintenance_workflows) on ClientCommandCenterPage.js"
+      ],
+      "ops_capabilities_likely_needed": [
+        "CAP_OPS_MAINTENANCE",
+        "CAP_OPS_PREDICTIVE",
+        "CAP_OPS_CONTRACTORS",
+        "CAP_OPS_APPROVALS"
+      ]
+    }
+  },
+  "latest_milestone_frontend_capability_checkpoint": "frontend_capability_architecture_checkpoint",
+  "latest_milestone_frontend_billing": "frontend_billing_capability_migration",
+  "latest_milestone_frontend_documents": "frontend_documents_capability_migration",
+  "latest_milestone_backend_completion_regression": "backend_completion_regression_checkpoint",
+  "latest_milestone_previous": "billing_client_routes",
+  "runtime_contract_extensions_billing_client": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_BILLING_INVOICES",
+      "CAP_BILLING_PAYMENT_METHODS",
+      "CAP_SUB_CANCEL"
+    ],
+    "existing_capability_rows_consumed": [
+      "CAP_BILLING_VIEW",
+      "CAP_BILLING_CHECKOUT",
+      "CAP_SUB_MANAGE"
+    ],
+    "runtime_resolver_count": 67
+  },
+  "ilp4_billing_client_migrated_routes": {
+    "modules": [
+      "routes/billing.py",
+      "routes/client_billing.py"
+    ],
+    "migration": "billing_client_routes",
+    "enforce_feature_removed_in_subset": false,
+    "legacy_removed": [],
+    "capability_mapping_summary": {
+      "CAP_BILLING_VIEW": "GET /api/billing/status",
+      "CAP_BILLING_PAYMENT_METHODS": "GET /api/billing/payment-method-summary",
+      "CAP_BILLING_INVOICES": "GET /api/billing/invoices and /api/client/billing/receipt*",
+      "CAP_BILLING_CHECKOUT": "POST /api/billing/checkout",
+      "CAP_SUB_MANAGE": "POST /api/billing/portal",
+      "CAP_SUB_CANCEL": "POST /api/billing/cancel"
+    },
+    "billing_recovery_preserved": true,
+    "out_of_scope": [
+      "routes/webhooks.py",
+      "routes/admin_billing.py",
+      "billing engine",
+      "jobs",
+      "frontend"
+    ]
+  },
+  "latest_milestone_previous": "read_api_webhooks",
+  "runtime_contract_extensions_read_api_webhooks": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_INTEGRATION_WEBHOOKS",
+      "CAP_INTEGRATION_READ_API",
+      "CAP_EXPORT_API"
+    ],
+    "plan_keys": {
+      "CAP_INTEGRATION_WEBHOOKS": "webhooks",
+      "CAP_INTEGRATION_READ_API": "webhooks",
+      "CAP_EXPORT_API": "webhooks"
+    },
+    "runtime_resolver_count": 64
+  },
+  "ilp4_read_api_webhooks_migrated_routes": {
+    "modules": [
+      "routes/client_read_api.py",
+      "routes/webhooks_config.py"
+    ],
+    "migration": "read_api_webhooks",
+    "enforce_feature_removed_in_subset": true,
+    "inbound_webhooks_out_of_scope": ["routes/webhooks.py"],
+    "capability_mapping_summary": {
+      "CAP_INTEGRATION_READ_API": "read API key management (JWT)",
+      "CAP_EXPORT_API": "client-data v1 pull API (API key auth)",
+      "CAP_INTEGRATION_WEBHOOKS": "outbound webhook configuration and delivery history"
+    },
+    "legacy_removed": [
+      "plan_registry.enforce_feature webhooks on client_read_api and webhooks_config"
+    ]
+  },
+  "latest_milestone_previous": "profile_assistant_calendar",
+  "runtime_contract_extensions_profile_assistant_calendar": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_PROFILE_JURISDICTION",
+      "CAP_CALENDAR_VIEW"
+    ],
+    "plan_keys": {
+      "CAP_CALENDAR_VIEW": "compliance_calendar"
+    },
+    "existing_capability_rows_consumed": [
+      "CAP_PROFILE_VIEW",
+      "CAP_PROFILE_EDIT",
+      "CAP_AI_ASSISTANT"
+    ],
+    "matrix_only_capabilities": [
+      "CAP_PROFILE_JURISDICTION"
+    ],
+    "runtime_resolver_count": 61
+  },
+  "ilp4_profile_assistant_calendar_migrated_routes": {
+    "modules": [
+      "routes/profile.py",
+      "routes/assistant.py",
+      "routes/calendar.py"
+    ],
+    "migration": "profile_assistant_calendar",
+    "enforce_feature_removed_in_subset": true,
+    "profile_route_count": 16,
+    "assistant_route_count": 5,
+    "calendar_route_count": 5,
+    "capability_mapping_summary": {
+      "CAP_PROFILE_VIEW": "profile read, system banner list",
+      "CAP_PROFILE_EDIT": "profile mutations, in-app notifications, banner dismiss",
+      "CAP_PROFILE_JURISDICTION": "matrix row only — jurisdiction routes on client.py not migrated",
+      "CAP_AI_ASSISTANT": "assistant snapshot, chat, ask, escalate, conversation status",
+      "CAP_CALENDAR_VIEW": "calendar events, expiries, upcoming, ics export, subscription url"
+    },
+    "legacy_removed": [
+      "plan_registry.enforce_feature compliance_calendar on calendar export and subscription-url"
+    ]
+  },
+  "latest_milestone_previous": "compliance_workflow_compliance_pack",
+  "runtime_contract_extensions_compliance_workflow": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_OPS_COMPLIANCE_REVIEW"
+    ],
+    "plan_keys": {
+      "CAP_OPS_COMPLIANCE_REVIEW": "compliance_engine"
+    },
+    "existing_capability_rows_consumed": [
+      "CAP_REQ_VIEW",
+      "CAP_REQ_RESOLVE",
+      "CAP_REQ_MARK_N_A",
+      "CAP_DOC_UPLOAD",
+      "CAP_OPS_MAINTENANCE",
+      "CAP_OPS_CONTRACTORS",
+      "CAP_TODAY_VIEW",
+      "CAP_TODAY_ACT",
+      "CAP_TENANT_MANAGE",
+      "CAP_REPORT_GENERATE_PDF",
+      "CAP_REPORT_AUDIT_PACK",
+      "CAP_REPORT_DOWNLOAD"
+    ],
+    "runtime_resolver_count": 59
+  },
+  "ilp4_compliance_workflow_migrated_routes": {
+    "modules": [
+      "routes/api_compliance_workflow.py",
+      "routes/client_compliance_execution.py",
+      "routes/compliance_delivery_audit.py",
+      "routes/client.py"
+    ],
+    "migration": "compliance_workflow_compliance_pack",
+    "enforce_feature_removed_in_subset": true,
+    "get_effective_flags_removed_in_workflow_modules": true,
+    "api_compliance_workflow_route_count": 40,
+    "client_compliance_execution_route_count": 10,
+    "compliance_delivery_audit_client_route_count": 4,
+    "client_compliance_pack_route_count": 2,
+    "capability_mapping_summary": {
+      "CAP_OPS_COMPLIANCE_REVIEW": "compliance job create, job verify closeout",
+      "CAP_OPS_MAINTENANCE": "workflow job mutations and detail read",
+      "CAP_OPS_CONTRACTORS": "workflow contractor assign/create/assignable lists",
+      "CAP_REQ_VIEW": "requirement by id",
+      "CAP_REQ_RESOLVE": "reopen, compliance execution book",
+      "CAP_REQ_MARK_N_A": "mark not applicable",
+      "CAP_DOC_UPLOAD": "requirement document upload",
+      "CAP_TODAY_VIEW": "today items read",
+      "CAP_TODAY_ACT": "today snooze/dismiss/restore/mark-reviewed",
+      "CAP_TENANT_MANAGE": "tenant delivery proof list and initiate",
+      "CAP_REPORT_GENERATE_PDF": "tenant delivery initiate (with tenant manage)",
+      "CAP_REPORT_AUDIT_PACK": "audit pack generate/download",
+      "CAP_REPORT_DOWNLOAD": "compliance pack preview/download"
+    },
+    "legacy_removed": [
+      "get_effective_flags COMPLIANCE_ENGINE",
+      "get_effective_flags MAINTENANCE_WORKFLOWS",
+      "get_effective_flags CONTRACTOR_NETWORK",
+      "plan_registry.enforce_feature tenant_portal",
+      "plan_registry.enforce_feature reports_pdf on compliance pack and audit pack client routes"
+    ]
+  },
+  "latest_milestone_previous": "rent_operations_approvals",
+  "runtime_contract_extensions_rent_operations_approvals": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_OPS_RENT",
+      "CAP_OPS_APPROVALS"
+    ],
+    "plan_keys": {
+      "CAP_OPS_RENT": "rent_operations",
+      "CAP_OPS_APPROVALS": "compliance_engine"
+    },
+    "runtime_resolver_count": 58
+  },
+  "ilp4_rent_operations_approvals_migrated_routes": {
+    "modules": [
+      "routes/client_rent_operations.py",
+      "routes/client_approvals.py"
+    ],
+    "migration": "rent_operations_approvals",
+    "enforce_feature_removed_in_subset": true,
+    "client_rent_operations_route_count": 21,
+    "client_approvals_route_count": 7,
+    "capability_mapping_summary": {
+      "CAP_OPS_RENT": "tenancies, schedules, ledgers, payments, reminders, expenses, financial snapshot",
+      "CAP_OPS_APPROVALS": "invoices, approvals list/export/detail, approval actions, maintenance spend"
+    }
+  },
+  "latest_milestone_previous": "maintenance_contractors",
+  "runtime_contract_extensions_maintenance_contractors": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_OPS_CONTRACTORS",
+      "CAP_OPS_PREDICTIVE"
+    ],
+    "existing_capability_rows_consumed": [
+      "CAP_OPS_MAINTENANCE"
+    ],
+    "plan_keys": {
+      "CAP_OPS_MAINTENANCE": "maintenance_workflows",
+      "CAP_OPS_CONTRACTORS": "contractor_network",
+      "CAP_OPS_PREDICTIVE": "predictive_maintenance"
+    },
+    "runtime_resolver_count": 56
+  },
+  "ilp4_maintenance_contractors_migrated_routes": {
+    "modules": [
+      "routes/client_maintenance.py",
+      "routes/client.py"
+    ],
+    "migration": "maintenance_contractors",
+    "enforce_feature_removed_in_subset": true,
+    "client_maintenance_route_count": 50,
+    "client_contractor_route_count": 5,
+    "capability_mapping_summary": {
+      "CAP_OPS_MAINTENANCE": "work orders, issues, schedule, contractor-evidence (maintenance domain)",
+      "CAP_OPS_CONTRACTORS": "contractor directory, routing generate, client.py contractor CRUD",
+      "CAP_OPS_PREDICTIVE": "predictive insights, assets (or maintenance), property events, risk signals"
+    },
+    "client_contractor_routes": [
+      { "endpoint": "GET /api/client/contractors", "capability_id": "CAP_OPS_CONTRACTORS", "action": "read" },
+      { "endpoint": "GET /api/client/contractors/{contractor_id}/explanation", "capability_id": "CAP_OPS_CONTRACTORS", "action": "read" },
+      { "endpoint": "POST /api/client/contractors/{contractor_id}/submit-to-network", "capability_id": "CAP_OPS_CONTRACTORS", "action": "write" },
+      { "endpoint": "POST /api/client/contractors", "capability_id": "CAP_OPS_CONTRACTORS", "action": "write" },
+      { "endpoint": "POST /api/client/contractors/{contractor_id}/rate", "capability_id": "CAP_OPS_CONTRACTORS", "action": "write" }
+    ],
+    "compliance_engine_ops_flag_retained": [
+      "POST /api/client/maintenance/risk-signals/{signal_id}/arrange-compliance-inspection"
+    ]
+  },
+  "runtime_contract_extensions_tenant_branding": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_TENANT_MANAGE",
+      "CAP_TENANT_MESSAGES",
+      "CAP_BRANDING_VIEW",
+      "CAP_BRANDING_EDIT",
+      "CAP_BRANDING_WHITE_LABEL"
+    ],
+    "plan_keys": {
+      "CAP_TENANT_MANAGE": "tenant_portal",
+      "CAP_TENANT_MESSAGES": "tenant_portal",
+      "CAP_BRANDING_EDIT": "white_label_reports",
+      "CAP_BRANDING_WHITE_LABEL": "white_label_reports"
+    },
+    "runtime_resolver_count": 54
+  },
+  "ilp4_tenant_branding_migrated_routes": {
+    "module": "routes/client.py",
+    "migration": "tenant_branding",
+    "enforce_feature_removed_in_subset": true,
+    "routes": [
+      { "endpoint": "POST /api/client/tenants/invite", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "GET /api/client/tenants", "capability_id": "CAP_TENANT_MANAGE", "action": "read" },
+      { "endpoint": "GET /api/client/tenant-messages", "capability_id": "CAP_TENANT_MESSAGES", "action": "read" },
+      { "endpoint": "GET /api/client/tenant-requests", "capability_id": "CAP_TENANT_MANAGE", "action": "read" },
+      { "endpoint": "POST /api/client/tenant-requests/{request_id}/start-compliance-job", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "PATCH /api/client/tenant-requests/{request_id}", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "POST /api/client/tenants/{tenant_id}/assign-property", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "DELETE /api/client/tenants/{tenant_id}/unassign-property/{property_id}", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "DELETE /api/client/tenants/{tenant_id}", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "POST /api/client/tenants/{tenant_id}/resend-invite", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "GET /api/client/branding", "capability_id": "CAP_BRANDING_VIEW", "action": "read" },
+      { "endpoint": "PUT /api/client/branding", "capability_id": "CAP_BRANDING_EDIT", "action": "write" },
+      { "endpoint": "POST /api/client/branding/reset", "capability_id": "CAP_BRANDING_EDIT", "action": "write" },
+      { "endpoint": "GET /api/client/branding/logo", "capability_id": "CAP_BRANDING_VIEW", "action": "read" },
+      { "endpoint": "POST /api/client/branding/logo", "capability_id": "CAP_BRANDING_EDIT", "action": "write" },
+      { "endpoint": "GET /api/client/branding/preview", "capability_id": "CAP_BRANDING_EDIT", "action": "read" },
+      { "endpoint": "GET /api/client/properties/{property_id}/occupancy-operational-summary", "capability_id": "CAP_PROP_VIEW", "action": "read", "notes": "tenant slice via CAP_TENANT_PORTAL evaluate" }
+    ]
+  },
+  "ilp4_evidence_pack_analytics_migrated_routes": {
+    "module": "routes/client.py",
+    "migration": "evidence_pack_analytics_activity_since",
+    "enforce_feature_removed_in_subset": true,
+    "routes": [
+      { "endpoint": "GET /api/client/analytics/summary", "capability_id": "CAP_COMPLIANCE_ACTIVITY", "action": "read" },
+      { "endpoint": "POST /api/client/analytics/events", "capability_id": "CAP_COMPLIANCE_ACTIVITY", "action": "write" },
+      { "endpoint": "GET /api/client/activity-since", "capability_id": "CAP_COMPLIANCE_ACTIVITY", "action": "read" },
+      { "endpoint": "POST /api/client/activity-since/acknowledge", "capability_id": "CAP_COMPLIANCE_ACTIVITY", "action": "write" },
+      { "endpoint": "POST /api/client/evidence-pack/jobs", "capability_id": "CAP_REPORT_AUDIT_PACK", "action": "write" },
+      { "endpoint": "GET /api/client/evidence-pack/jobs", "capability_id": "CAP_REPORT_AUDIT_PACK", "action": "read" },
+      { "endpoint": "GET /api/client/evidence-pack/jobs/{job_id}/file", "capability_id": "CAP_REPORT_AUDIT_PACK", "action": "read" }
+    ]
+  },
+  "wave_1_migrated_modules": [
+    {
+      "module": "routes/client_compliance_evidence.py",
+      "migration": "full",
+      "enforce_feature_removed": true
+    },
+    {
+      "module": "routes/reports.py",
+      "migration": "full_client_routes",
+      "enforce_feature_removed": true
+    },
+    {
+      "module": "routes/documents.py",
+      "migration": "full_client_routes",
+      "enforce_feature_removed": true
+    }
+  ],
+  "explicitly_deferred": {
+    "remaining_ilp4_backend": [
+      "client_orders onboarding public routes jobs sessions frontend",
+      "middleware client_route_guard ILP-10",
+      "frontend Runtime Contract capability consumption",
+      "admin routes"
+    ]
+  },
+  "phase_2a_pilot_routes_retained": [
+    "GET /api/client/properties",
+    "POST /api/client/properties/{id}/requirements/mark-not-applicable",
+    "GET /api/reports/{report_id}/download",
+    "GET /api/documents"
+  ],
+  "middleware": {
+    "client_require_capability": "middleware/capability_gating.py",
+    "assert_client_capability": "middleware/capability_gating.py — in-handler conditional gates"
+  },
+  "denied_response_shape": {
+    "error": "capability_denied",
+    "governed_fields": [
+      "error_code",
+      "message",
+      "capability_id",
+      "action",
+      "grant",
+      "effective_semantic",
+      "lifecycle_state",
+      "portal_mode",
+      "recovery",
+      "contract_version",
+      "runtime_version"
+    ]
+  },
+  "phase_2c_2_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_wave2c2.py",
+    "test_count": 61,
+    "lifecycle_states": [
+      "ACTIVE",
+      "TRIAL",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "READ_ONLY",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "ledger_view_export",
+      "dashboard_read",
+      "command_center_read",
+      "today_tasks_read",
+      "today_act_write"
+    ],
+    "regression_suites": [
+      "test_account_capability_enforcement_pilot.py",
+      "test_account_capability_enforcement_wave1.py",
+      "test_account_capability_enforcement_wave2c1.py",
+      "test_account_capability_enforcement_wave2c2.py",
+      "test_account_capability_enforcement_evidence_pack_analytics.py"
+    ]
+  },
+  "ilp4_compliance_workflow_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_compliance_workflow.py",
+    "test_count": 60,
+    "lifecycle_states": [
+      "ACTIVE",
+      "TRIAL",
+      "READ_ONLY",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "requirement_view_read",
+      "today_view_read",
+      "today_act_write",
+      "compliance_job_create_write",
+      "audit_pack_generate_write",
+      "compliance_pack_preview_read",
+      "contractors_read_on_assignable_list",
+      "source_governance"
+    ],
+    "affected_existing_tests_updated": [
+      "test_workflow_contractors_http.py",
+      "test_tenant_delivery_and_audit_pack.py"
+    ],
+    "regression_suites": [
+      "test_account_lifecycle_runtime_contract.py"
+    ]
+  },
+  "ilp4_rent_operations_approvals_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_rent_approvals.py",
+    "test_count": 37,
+    "lifecycle_states": [
+      "ACTIVE",
+      "TRIAL",
+      "READ_ONLY",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "rent_ledgers_read",
+      "rent_payment_write",
+      "approvals_list_read",
+      "approvals_update_write",
+      "read_only_write_blocked",
+      "source_governance"
+    ]
+  },
+  "ilp4_maintenance_contractors_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_maintenance.py",
+    "test_count": 37,
+    "lifecycle_states": [
+      "ACTIVE",
+      "TRIAL",
+      "READ_ONLY",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "maintenance_work_orders_read",
+      "maintenance_issue_create_write",
+      "contractors_list_read",
+      "contractors_create_write",
+      "read_only_write_blocked",
+      "source_governance"
+    ]
+  },
+  "ilp4_tenant_branding_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_tenant_branding.py",
+    "test_count": 34,
+    "lifecycle_states": [
+      "ACTIVE",
+      "READ_ONLY",
+      "CANCELLED_IMMEDIATE",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "tenant_list_read",
+      "tenant_messages_read",
+      "tenant_invite_write",
+      "branding_get_read",
+      "branding_update_write",
+      "plan_gated_solo"
+    ]
+  },
+  "ilp4_evidence_pack_analytics_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_evidence_pack_analytics.py",
+    "test_count": 71,
+    "lifecycle_states": [
+      "ACTIVE",
+      "TRIAL",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "READ_ONLY",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "analytics_summary_read",
+      "activity_since_read",
+      "activity_since_acknowledge_write",
+      "analytics_events_write",
+      "evidence_pack_create_write",
+      "evidence_pack_list_read",
+      "evidence_pack_download_read"
+    ]
+  },
+  "phase_2c_1_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_wave2c1.py",
+    "lifecycle_states": [
+      "ACTIVE",
+      "TRIAL",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "READ_ONLY",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "property_view_create_edit_archive_import",
+      "requirement_view_resolve_mark_not_applicable",
+      "score_explain_trend_snapshot",
+      "compliance_activity",
+      "portfolio_score_history_audit_timeline_compliance_summary",
+      "cap_req_mark_n_a_distinct_from_resolve",
+      "no_enforce_feature_in_properties_and_portfolio"
+    ],
+    "regression_suites": [
+      "test_account_lifecycle_state_resolver.py",
+      "test_account_lifecycle_runtime_contract.py",
+      "test_account_capability_enforcement.py",
+      "test_account_capability_enforcement_pilot.py",
+      "test_account_capability_enforcement_wave1.py",
+      "test_account_capability_enforcement_wave2c1.py"
+    ]
+  },
+  "inventory": {
+    "catalog_capability_count": 104,
+    "runtime_resolver_count": 59,
+    "runtime_added_wave_1": 5,
+    "runtime_added_phase_2c_1": 9,
+    "runtime_added_phase_2c_2": 2,
+    "wave_1_modules_fully_migrated": 3,
+    "phase_2c_1_modules_fully_migrated": 2,
+    "phase_2c_1_client_subset_routes": 15,
+    "phase_2c_2_client_subset_routes": 14,
+    "pilot_routes_migrated": 4,
+    "client_evidence_pack_routes_deferred": true
+  },
+  "regression_proof": {
+    "client_route_guard_modified": false,
+    "runtime_contract_schema_modified": false,
+    "runtime_contract_capability_rows_added_total": 25,
+    "frontend_modified": false,
+    "billing_stripe_jobs_sessions_comms_modified": false,
+    "billing_client_routes_migrated": true,
+    "backend_customer_routes_migrated": true,
+    "backend_completion_regression_passed": true,
+    "backend_completion_regression_tests_passed": 903,
+    "frontend_capability_primitives_started": true,
+    "frontend_capability_primitives_tests_passed": 20,
+    "frontend_documents_capability_migrated": true,
+    "frontend_reports_capability_migrated": true,
+    "client_py_evidence_pack_migrated": true,
+    "client_py_analytics_tenant_ops_migrated": true,
+    "client_maintenance_migrated": true,
+    "client_rent_operations_migrated": true,
+    "client_approvals_migrated": true,
+    "compliance_workflow_migrated": true,
+    "client_compliance_execution_migrated": true,
+    "compliance_delivery_audit_client_migrated": true,
+    "client_compliance_pack_migrated": true,
+    "cap_req_mark_n_a_aliased_to_resolve": false
+  },
+  "ilp4_frontend_property_workflow_capability_migration": {
+    "domain": "property_compliance_workflow",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T15:45:00Z",
+    "capabilities_consumed": {
+      "property": [
+        "CAP_PROP_VIEW",
+        "CAP_PROP_CREATE",
+        "CAP_PROP_EDIT",
+        "CAP_PROP_ARCHIVE",
+        "CAP_PROP_IMPORT"
+      ],
+      "requirements": [
+        "CAP_REQ_VIEW",
+        "CAP_REQ_RESOLVE",
+        "CAP_REQ_MARK_N_A",
+        "CAP_REQ_COMPLETE"
+      ],
+      "documents": [
+        "CAP_DOC_VIEW",
+        "CAP_DOC_UPLOAD"
+      ],
+      "evidence": [
+        "CAP_EVIDENCE_VIEW",
+        "CAP_EVIDENCE_DOWNLOAD"
+      ],
+      "score": [
+        "CAP_SCORE_VIEW",
+        "CAP_SCORE_EXPLAIN",
+        "CAP_SCORE_TREND",
+        "CAP_SCORE_SNAPSHOT"
+      ],
+      "operational_on_property": [
+        "CAP_OPS_MAINTENANCE",
+        "CAP_OPS_PREDICTIVE",
+        "CAP_OPS_CONTRACTORS",
+        "CAP_OPS_COMPLIANCE_REVIEW",
+        "CAP_OPS_RENT",
+        "CAP_TENANT_PORTAL"
+      ]
+    },
+    "legacy_removed": [
+      "useEntitlements on PropertyDetailPage.js",
+      "useEntitlements on RequirementsPage.js",
+      "useEntitlements on PropertyOccupancyTenancyPanel.jsx",
+      "useEntitlements on PropertyFinancialSnapshotCard.jsx",
+      "hasFeature(maintenance_workflows|predictive_maintenance|contractor_network|compliance_engine|tenant_portal|rent_operations) on property workflow surfaces"
+    ],
+    "secondary_actions_audited": [
+      "Portfolio create property",
+      "Property detail upload document",
+      "Property detail maintenance create WO/issue",
+      "Property detail book inspection from risk",
+      "Property detail score change history",
+      "Property detail jurisdiction and building age save",
+      "Property evidence registry view/download/confirm",
+      "Requirements resolve guided evidence primary CTA",
+      "Requirements edit dates and applicability",
+      "Requirements mark not applicable and reopen",
+      "Property operating hub risk and maintenance CTAs",
+      "Property tab navigation ops gating"
+    ],
+    "recovery_lifecycles_validated": [
+      "ACTIVE",
+      "TRIAL",
+      "READ_ONLY",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "frontend_files": [
+      "frontend/src/pages/PropertiesPage.js",
+      "frontend/src/pages/PropertyCreatePage.js",
+      "frontend/src/pages/BulkPropertyImportPage.js",
+      "frontend/src/pages/PropertyDetailPage.js",
+      "frontend/src/pages/RequirementsPage.js",
+      "frontend/src/components/client/PropertyEvidenceRegistrySections.js",
+      "frontend/src/components/property/PropertyOperatingHub.jsx",
+      "frontend/src/components/property/PropertyOccupancyTenancyPanel.jsx",
+      "frontend/src/components/rent/PropertyFinancialSnapshotCard.jsx",
+      "frontend/src/utils/propertyCapabilityAccess.js",
+      "frontend/src/utils/requirementCapabilityAccess.js",
+      "frontend/src/utils/evidenceCapabilityAccess.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/propertyCapabilityAccess.test.js",
+      "frontend/src/utils/requirementCapabilityAccess.test.js",
+      "frontend/src/utils/evidenceCapabilityAccess.test.js",
+      "frontend/src/pages/PropertiesPage.capability.test.js",
+      "frontend/src/pages/PropertyDetailPage.capability.test.js",
+      "frontend/src/pages/RequirementsPage.capability.test.js",
+      "frontend/src/components/client/PropertyEvidenceRegistrySections.capability.test.js",
+      "frontend/src/pages/PropertyDetailPage.complianceActions.test.js",
+      "frontend/src/pages/PropertyDetailPage.validKpiParity.test.js",
+      "frontend/src/pages/PropertyDetailPage.presentationAuthority.test.js",
+      "frontend/src/pages/PropertyDetailPage.complianceMobileCards.test.js",
+      "frontend/src/pages/PropertyDetailPage.resolveRequirement.test.js",
+      "frontend/src/pages/PropertyDetailPage.conditionStandardResolve.test.js",
+      "frontend/src/pages/PropertyDetailPage.complianceHash.test.js",
+      "frontend/src/pages/PropertyDetailPage.asyncHonesty.test.js",
+      "frontend/src/pages/RequirementsPage.guidedEvidence.integration.test.js",
+      "frontend/src/components/property/PropertyOperatingHub.priorityTaskCta.test.jsx"
+    ],
+    "tests_passed": 60,
+    "tests_failed": 0
+  },
+  "latest_milestone_frontend_property_workflow": "frontend_property_workflow_capability_migration",
+  "ilp4_frontend_operational_execution_capability_migration": {
+    "domain": "operational_execution_workflow",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T15:58:00Z",
+    "capabilities_consumed": {
+      "maintenance": ["CAP_OPS_MAINTENANCE"],
+      "predictive": ["CAP_OPS_PREDICTIVE"],
+      "contractors": ["CAP_OPS_CONTRACTORS"],
+      "approvals": ["CAP_OPS_APPROVALS"],
+      "compliance_review": ["CAP_OPS_COMPLIANCE_REVIEW"],
+      "documents": ["CAP_DOC_VIEW", "CAP_DOC_UPLOAD"],
+      "evidence": ["CAP_EVIDENCE_VIEW"]
+    },
+    "legacy_removed": [
+      "useEntitlements on ClientMaintenancePage.js",
+      "useEntitlements on ClientJobDetailPage.js",
+      "useEntitlements on ClientIssuesPage.js",
+      "useEntitlements on ClientIssueDetailPage.js",
+      "useEntitlements on ClientRiskSignalsPage.js",
+      "useEntitlements on ClientContractorsPage.js",
+      "useEntitlements on ClientApprovalsPage.js",
+      "useEntitlements on ContractorNetworkLockedModal.jsx",
+      "EntitlementProtectedRoute on operational execution pages",
+      "hasFeature(maintenance_workflows|predictive_maintenance|contractor_network|invoicing|compliance_engine) permission decisions in operational execution workflow"
+    ],
+    "secondary_actions_audited": [
+      "Create work order and report issue",
+      "Assign and request contractor on jobs and issues",
+      "Contractor directory submit to network",
+      "Record invoice from jobs list",
+      "Approval approve reject needs_info mark_paid",
+      "Predictive insights load and risk signal dismiss",
+      "Compliance inspection arrange from risk signals",
+      "Job detail lifecycle mutations and contractor modal",
+      "Job detail invoicing and compliance link document",
+      "Overflow and row quick actions on maintenance and issues lists"
+    ],
+    "recovery_lifecycles_validated": [
+      "ACTIVE",
+      "TRIAL",
+      "READ_ONLY",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "frontend_files": [
+      "frontend/src/pages/ClientMaintenancePage.js",
+      "frontend/src/pages/ClientJobDetailPage.js",
+      "frontend/src/pages/ClientIssuesPage.js",
+      "frontend/src/pages/ClientIssueDetailPage.js",
+      "frontend/src/pages/ClientRiskSignalsPage.js",
+      "frontend/src/pages/ClientContractorsPage.js",
+      "frontend/src/pages/ClientApprovalsPage.js",
+      "frontend/src/components/client/ContractorNetworkLockedModal.jsx",
+      "frontend/src/utils/operationalCapabilityAccess.js",
+      "frontend/src/utils/CapabilityProtectedRoute.js",
+      "frontend/src/testUtils/operationalExecutionTestCapabilities.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/operationalCapabilityAccess.test.js",
+      "frontend/src/utils/CapabilityProtectedRoute.capability.test.js",
+      "frontend/src/pages/operationalExecution.capability.test.js",
+      "frontend/src/components/client/ContractorNetworkLockedModal.capability.test.js",
+      "frontend/src/utils/jobDetailPrimaryAction.test.js",
+      "frontend/src/utils/contractorNetworkEntitlement.test.js"
+    ],
+    "tests_passed": 57,
+    "tests_failed": 0
+  },
+  "latest_milestone_frontend_operational_execution": "frontend_operational_execution_capability_migration",
+  "ilp4_frontend_navigation_account_surfaces_capability_migration": {
+    "domain": "navigation_settings_profile_support",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T16:45:00Z",
+    "capabilities_consumed": {
+      "navigation": [
+        "CAP_OPS_MAINTENANCE",
+        "CAP_OPS_PREDICTIVE",
+        "CAP_OPS_CONTRACTORS",
+        "CAP_OPS_APPROVALS",
+        "CAP_OPS_RENT",
+        "CAP_TENANT_PORTAL",
+        "CAP_REPORT_VIEW",
+        "CAP_REPORT_GENERATE_PDF",
+        "CAP_REPORT_GENERATE_CSV",
+        "CAP_REPORT_DOWNLOAD",
+        "CAP_BILLING_VIEW"
+      ],
+      "profile": [
+        "CAP_PROFILE_VIEW",
+        "CAP_PROFILE_EDIT",
+        "CAP_PROFILE_JURISDICTION"
+      ],
+      "support": [
+        "CAP_SUPPORT_ACCESS",
+        "CAP_SUPPORT_REQUEST",
+        "CAP_KNOWLEDGE_CENTRE"
+      ],
+      "notifications_branding": [
+        "CAP_NOTIF_SMS",
+        "CAP_BRANDING_VIEW",
+        "CAP_BRANDING_EDIT",
+        "CAP_BRANDING_WHITE_LABEL"
+      ]
+    },
+    "legacy_removed": [
+      "useEntitlements on ClientPortalLayout.jsx",
+      "useEntitlements on SettingsLayout.jsx",
+      "hasFeature on NotificationPreferencesPage.js",
+      "entitlement navHasFeature fallback on portal navigation",
+      "feature_key billing gate via invoicing on secondary nav"
+    ],
+    "secondary_actions_audited": [
+      "Header notification mark-read",
+      "Notification inbox mark-read dismiss mark-all",
+      "Profile save and avatar upload",
+      "Jurisdiction settings save",
+      "Branding white-label mutations",
+      "Notification preferences save and SMS section",
+      "Help centre ask query and feedback",
+      "Support chat widget send quick-action and ticket flows",
+      "Settings tab visibility",
+      "Portal sidebar operations and More menu gates"
+    ],
+    "recovery_lifecycles_validated": [
+      "ACTIVE",
+      "TRIAL",
+      "READ_ONLY",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "frontend_files": [
+      "frontend/src/components/ClientPortalLayout.jsx",
+      "frontend/src/components/SettingsLayout.jsx",
+      "frontend/src/config/portalNavigationConfig.js",
+      "frontend/src/pages/ProfilePage.js",
+      "frontend/src/pages/JurisdictionSettingsPage.js",
+      "frontend/src/pages/BrandingSettingsPage.js",
+      "frontend/src/pages/NotificationPreferencesPage.js",
+      "frontend/src/pages/HelpPage.js",
+      "frontend/src/pages/ClientNotificationInboxPage.js",
+      "frontend/src/components/SupportChatWidget.js",
+      "frontend/src/components/notifications/InAppNotificationCenter.jsx",
+      "frontend/src/utils/accountCapabilityAccess.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/accountCapabilityAccess.test.js",
+      "frontend/src/pages/navigationAccountSurfaces.capability.test.js",
+      "frontend/src/components/ClientPortalLayout.navigation.test.js",
+      "frontend/src/components/ClientPortalLayout.banner.test.js",
+      "frontend/src/config/portalNavigationConfig.test.js",
+      "frontend/src/components/SettingsLayout.test.jsx"
+    ],
+    "tests_passed": 49,
+    "tests_failed": 0
+  },
+  "latest_milestone_frontend_navigation_account": "frontend_navigation_account_surfaces_capability_migration",
+  "ilp4_final_customer_authority_completion": {
+    "domain": "customer_frontend_authority",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T23:30:00Z",
+    "entitlements_provider_removed_from_app": true,
+    "capabilities_consumed": {
+      "integrations": ["CAP_INTEGRATION_WEBHOOKS", "CAP_INTEGRATION_READ_API", "CAP_EXPORT_API"],
+      "tenant": ["CAP_TENANT_MANAGE", "CAP_TENANT_MESSAGES", "CAP_TENANT_PORTAL"],
+      "calendar": ["CAP_CALENDAR_VIEW"],
+      "assistant": ["CAP_AI_ASSISTANT"],
+      "compliance_score": ["CAP_REPORT_GENERATE_PDF", "CAP_REPORT_GENERATE_CSV"],
+      "routes": ["CAP_REPORT_AUDIT_PACK", "CAP_BRANDING_WHITE_LABEL", "CAP_OPS_RENT"]
+    },
+    "pages_migrated": [
+      "frontend/src/pages/ComplianceScorePage.js",
+      "frontend/src/pages/IntegrationsPage.js",
+      "frontend/src/pages/ClientRentOperationsPage.js",
+      "frontend/src/pages/ClientTenantComplianceDeliveryPage.js",
+      "frontend/src/pages/CalendarPage.js",
+      "frontend/src/pages/AssistantPage.js",
+      "frontend/src/pages/IntakePage.js"
+    ],
+    "shared_infrastructure": {
+      "EntitlementsContext.js": "INTENTIONALLY_RETAINED_DEPRECATED",
+      "EntitlementProtectedRoute.js": "COMPATIBILITY_WRAPPER",
+      "UpgradePrompt.js": "MIGRATED",
+      "PlanRestrictedActionModal.jsx": "MIGRATED"
+    },
+    "frontend_files_added": [
+      "frontend/src/utils/integrationCapabilityAccess.js",
+      "frontend/src/utils/tenantCapabilityAccess.js",
+      "frontend/src/utils/calendarCapabilityAccess.js",
+      "frontend/src/utils/assistantCapabilityAccess.js",
+      "frontend/src/hooks/usePortfolioUsageContext.js",
+      "frontend/src/pages/ilp4Completion.capability.test.js"
+    ],
+    "tests_targeted_passed": 165,
+    "tests_full_frontend_passed": 964,
+    "tests_full_frontend_failed": 0,
+    "tests_full_frontend_failed_preexisting": false,
+    "build_ci_pass": true,
+    "completion_report": "backend/docs/audit/account_lifecycle_ilp_04/ILP_4_FINAL_COMPLETION_REPORT.md"
+  },
+  "ilp4_closeout_validation": {
+    "programme": "ILP-4-CLOSEOUT-VALIDATION-01",
+    "verdict": "PRODUCTION_READY",
+    "executed_at_utc": "2026-07-06T04:51:58Z",
+    "branch": "develop",
+    "frontend_regression": {
+      "verdict": "PASS",
+      "suites_passed": 210,
+      "tests_passed": 964,
+      "tests_failed": 0,
+      "duration_seconds": 52,
+      "log_path": "frontend/tmp_ilp4_closeout_frontend_regression.log"
+    },
+    "backend_regression": {
+      "verdict": "PASS",
+      "tests_passed": 916,
+      "tests_failed": 0,
+      "duration_seconds": 14670,
+      "exit_code": 0,
+      "log_path": "backend/tmp_ilp4_closeout_regression_full.log",
+      "suites": [
+        "tests/test_account_lifecycle_state_resolver.py",
+        "tests/test_account_lifecycle_runtime_contract.py",
+        "tests/test_account_capability_enforcement.py",
+        "tests/test_account_capability_enforcement_pilot.py",
+        "tests/test_account_capability_enforcement_wave1.py",
+        "tests/test_account_capability_enforcement_wave2c1.py",
+        "tests/test_account_capability_enforcement_wave2c2.py",
+        "tests/test_account_capability_enforcement_evidence_pack_analytics.py",
+        "tests/test_account_capability_enforcement_compliance_workflow.py",
+        "tests/test_account_capability_enforcement_rent_approvals.py",
+        "tests/test_account_capability_enforcement_maintenance.py",
+        "tests/test_account_capability_enforcement_tenant_branding.py",
+        "tests/test_account_capability_enforcement_profile_assistant_calendar.py",
+        "tests/test_account_capability_enforcement_read_api_webhooks.py",
+        "tests/test_account_capability_enforcement_billing_client.py",
+        "tests/test_account_capability_enforcement_backend_completion.py",
+        "tests/test_billing_recovery_operations.py",
+        "tests/test_ilp4_closeout_lifecycle_journey_validation.py"
+      ],
+      "note": "916 = 903 prior checkpoint suites + 13 closeout lifecycle journey tests"
+    },
+    "frontend_failures_resolved": [
+      {
+        "suite": "frontend/src/utils/scoreFreshnessUi.test.js",
+        "failures": 3,
+        "classification": "TEST_DRIFT",
+        "resolution": "Assertions aligned to current scoreFreshnessUi copy"
+      },
+      {
+        "suite": "frontend/src/pages/PropertyDetailPage.missingRequirementsActions.test.js",
+        "failures": 1,
+        "classification": "TEST_DRIFT",
+        "resolution": "Upload CTA URL includes focus=upload query param"
+      },
+      {
+        "suite": "frontend/src/pages/PropertyCreatePage.test.js",
+        "failures": 1,
+        "classification": "TEST_DRIFT",
+        "resolution": "Added usePropertyCapabilities mock with canCreateProperty"
+      }
+    ],
+    "lifecycle_journey_validation": {
+      "verdict": "PASS",
+      "lifecycles": [
+        "ACTIVE",
+        "READ_ONLY",
+        "CANCELLED_IMMEDIATE",
+        "SUBSCRIPTION_EXPIRED",
+        "SUSPENDED",
+        "ARCHIVED"
+      ],
+      "backend_tests_passed": 13,
+      "backend_test_file": "backend/tests/test_ilp4_closeout_lifecycle_journey_validation.py",
+      "frontend_test_file": "frontend/src/pages/ilp4Closeout.lifecycleJourney.test.js",
+      "billing_recovery_confirmed": true,
+      "cancelled_ops_denied_billing_retained": true,
+      "no_403_storm_after_cancellation": true
+    },
+    "authority_verification": {
+      "customer_useEntitlements_removed": true,
+      "customer_hasFeature_removed": true,
+      "entitlements_provider_mounted": false,
+      "runtime_contract_sole_authority": true,
+      "backend_frontend_matrix_drift": false
+    },
+    "completion_report": "backend/docs/audit/account_lifecycle_ilp_04/ILP_4_FINAL_COMPLETION_REPORT.md"
+  },
+  "latest_milestone_ilp4_final": "ilp4_closeout_validation"
+}

@@ -1,0 +1,79 @@
+{
+  "audit_id": "P0-PLATFORM-SERVICE-CONVERGENCE-AUDIT-01-PHASE-2",
+  "generated_at": "2026-07-07T20:30:00Z",
+  "verdict": "PLATFORM_SERVICE_CONVERGENCE_PHASE_2_COMPLETE_PENDING_STAGING",
+  "migrations": [
+    {
+      "id": "P2-01",
+      "description": "contract_feature_enabled / feature_enabled_for_client in capability_compatibility.py",
+      "replaces": "get_effective_flags for permission and feature visibility"
+    },
+    {
+      "id": "P2-02",
+      "description": "command_center_service rent merge uses rent_enabled from Runtime Contract",
+      "files": ["services/command_center_service.py", "routes/client.py"]
+    },
+    {
+      "id": "P2-03",
+      "description": "GET /client/entitlements derives ops features from contract",
+      "files": ["routes/client.py"]
+    },
+    {
+      "id": "P2-04",
+      "description": "Today items rent merge gated on contract rent_operations",
+      "files": ["routes/api_compliance_workflow.py"]
+    },
+    {
+      "id": "P2-05",
+      "description": "Background jobs use feature_enabled_for_client",
+      "files": [
+        "services/rent_operations_daily_job.py",
+        "services/risk_signal_regen_queue.py",
+        "services/compliance_outcome_engine.py",
+        "services/onboarding_checklist_service.py",
+        "services/operational_automation_service.py",
+        "job_runner.py"
+      ]
+    },
+    {
+      "id": "P2-06",
+      "description": "InPageCapabilityGate — explicit denial on Dashboard, Today, Command Center",
+      "files": [
+        "frontend/src/components/lifecycle/InPageCapabilityGate.jsx",
+        "frontend/src/pages/ClientDashboard.js",
+        "frontend/src/pages/ClientTasksPage.js",
+        "frontend/src/pages/ClientCommandCenterPage.js"
+      ]
+    }
+  ],
+  "remaining_justified": [
+    {
+      "location": "routes/ops_compliance.py",
+      "reason": "Admin ops flag management UI — not client portal authority",
+      "classification": "admin_configuration"
+    },
+    {
+      "location": "services/ops_compliance_feature_flags.py",
+      "reason": "Admin override storage; client authority now via Runtime Contract",
+      "classification": "admin_storage"
+    },
+    {
+      "location": "routes/tenant.py",
+      "reason": "Tenant portal — separate auth domain; migrate in tenant convergence pass",
+      "classification": "deferred_tenant_portal"
+    },
+    {
+      "location": "plan_registry.enforce_property_limit",
+      "reason": "Quota enforcement parallel to CAP_PROP_CREATE — not lifecycle permission",
+      "classification": "plan_quota"
+    }
+  ],
+  "empty_state_policy": {
+    "no_data": "Genuine empty business collections — show governed empty copy",
+    "permission_denied": "InPageCapabilityGate or UpgradeRequired — never silent empty",
+    "lifecycle_restriction": "LifecycleShell banner + portal_mode from contract",
+    "repository_failure": "ErrorBanner with retry — no catch-to-empty-array on portal pages",
+    "service_exception": "500 with governed detail — logged server-side",
+    "feature_unavailable": "contract_feature_enabled false — nav hidden + upgrade card if routed directly"
+  }
+}

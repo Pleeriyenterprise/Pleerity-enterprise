@@ -7,6 +7,7 @@ from fastapi import Request
 from auth import create_step_up_token
 from middleware import client_route_guard
 from server import app
+from services.account_capability_enforcement import CapabilityDecision, GRANT_ALLOW
 
 
 @pytest.fixture
@@ -16,6 +17,19 @@ def client_user():
         "portal_user_id": "portal-user-test-1",
         "role": "ROLE_CLIENT",
     }
+
+
+async def _allow_capability_evaluate(client_id, capability_id, action, *, contract=None):
+    return CapabilityDecision(
+        capability_id=capability_id,
+        action=action,
+        grant=GRANT_ALLOW,
+        effective_semantic=GRANT_ALLOW,
+        allowed=True,
+        source="test",
+        reason_code="allowed",
+        reason="test allow",
+    )
 
 
 @pytest.fixture
@@ -33,10 +47,14 @@ def override_client_guard(client_user):
 def test_billing_cancel_returns_step_up_required_without_token(client, client_user):
     with patch("routes.billing.client_route_guard", AsyncMock(return_value=client_user)):
         with patch(
-            "routes.billing.stripe_service.cancel_subscription",
-            AsyncMock(return_value={"status": "ok"}),
+            "middleware.capability_gating.CapabilityEnforcementService.evaluate",
+            AsyncMock(side_effect=_allow_capability_evaluate),
         ):
-            r = client.post("/api/billing/cancel", json={"cancel_immediately": False})
+            with patch(
+                "routes.billing.stripe_service.cancel_subscription",
+                AsyncMock(return_value={"status": "ok"}),
+            ):
+                r = client.post("/api/billing/cancel", json={"cancel_immediately": False})
     assert r.status_code == 403
     body = r.json()
     assert body["detail"]["error_code"] == "STEP_UP_REQUIRED"
@@ -46,14 +64,18 @@ def test_billing_cancel_succeeds_with_valid_step_up_token(client, client_user):
     step = create_step_up_token(client_user["portal_user_id"])
     with patch("routes.billing.client_route_guard", AsyncMock(return_value=client_user)):
         with patch(
-            "routes.billing.stripe_service.cancel_subscription",
-            AsyncMock(return_value={"status": "cancelled"}),
+            "middleware.capability_gating.CapabilityEnforcementService.evaluate",
+            AsyncMock(side_effect=_allow_capability_evaluate),
         ):
-            r = client.post(
-                "/api/billing/cancel",
-                json={"cancel_immediately": False},
-                headers={"X-Step-Up-Token": step},
-            )
+            with patch(
+                "routes.billing.stripe_service.cancel_subscription",
+                AsyncMock(return_value={"status": "cancelled"}),
+            ):
+                r = client.post(
+                    "/api/billing/cancel",
+                    json={"cancel_immediately": False},
+                    headers={"X-Step-Up-Token": step},
+                )
     assert r.status_code == 200
     assert r.json().get("status") == "cancelled"
 
@@ -61,10 +83,14 @@ def test_billing_cancel_succeeds_with_valid_step_up_token(client, client_user):
 def test_billing_checkout_requires_step_up(client, client_user):
     with patch("routes.billing.client_route_guard", AsyncMock(return_value=client_user)):
         with patch(
-            "routes.billing.stripe_service.create_upgrade_session",
-            AsyncMock(return_value={"checkout_url": "https://stripe.test/checkout"}),
+            "middleware.capability_gating.CapabilityEnforcementService.evaluate",
+            AsyncMock(side_effect=_allow_capability_evaluate),
         ):
-            r = client.post("/api/billing/checkout", json={"plan_code": "PLAN_2_PORTFOLIO"})
+            with patch(
+                "routes.billing.stripe_service.create_upgrade_session",
+                AsyncMock(return_value={"checkout_url": "https://stripe.test/checkout"}),
+            ):
+                r = client.post("/api/billing/checkout", json={"plan_code": "PLAN_2_PORTFOLIO"})
     assert r.status_code == 403
     assert r.json()["detail"]["error_code"] == "STEP_UP_REQUIRED"
 
@@ -74,8 +100,8 @@ def test_client_approval_patch_requires_step_up(client, client_user, override_cl
     # calls client_route_guard by name — patch that name too.
     with patch("routes.client_approvals.client_route_guard", AsyncMock(return_value=client_user)):
         with patch(
-            "routes.client_approvals.get_effective_flags",
-            AsyncMock(return_value={"INVOICING": True}),
+            "routes.client_approvals.CapabilityEnforcementService.evaluate",
+            AsyncMock(side_effect=_allow_capability_evaluate),
         ):
             with patch(
                 "routes.client_approvals.approval_service.update_approval",
@@ -93,8 +119,8 @@ def test_client_approval_patch_with_step_up_token(client, client_user, override_
     step = create_step_up_token(client_user["portal_user_id"])
     with patch("routes.client_approvals.client_route_guard", AsyncMock(return_value=client_user)):
         with patch(
-            "routes.client_approvals.get_effective_flags",
-            AsyncMock(return_value={"INVOICING": True}),
+            "routes.client_approvals.CapabilityEnforcementService.evaluate",
+            AsyncMock(side_effect=_allow_capability_evaluate),
         ):
             with patch(
                 "routes.client_approvals.approval_service.update_approval",

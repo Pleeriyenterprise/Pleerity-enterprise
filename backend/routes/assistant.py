@@ -1,12 +1,15 @@
 import os
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 
 from database import database
 from middleware import client_route_guard
+from middleware.capability_gating import capability_denied_http_detail
+from middleware.capability_gating import enforce_route_capability
+from services.account_capability_enforcement import CapabilityEnforcementService
 from services.assistant_service import assistant_service
 from services.assistant_chat_service import (
     chat_turn as assistant_chat_turn,
@@ -31,6 +34,28 @@ def _client_ip_assistant(request: Request) -> str:
     if fwd:
         return fwd.split(",")[0].strip()
     return (request.client and request.client.host) or "unknown"
+
+
+async def _enforce_capability(
+    user: Dict[str, Any],
+    capability_id: str,
+    action: str,
+    *,
+    request: Request | None = None,
+) -> None:
+    await enforce_route_capability(user, capability_id, action, request=request)
+
+
+async def _require_assistant_read(request: Request) -> Dict[str, Any]:
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_AI_ASSISTANT", "read", request=request)
+    return user
+
+
+async def _require_assistant_write(request: Request) -> Dict[str, Any]:
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_AI_ASSISTANT", "write")
+    return user
 
 
 async def _enforce_assistant_ip_rate(request: Request) -> None:
@@ -84,7 +109,7 @@ async def get_snapshot(request: Request):
     This endpoint provides the same data the client already sees in their dashboard,
     formatted for AI assistant context.
     """
-    user = await client_route_guard(request)
+    user = await _require_assistant_read(request)
     await _enforce_assistant_ip_rate(request)
 
     try:
@@ -112,7 +137,7 @@ async def ask_question(request: Request, data: AskQuestionRequest):
     - next_actions: Recommended portal actions
     - correlation_id: For support/debugging
     """
-    user = await client_route_guard(request)
+    user = await _require_assistant_write(request)
     await _enforce_assistant_ip_rate(request)
 
     try:
@@ -167,7 +192,7 @@ async def post_chat(request: Request, data: ChatRequest):
     Compliance Vault Assistant chat: grounded in portal data + KB, citations, safety_flags.
     Requires authenticated portal user. CRN in message is ignored; client_id from auth only.
     """
-    user = await client_route_guard(request)
+    user = await _require_assistant_write(request)
     await _enforce_assistant_ip_rate(request)
     client_id = user["client_id"]
     user_id = user.get("portal_user_id") or user.get("client_id", "")
@@ -215,7 +240,7 @@ async def post_escalate(request: Request, data: EscalateRequest):
     Escalate assistant conversation to human support. Marks session escalated,
     creates support ticket with full transcript, notifies support dashboard.
     """
-    user = await client_route_guard(request)
+    user = await _require_assistant_write(request)
     await _enforce_assistant_ip_rate(request)
     client_id = user["client_id"]
     user_id = user.get("portal_user_id") or user.get("client_id", "")
@@ -243,7 +268,7 @@ async def post_escalate(request: Request, data: EscalateRequest):
 @router.get("/conversation/{conversation_id}/status")
 async def get_conversation_status(request: Request, conversation_id: str):
     """Return escalation status for a conversation (for portal UI: Escalated / Support joined)."""
-    user = await client_route_guard(request)
+    user = await _require_assistant_read(request)
     db = database.get_db()
     conv = await db.assistant_conversations.find_one(
         {"conversation_id": conversation_id, "client_id": user["client_id"]},

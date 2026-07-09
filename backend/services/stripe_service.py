@@ -23,7 +23,12 @@ from services.billing_period_utils import (
     period_start_from_stripe_subscription_dict,
     period_start_from_stripe_unix,
 )
-from services.billing_stripe_sync_service import stripe_subscription_to_dict
+from services.billing_stripe_sync_service import (
+    stripe_subscription_to_dict,
+    sync_client_billing_from_stripe_subscription_id,
+)
+from services.subscription_lifecycle_service import sync_subscription_lifecycle
+from services.billing_reconciliation_service import mark_billing_reconciliation_needed
 from services.billing_presentation import (
     billing_status_display,
     billing_sync_visibility_note,
@@ -55,8 +60,6 @@ from services.stripe_mode_containment_service import (
 )
 from utils.audit import create_audit_log
 from models import AuditAction
-from services.subscription_lifecycle_service import sync_subscription_lifecycle
-from services.billing_reconciliation_service import mark_billing_reconciliation_needed
 
 logger = logging.getLogger(__name__)
 
@@ -534,6 +537,101 @@ class StripeService:
                     "Settings → Billing → Customer portal → Subscription plan changes."
                 )
             raise ValueError(f"Failed to create upgrade session: {err_msg}")
+
+    async def create_billing_portal_session(
+        self,
+        client_id: str,
+        origin_url: str,
+        *,
+        runtime_contract: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create Stripe Billing Portal session for payment-method / subscription management.
+
+        When portal preflight is blocked by governed Stripe mode drift (e.g. MODE_UNVERIFIED)
+        but Runtime Contract allows billing recovery checkout, falls back to deployment Checkout
+        for the client's current plan.
+        """
+        from services.billing_recovery_authorization import (
+            billing_recovery_write_allowed,
+            resolve_recovery_plan_code,
+        )
+        from services.stripe_mode_containment_service import (
+            PORTAL_DRIFT_RECOVERY_FALLBACK_ACTIONS,
+        )
+
+        db = database.get_db()
+        billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+
+        if not billing or not billing.get("stripe_customer_id"):
+            if not billing_recovery_write_allowed(runtime_contract):
+                raise ValueError("No active subscription found")
+            client = await db.clients.find_one(
+                {"client_id": client_id},
+                {"_id": 0, "email": 1, "contact_email": 1, "customer_reference": 1, "billing_plan": 1},
+            )
+            plan_code = resolve_recovery_plan_code(billing, client)
+            if not plan_code:
+                raise ValueError("No billing plan on file for recovery checkout")
+            customer_email = (client or {}).get("email") or (client or {}).get("contact_email")
+            result = await self.create_checkout_session(
+                client_id=client_id,
+                plan_code=plan_code,
+                origin_url=origin_url,
+                customer_email=customer_email,
+                customer_reference=(client or {}).get("customer_reference"),
+                checkout_context=CHECKOUT_CONTEXT_RECOVERY_PLAN_CHANGE,
+            )
+            result["recovery_path"] = "recovery_checkout"
+            return result
+
+        deployment_mode = get_stripe_mode()
+        configure_stripe_sdk(mode=deployment_mode)
+
+        try:
+            await resolve_stripe_context(
+                client_id=client_id,
+                billing=billing,
+                operation="billing_portal",
+                legacy_caller="stripe_service.create_billing_portal_session",
+                require_preflight=True,
+            )
+            portal_session = stripe.billing_portal.Session.create(
+                customer=billing.get("stripe_customer_id"),
+                return_url=f"{origin_url.rstrip('/')}/settings/billing",
+            )
+            return {
+                "portal_url": portal_session.url,
+                "recovery_path": "billing_portal",
+            }
+        except StripeModeDriftError as drift:
+            if (
+                drift.recovery_action in PORTAL_DRIFT_RECOVERY_FALLBACK_ACTIONS
+                and billing_recovery_write_allowed(runtime_contract)
+            ):
+                plan_code = resolve_recovery_plan_code(billing)
+                if not plan_code:
+                    raise ValueError("No billing plan on file for recovery checkout") from drift
+                result = await self.create_upgrade_session(
+                    client_id=client_id,
+                    new_plan_code=plan_code,
+                    origin_url=origin_url,
+                )
+                if result.get("checkout_url"):
+                    return {
+                        "checkout_url": result["checkout_url"],
+                        "session_id": result.get("session_id"),
+                        "recovery_path": result.get("plan_change_path", "deployment_checkout"),
+                        "recovery_guidance": (
+                            "Complete payment in Stripe to restore your subscription."
+                        ),
+                    }
+                if result.get("portal_url"):
+                    return {
+                        "portal_url": result["portal_url"],
+                        "recovery_path": "billing_portal",
+                    }
+            raise
     
     async def get_subscription_status(
         self, client_id: str, *, client_facing: bool = True
@@ -982,6 +1080,73 @@ class StripeService:
         except stripe.error.StripeError as e:
             logger.error(f"Stripe cancel error for client {client_id}: {e}")
             raise ValueError(f"Failed to cancel subscription: {str(e)}")
+
+    async def resume_subscription(
+        self,
+        client_id: str,
+        *,
+        actor_role: str = "CLIENT",
+        actor_id: Optional[str] = None,
+        resume_source: str = "client_billing_resume",
+    ) -> Dict[str, Any]:
+        """Undo cancel-at-period-end (R-003) via Stripe authority and governed billing sync."""
+        db = database.get_db()
+        billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+        if not billing or not billing.get("stripe_subscription_id"):
+            raise ValueError("No active subscription found")
+
+        subscription_id = billing.get("stripe_subscription_id")
+        if not billing.get("cancel_at_period_end"):
+            return {
+                "success": True,
+                "already_active": True,
+                "cancel_at_period_end": False,
+                "subscription_status": billing.get("subscription_status"),
+            }
+
+        try:
+            subscription = stripe.Subscription.modify(
+                subscription_id,
+                cancel_at_period_end=False,
+            )
+            await sync_client_billing_from_stripe_subscription_id(
+                client_id,
+                subscription_id,
+                event_source=resume_source,
+                update_plan=True,
+                increment_entitlements_version=0,
+            )
+            await sync_subscription_lifecycle(client_id, bump_version=True)
+            sub_d = stripe_subscription_to_dict(subscription)
+            stripe_cpe = period_end_from_stripe_subscription_dict(sub_d)
+            await create_audit_log(
+                action=AuditAction.ADMIN_ACTION,
+                actor_role=actor_role,
+                actor_id=actor_id,
+                client_id=client_id,
+                metadata={
+                    "action": "subscription_resume_requested",
+                    "subscription_id": subscription_id,
+                    "resume_source": resume_source,
+                    "cancel_at_period_end": False,
+                },
+            )
+            logger.info("Subscription resume requested for client %s", client_id)
+            return {
+                "success": True,
+                "already_active": False,
+                "cancel_at_period_end": False,
+                "current_period_end": stripe_cpe.isoformat() if stripe_cpe else None,
+                "subscription_status": sub_d.get("status"),
+            }
+        except stripe.error.StripeError as e:
+            logger.error("Stripe resume error for client %s: %s", client_id, e)
+            await mark_billing_reconciliation_needed(
+                client_id=client_id,
+                reason="resume_subscription_stripe_error",
+                context={"error": str(e)[:500], "subscription_id": subscription_id},
+            )
+            raise ValueError(f"Failed to resume subscription: {str(e)}")
 
     async def list_invoices(self, client_id: str, limit: int = 24) -> Dict[str, Any]:
         """

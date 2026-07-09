@@ -1,0 +1,90 @@
+{
+  "programme": "ILP-3-PORTAL-MODE-CONSUMPTION-01",
+  "verdict": "ILP_03_COMPLETE",
+  "completed_at": "2026-07-03",
+  "branch": "develop",
+  "ilp2_dependency": {
+    "api": "GET /api/client/lifecycle-runtime",
+    "commit": "36662d0a"
+  },
+  "implemented_files": [
+    "frontend/src/contexts/LifecycleRuntimeContext.js",
+    "frontend/src/components/lifecycle/LifecycleShell.jsx",
+    "frontend/src/components/lifecycle/LifecycleRuntimeDiagnostics.jsx",
+    "frontend/src/utils/portalNavigationPolicy.js",
+    "frontend/src/api/client.js",
+    "frontend/src/App.js",
+    "frontend/src/components/ClientPortalLayout.jsx",
+    "frontend/src/components/client/ClientPortalPatterns.jsx",
+    "frontend/src/components/portal/PortalNavPrimitives.jsx",
+    "frontend/src/components/SettingsLayout.jsx",
+    "frontend/src/pages/ClientDashboard.js",
+    "frontend/src/pages/ClientTasksPage.js",
+    "frontend/src/pages/PropertiesPage.js",
+    "frontend/src/pages/PropertyDetailPage.js",
+    "frontend/src/pages/RequirementsPage.js",
+    "frontend/src/pages/DocumentsPage.js",
+    "frontend/src/pages/ReportsPage.js",
+    "frontend/src/pages/BillingPage.js",
+    "frontend/src/pages/ProfilePage.js",
+    "frontend/src/pages/ClientCommandCenterPage.js",
+    "frontend/src/pages/ComplianceScorePage.js",
+    "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+    "frontend/src/utils/portalNavigationPolicy.test.js",
+    "backend/docs/PORTAL_MODE_CONSUMPTION.md",
+    "frontend/docs/LIFECYCLE_RUNTIME_CONSUMPTION.md"
+  ],
+  "portal_mode_mapping": {
+    "source": "runtime_contract.portal_mode",
+    "modes": [
+      "FULL_ACCESS",
+      "READ_ONLY",
+      "GRACE",
+      "PAYMENT_REQUIRED",
+      "BILLING_RECOVERY",
+      "SUSPENDED",
+      "ARCHIVED",
+      "ACCOUNT_DELETED"
+    ]
+  },
+  "page_migration_inventory": [
+    { "page": "Dashboard", "method": "PortalPageWithLifecyclePresentation" },
+    { "page": "Today", "method": "PortalModePageBanner" },
+    { "page": "Properties", "method": "PortalPageShell" },
+    { "page": "Property Detail", "method": "PortalPageWithLifecyclePresentation" },
+    { "page": "Requirements", "method": "PortalModePageBanner" },
+    { "page": "Documents", "method": "PortalModePageBanner" },
+    { "page": "Reports", "method": "PortalModePageBanner" },
+    { "page": "Billing", "method": "customer_experience + PortalPageWithLifecyclePresentation" },
+    { "page": "Profile", "method": "PortalModePageBanner" },
+    { "page": "Settings", "method": "SettingsLayout PortalModePageBanner" },
+    { "page": "Command Centre", "method": "PortalModePageBanner" },
+    { "page": "Compliance Score", "method": "PortalModePageBanner" },
+    { "page": "All ClientPortal routes", "method": "LifecycleShell in ClientPortalLayout" }
+  ],
+  "provider_architecture": {
+    "provider": "LifecycleRuntimeProvider",
+    "hooks": ["useLifecycleRuntime", "usePortalMode"],
+    "shell": "LifecycleShell",
+    "diagnostics": "LifecycleRuntimeDiagnostics"
+  },
+  "regression_proof": {
+    "middleware_unchanged": true,
+    "protected_route_unchanged": true,
+    "hasFeature_unchanged": true,
+    "backend_api_permissions_unchanged": true,
+    "session_unchanged": true
+  },
+  "deferred_enforcement": [
+    "capability grant enforcement (ILP-4)",
+    "API mutation guards",
+    "hasFeature replacement",
+    "session invalidation (ILP-7)"
+  ],
+  "ilp4_readiness": {
+    "portal_mode_stable": true,
+    "capabilities_in_runtime": true,
+    "presentation_separated_from_permissions": true,
+    "assessment": "READY_FOR_ILP_4_CAPABILITY_ENFORCEMENT"
+  }
+}

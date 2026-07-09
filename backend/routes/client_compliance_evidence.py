@@ -8,11 +8,11 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from database import database
-from middleware import client_route_guard
+from middleware.capability_gating import client_require_capability
 from models import AuditAction
 from services.compliance_evidence_record_service import (
     ALL_EVIDENCE_MODES,
@@ -43,10 +43,6 @@ router = APIRouter(prefix="/api/client", tags=["client-compliance-evidence"])
 
 def _is_wales_context_requirement(req_row: Dict[str, Any]) -> bool:
     return str(req_row.get("jurisdiction") or req_row.get("property_jurisdiction") or "").strip().lower() == "wales"
-
-
-async def _require_user(request: Request) -> Dict[str, Any]:
-    return await client_route_guard(request)
 
 
 class StructuredDeclarationBody(BaseModel):
@@ -102,7 +98,7 @@ async def get_org_review_queue(
     request: Request,
     property_id: Optional[str] = None,
     limit: int = 100,
-    user: Dict[str, Any] = Depends(_require_user),
+    user: Dict[str, Any] = client_require_capability("CAP_EVIDENCE_VIEW", "read"),
 ) -> Dict[str, Any]:
     """
     Org-admin review queue — discovery only. Inclusion from governance truth, not lifecycle alone.
@@ -165,7 +161,7 @@ async def get_evidence_resolution(
     property_id: str,
     requirement_id: str,
     request: Request,
-    user: Dict[str, Any] = Depends(_require_user),
+    user: Dict[str, Any] = client_require_capability("CAP_EVIDENCE_VIEW", "read"),
 ) -> Dict[str, Any]:
     db = database.get_db()
     client_id = user.get("client_id")
@@ -285,7 +281,7 @@ async def post_compliance_evidence(
     requirement_id: str,
     body: CreateEvidenceRequest,
     request: Request,
-    user: Dict[str, Any] = Depends(_require_user),
+    user: Dict[str, Any] = client_require_capability("CAP_REQ_RESOLVE", "write"),
 ) -> Dict[str, Any]:
     db = database.get_db()
     client_id = user.get("client_id")
@@ -502,7 +498,7 @@ async def post_evidence_verification(
     evidence_record_id: str,
     body: VerifyEvidenceRequest,
     request: Request,
-    user: Dict[str, Any] = Depends(_require_user),
+    user: Dict[str, Any] = client_require_capability("CAP_REQ_RESOLVE", "write"),
 ) -> Dict[str, Any]:
     if not _admin_like(str(user.get("role") or "")):
         raise HTTPException(status_code=403, detail="Admin-like role required to verify evidence")
@@ -552,7 +548,7 @@ async def list_compliance_evidence(
     property_id: str,
     requirement_id: str,
     request: Request,
-    user: Dict[str, Any] = Depends(_require_user),
+    user: Dict[str, Any] = client_require_capability("CAP_EVIDENCE_VIEW", "read"),
 ) -> Dict[str, Any]:
     db = database.get_db()
     client_id = user.get("client_id")

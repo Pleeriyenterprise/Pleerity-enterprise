@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useStepUpApi } from '../hooks/useStepUpApi';
+import { useResumeSubscription } from '../hooks/useResumeSubscription';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { 
   Check, 
@@ -30,9 +31,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { toast } from '@/utils/portalNotifications';
 import api, { clientAPI } from '../api/client';
-import { useEntitlements } from '../contexts/EntitlementsContext';
-import { formatUpgradeUsageContext } from '../components/UpgradePrompt';
-import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import {
+  formatBillingUsageHint,
+  getCapabilityDeniedMessage,
+  isCapabilityDeniedApiError,
+  useBillingCapabilities,
+} from '../utils/billingCapabilityAccess';
+import {
+  featureCountForPlanBanner,
+  isFeatureEnabledForBillingComparison,
+  planPropertyLimitForDisplay,
+} from '../utils/billingPlanPresentation';
+import { PortalLoadingPanel, portalPageRoot, PortalPageWithLifecyclePresentation } from '../components/client/ClientPortalPatterns';
+import { useLifecycleRuntime } from '../contexts/LifecycleRuntimeContext';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import branding from '../config/branding';
 
@@ -150,95 +161,6 @@ const FEATURE_CATEGORIES = [
   },
 ];
 
-// Feature availability matrix
-const FEATURE_MATRIX = {
-  PLAN_1_SOLO: {
-    compliance_dashboard: true,
-    compliance_score: true,
-    compliance_calendar: true,
-    email_notifications: true,
-    multi_file_upload: true,
-    score_trending: true,
-    ai_extraction_basic: true,
-    ai_extraction_advanced: false,
-    extraction_review_ui: false,
-    zip_upload: false,
-    reports_pdf: false,
-    reports_csv: false,
-    scheduled_reports: false,
-    sms_reminders: false,
-    tenant_portal: false,
-    webhooks: false,
-    white_label_reports: false,
-    audit_log_export: false,
-  },
-  PLAN_2_PORTFOLIO: {
-    compliance_dashboard: true,
-    compliance_score: true,
-    compliance_calendar: true,
-    email_notifications: true,
-    multi_file_upload: true,
-    score_trending: true,
-    ai_extraction_basic: true,
-    ai_extraction_advanced: false,
-    extraction_review_ui: false,
-    zip_upload: true,
-    reports_pdf: true,
-    reports_csv: true,
-    scheduled_reports: true,
-    sms_reminders: true,
-    tenant_portal: false,
-    webhooks: false,
-    white_label_reports: false,
-    audit_log_export: false,
-  },
-  PLAN_3_PRO: {
-    compliance_dashboard: true,
-    compliance_score: true,
-    compliance_calendar: true,
-    email_notifications: true,
-    multi_file_upload: true,
-    score_trending: true,
-    ai_extraction_basic: true,
-    ai_extraction_advanced: true,
-    extraction_review_ui: true,
-    zip_upload: true,
-    reports_pdf: true,
-    reports_csv: true,
-    scheduled_reports: true,
-    sms_reminders: true,
-    tenant_portal: true,
-    webhooks: true,
-    white_label_reports: true,
-    audit_log_export: true,
-  },
-};
-
-/**
- * Static FEATURE_MATRIX must match backend/services/plan_registry.py FEATURE_MATRIX (single commercial truth).
- * For the signed-in client's current plan, feature on/off state comes from GET /client/entitlements when loaded.
- */
-function isFeatureEnabledForBillingComparison(planCode, featureKey, currentPlan, entitlements) {
-  if (
-    planCode === currentPlan &&
-    entitlements?.features &&
-    Object.prototype.hasOwnProperty.call(entitlements.features, featureKey)
-  ) {
-    return Boolean(entitlements.features[featureKey].enabled);
-  }
-  const row = FEATURE_MATRIX[planCode];
-  return row ? Boolean(row[featureKey]) : false;
-}
-
-function featureCountForPlanBanner(planCode, currentPlan, entitlements) {
-  if (planCode === currentPlan && typeof entitlements?.feature_summary?.enabled === 'number') {
-    return entitlements.feature_summary.enabled;
-  }
-  const row = FEATURE_MATRIX[planCode];
-  if (!row) return 0;
-  return Object.values(row).filter(Boolean).length;
-}
-
 /** Stripe epoch or missing dates must not surface as 1970 in the UI */
 const MIN_VALID_RENEWAL_MS = 946684800000;
 
@@ -290,6 +212,13 @@ function nextRenewalEndPhrase(bs) {
   return nextRenewalPrimaryDisplay(bs) || 'the end of your billing period';
 }
 
+function isBillingPeriodEndPast(bs) {
+  const raw = bs?.current_period_end;
+  if (!raw) return false;
+  const dt = new Date(raw);
+  return !Number.isNaN(dt.getTime()) && dt.getTime() < Date.now();
+}
+
 /** Paid-good-standing display states — used so "renewal soon" does not show during grace/retry/cancel. */
 function isPaidSubscriptionDisplayHealthy(bs) {
   const b = bs?.billing_status_display;
@@ -313,13 +242,19 @@ function planStatusLabel(bs) {
 
 const BillingPage = () => {
   const navigate = useNavigate();
-  const { usageContext, refetch: refetchEntitlements } = useEntitlements();
-  const billingUsageHint = formatUpgradeUsageContext(usageContext);
-  const [usageRefreshing, setUsageRefreshing] = useState(false);
+  const {
+    canViewBilling,
+    canViewInvoices,
+    canViewPaymentMethods,
+    canCheckout,
+    canManageSubscription,
+    canCancelSubscription,
+  } = useBillingCapabilities();
+  const { customerExperience, refreshSession } = useLifecycleRuntime();
   const billingStepUp = useStepUpApi();
   const [searchParams] = useSearchParams();
+  const [usageRefreshing, setUsageRefreshing] = useState(false);
   const [currentPlan, setCurrentPlan] = useState(null);
-  const [entitlements, setEntitlements] = useState(null);
   const [billingStatus, setBillingStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState({});
@@ -334,6 +269,8 @@ const BillingPage = () => {
   const [pdfReceipts, setPdfReceipts] = useState([]);
   const [portalOpening, setPortalOpening] = useState(false);
   const [planCatalog, setPlanCatalog] = useState(null);
+
+  const billingUsageHint = useMemo(() => formatBillingUsageHint(billingStatus), [billingStatus]);
 
   const highlightPlan = searchParams.get('upgrade_to');
 
@@ -357,38 +294,70 @@ const BillingPage = () => {
     });
   }, [planCatalog]);
 
-  const fetchBillingStatus = async () => {
+  const fetchBillingStatus = useCallback(async () => {
+    if (!canViewBilling) return;
     try {
       const response = await api.get('/billing/status');
       setBillingStatus(response.data);
+      if (response.data?.current_plan_code) {
+        setCurrentPlan(response.data.current_plan_code);
+      }
     } catch (error) {
-      console.error('Failed to fetch billing status:', error);
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to load billing status'));
+      } else {
+        console.error('Failed to fetch billing status:', error);
+      }
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [canViewBilling]);
+
+  const { resumeSubscription, resuming: resumingSubscription, stepUpModal: resumeStepUpModal } =
+    useResumeSubscription({
+      canManageSubscription,
+      onSuccess: async () => {
+        await fetchBillingStatus();
+        await refreshSession('subscription_resumed');
+      },
+    });
+
+  const fetchInvoices = useCallback(async () => {
+    if (!canViewInvoices) {
+      setInvoices([]);
+      return;
+    }
+    try {
+      const response = await api.get('/billing/invoices');
+      setInvoices(response.data.invoices || []);
+    } catch (error) {
+      if (isCapabilityDeniedApiError(error)) {
+        setInvoices([]);
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to load invoices'));
+      } else {
+        console.error('Failed to fetch invoices:', error);
+      }
+    }
+  }, [canViewInvoices]);
 
   const handleRefreshUsage = useCallback(async () => {
     setUsageRefreshing(true);
     try {
-      const ok = await refetchEntitlements();
-      try {
-        const response = await api.get('/billing/status');
-        setBillingStatus(response.data);
-      } catch (e) {
-        console.error('Failed to refresh billing status:', e);
+      if (canViewBilling) {
+        await fetchBillingStatus();
       }
-      if (ok) {
-        toast.success('Usage data updated');
-      } else {
-        toast.error('Could not refresh usage data');
-      }
+      toast.success('Usage data updated');
     } finally {
       setUsageRefreshing(false);
     }
-  }, [refetchEntitlements]);
+  }, [canViewBilling, fetchBillingStatus]);
 
   useEffect(() => {
-    fetchEntitlements();
-    fetchBillingStatus();
+    if (canViewBilling) {
+      fetchBillingStatus();
+    } else {
+      setLoading(false);
+    }
     const loadPlans = async () => {
       try {
         const res = await api.get('/billing/plans');
@@ -404,7 +373,7 @@ const BillingPage = () => {
       expanded[cat.name] = true;
     });
     setExpandedCategories(expanded);
-  }, []);
+  }, [canViewBilling, fetchBillingStatus]);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -421,44 +390,47 @@ const BillingPage = () => {
         description: 'Your plan change is being confirmed. This may take a moment.',
       });
       fetchBillingStatus();
-      refetchEntitlements();
     } else if (checkoutReturn === 'cancelled') {
       toast.info('Checkout cancelled', {
         description: 'No changes were made. You can choose a plan again when ready.',
       });
     }
     navigate('/settings/billing', { replace: true });
-  }, [searchParams, navigate, refetchEntitlements]);
+  }, [searchParams, navigate, canViewBilling, fetchBillingStatus]);
 
   useEffect(() => {
-    if (!billingStatus?.has_subscription) {
+    if (!canViewInvoices) {
       setInvoices([]);
       return;
     }
     if (billingMainTab === 'account') {
       fetchInvoices();
     }
-  }, [billingStatus?.has_subscription, billingMainTab]);
+  }, [canViewInvoices, billingMainTab, fetchInvoices]);
 
   useEffect(() => {
     if (billingMainTab !== 'account') return;
     const loadPm = async () => {
-      if (!billingStatus?.has_subscription) {
+      if (!canViewPaymentMethods) {
         setPaymentMethodInfo(null);
         return;
       }
       try {
         const res = await api.get('/billing/payment-method-summary');
         setPaymentMethodInfo(res.data);
-      } catch {
-        setPaymentMethodInfo(null);
+      } catch (e) {
+        if (isCapabilityDeniedApiError(e)) {
+          setPaymentMethodInfo(null);
+        } else {
+          setPaymentMethodInfo(null);
+        }
       }
     };
     loadPm();
-  }, [billingMainTab, billingStatus?.has_subscription]);
+  }, [billingMainTab, canViewPaymentMethods]);
 
   useEffect(() => {
-    if (billingMainTab !== 'account' || !billingStatus?.has_subscription) {
+    if (billingMainTab !== 'account' || !canViewInvoices) {
       setPdfReceipts([]);
       return;
     }
@@ -471,7 +443,7 @@ const BillingPage = () => {
       }
     };
     loadPdf();
-  }, [billingMainTab, billingStatus?.has_subscription]);
+  }, [billingMainTab, canViewInvoices]);
 
   useEffect(() => {
     if (!showCancelModal) return;
@@ -495,6 +467,7 @@ const BillingPage = () => {
   }, [showCancelModal]);
 
   const openBillingPortal = async () => {
+    if (!canManageSubscription) return;
     setPortalOpening(true);
     try {
       const origin = window.location.origin;
@@ -503,40 +476,60 @@ const BillingPage = () => {
       );
       if (res.data?.portal_url) {
         window.location.href = res.data.portal_url;
+      } else if (res.data?.checkout_url) {
+        toast.success('Redirecting to Stripe…', {
+          description: res.data.recovery_guidance || 'Complete payment to restore your subscription.',
+        });
+        window.location.href = res.data.checkout_url;
       } else {
         toast.error('Could not open billing portal');
       }
     } catch (e) {
       if (e?.message === 'step_up_cancelled') return;
-      toast.error(e.response?.data?.detail || 'Billing portal unavailable');
+      const driftDetail = e.response?.data?.detail;
+      const driftFallback =
+        e.response?.status === 409 &&
+        driftDetail &&
+        typeof driftDetail === 'object' &&
+        driftDetail.fallback === 'checkout' &&
+        canCheckout &&
+        currentPlan;
+      if (driftFallback) {
+        try {
+          const response = await billingStepUp.request((headers) =>
+            api.post('/billing/checkout', { plan_code: currentPlan }, { headers })
+          );
+          if (response.data?.checkout_url) {
+            toast.success('Redirecting to Stripe…', {
+              description: 'Complete payment to restore your subscription.',
+            });
+            window.location.href = response.data.checkout_url;
+            return;
+          }
+        } catch (checkoutErr) {
+          if (checkoutErr?.message === 'step_up_cancelled') return;
+          if (isCapabilityDeniedApiError(checkoutErr)) {
+            toast.error(getCapabilityDeniedMessage(checkoutErr, 'Billing recovery unavailable'));
+            return;
+          }
+        }
+      }
+      if (isCapabilityDeniedApiError(e)) {
+        toast.error(getCapabilityDeniedMessage(e, 'Billing portal unavailable'));
+      } else {
+        const msg =
+          typeof driftDetail === 'object' && driftDetail?.message
+            ? driftDetail.message
+            : e.response?.data?.detail;
+        toast.error(typeof msg === 'string' ? msg : 'Billing portal unavailable');
+      }
     } finally {
       setPortalOpening(false);
     }
   };
 
-  const fetchEntitlements = async () => {
-    try {
-      const response = await api.get('/client/entitlements');
-      setEntitlements(response.data);
-      setCurrentPlan(response.data.plan);
-    } catch (error) {
-      console.error('Failed to fetch entitlements:', error);
-      toast.error('Failed to load plan information');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchInvoices = async () => {
-    try {
-      const response = await api.get('/billing/invoices');
-      setInvoices(response.data.invoices || []);
-    } catch (error) {
-      console.error('Failed to fetch invoices:', error);
-    }
-  };
-
   const handleCancelSubscription = async (cancelImmediately = false) => {
+    if (!canCancelSubscription) return;
     setCancelling(true);
     try {
       await billingStepUp.request((headers) =>
@@ -554,17 +547,18 @@ const BillingPage = () => {
       }
       
       setShowCancelModal(false);
-      // Refresh billing status
       await fetchBillingStatus();
-      await fetchEntitlements();
-      
     } catch (error) {
       if (error?.message === 'step_up_cancelled') {
         return;
       }
       console.error('Cancel error:', error);
-      const errorMessage = error.response?.data?.detail || 'Failed to cancel subscription';
-      toast.error(errorMessage);
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to cancel subscription'));
+      } else {
+        const errorMessage = error.response?.data?.detail || 'Failed to cancel subscription';
+        toast.error(errorMessage);
+      }
     } finally {
       setCancelling(false);
     }
@@ -578,6 +572,7 @@ const BillingPage = () => {
   };
 
   const handlePlanChange = async (planCode) => {
+    if (!canCheckout) return;
     if (planCode === currentPlan) {
       toast.info('You are already on this plan');
       return;
@@ -617,13 +612,17 @@ const BillingPage = () => {
       }
       console.error('Plan change error:', error);
       const detail = error.response?.data?.detail;
-      const errorMessage =
-        typeof detail === 'object' && detail?.message
-          ? detail.message
-          : typeof detail === 'string'
-            ? detail
-            : 'Failed to start plan change';
-      toast.error(errorMessage);
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to start plan change'));
+      } else {
+        const errorMessage =
+          typeof detail === 'object' && detail?.message
+            ? detail.message
+            : typeof detail === 'string'
+              ? detail
+              : 'Failed to start plan change';
+        toast.error(errorMessage);
+      }
       setUpgrading(null);
     }
   };
@@ -650,7 +649,7 @@ const BillingPage = () => {
   }
 
   return (
-    <div className={portalPageRoot} data-testid="billing-page">
+    <PortalPageWithLifecyclePresentation data-testid="billing-page">
       <div className="max-w-6xl mx-auto px-4 pt-4 pb-2">
         <div className="flex items-start gap-3">
           <button
@@ -806,10 +805,10 @@ const BillingPage = () => {
                     </p>
                   )}
                 </div>
-                {billingStatus?.has_subscription && billingStatus?.canonical_entitlement_state && (
+                {billingStatus?.has_subscription && customerExperience?.current_state_label && (
                   <div>
                     <p className="text-gray-500">Access status</p>
-                    <p className="font-medium">{billingStatus.canonical_entitlement_state}</p>
+                    <p className="font-medium">{customerExperience.current_state_label}</p>
                   </div>
                 )}
                 {billingStatus?.has_subscription && billingStatus?.grace_period_summary && (
@@ -869,8 +868,8 @@ const BillingPage = () => {
                 <div>
                   <p className="text-gray-500">Properties</p>
                   <p className="font-medium">
-                    {billingStatus?.has_subscription
-                      ? `${billingStatus.properties_used ?? usageContext?.property_count ?? '—'} / ${billingStatus.properties_limit ?? usageContext?.max_properties ?? '—'}`
+                    {canViewBilling && billingStatus?.has_subscription
+                      ? `${billingStatus.properties_used ?? '—'} / ${billingStatus.properties_limit ?? '—'}`
                       : '—'}
                   </p>
                 </div>
@@ -894,7 +893,7 @@ const BillingPage = () => {
                   )}
                 {billingStatus?.has_subscription && billingStatus?.billing_sync_visibility_note && (
                   <div className="sm:col-span-2">
-                    <p className="text-gray-500">Data freshness</p>
+                    <p className="text-gray-500">Billing sync status</p>
                     <p
                       className={`text-sm ${
                         /incomplete|stripe_error|may be incomplete/i.test(billingStatus.billing_sync_visibility_note)
@@ -921,6 +920,8 @@ const BillingPage = () => {
               <CardContent className="space-y-4">
                 {!billingStatus?.has_subscription ? (
                   <p className="text-sm text-gray-600">Subscribe to a plan to add a payment method.</p>
+                ) : !canViewPaymentMethods ? (
+                  <p className="text-sm text-gray-600">Payment method details are not available for this account state.</p>
                 ) : (
                   <>
                     {paymentMethodInfo?.display && (
@@ -937,7 +938,7 @@ const BillingPage = () => {
                       variant="outline"
                       className="border-electric-teal text-electric-teal"
                       onClick={openBillingPortal}
-                      disabled={portalOpening}
+                      disabled={!canManageSubscription || portalOpening}
                     >
                       {portalOpening ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ExternalLink className="w-4 h-4 mr-2" />}
                       Update payment method in Stripe
@@ -956,7 +957,11 @@ const BillingPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-10">
-                {!billingStatus?.has_subscription ? (
+                {!canViewInvoices ? (
+                  <p className="text-sm text-gray-600 py-2">
+                    Billing history is not available for this account state.
+                  </p>
+                ) : !billingStatus?.has_subscription ? (
                   <p className="text-sm text-gray-600 py-2">
                     No active subscription — billing history appears after you subscribe and pay.
                   </p>
@@ -1031,7 +1036,7 @@ const BillingPage = () => {
                                   size="sm"
                                   variant="outline"
                                   className="mt-3 min-h-11 w-full"
-                                  disabled={!r.invoice_number}
+                                  disabled={!canViewInvoices || !r.invoice_number}
                                   onClick={async () => {
                                     if (!r.invoice_number) return;
                                     try {
@@ -1085,7 +1090,7 @@ const BillingPage = () => {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        disabled={!r.invoice_number}
+                                        disabled={!canViewInvoices || !r.invoice_number}
                                         onClick={async () => {
                                           if (!r.invoice_number) return;
                                           try {
@@ -1153,11 +1158,32 @@ const BillingPage = () => {
           <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="cancellation-notice">
             <AlertTriangle className="w-4 h-4 text-amber-600" />
             <AlertDescription className="text-amber-800">
-              <strong>Cancellation Scheduled</strong>
+              <strong>{isBillingPeriodEndPast(billingStatus) ? 'Updating your subscription status' : 'Cancellation Scheduled'}</strong>
               <p className="mt-1">
-                Your subscription will end on {nextRenewalEndPhrase(billingStatus)}. 
-                You'll continue to have full access until then.
+                {isBillingPeriodEndPast(billingStatus)
+                  ? 'Your subscription status is being updated. This usually completes within a few minutes.'
+                  : `Your subscription will end on ${nextRenewalEndPhrase(billingStatus)}. You'll continue to have full access until then.`}
               </p>
+              {canManageSubscription && (
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={resumeSubscription}
+                    disabled={resumingSubscription}
+                    data-testid="billing-keep-subscription"
+                  >
+                    {resumingSubscription ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" aria-hidden />
+                        Keeping subscription…
+                      </>
+                    ) : (
+                      'Keep subscription'
+                    )}
+                  </Button>
+                </div>
+              )}
             </AlertDescription>
           </Alert>
         )}
@@ -1172,8 +1198,8 @@ const BillingPage = () => {
                   {displayPlans.find((p) => p.code === currentPlan)?.name || currentPlan}
                 </h2>
                 <p className="text-sm text-gray-300 mt-1">
-                  {entitlements?.max_properties} properties •{' '}
-                  {featureCountForPlanBanner(currentPlan, currentPlan, entitlements)} features enabled (your account)
+                  {planPropertyLimitForDisplay(currentPlan, billingStatus, displayPlans)} properties •{' '}
+                  {featureCountForPlanBanner(currentPlan)} plan features included
                 </p>
               </div>
               <div className="text-right">
@@ -1181,7 +1207,7 @@ const BillingPage = () => {
                   £{displayPlans.find((p) => p.code === currentPlan)?.monthlyPrice || 0}
                   <span className="text-lg font-normal text-gray-300">/mo</span>
                 </p>
-                {billingStatus?.has_subscription && !billingStatus?.cancel_at_period_end && (
+                {billingStatus?.has_subscription && !billingStatus?.cancel_at_period_end && canCancelSubscription && (
                   <button
                     onClick={() => setShowCancelModal(true)}
                     className="text-xs text-gray-400 hover:text-white mt-2 underline"
@@ -1264,7 +1290,7 @@ const BillingPage = () => {
                     <div className="flex items-center gap-2 text-sm">
                       <Check className="w-4 h-4 text-green-500" />
                       <span>
-                        <strong>{featureCountForPlanBanner(plan.code, currentPlan, entitlements)}</strong> features
+                        <strong>{featureCountForPlanBanner(plan.code)}</strong> features
                         {plan.code === currentPlan ? ' (your account)' : ' (typical tier)'}
                       </span>
                     </div>
@@ -1299,7 +1325,7 @@ const BillingPage = () => {
                     }`}
                     variant={status === 'downgrade' ? 'outline' : 'default'}
                     onClick={() => handlePlanChange(plan.code)}
-                    disabled={status === 'current' || upgrading === plan.code}
+                    disabled={status === 'current' || upgrading === plan.code || !canCheckout}
                     data-testid={`upgrade-btn-${plan.code}`}
                   >
                     {upgrading === plan.code ? (
@@ -1376,7 +1402,7 @@ const BillingPage = () => {
                   </div>
                   {displayPlans.map((plan) => {
                     const enabledCount = category.features.filter((f) =>
-                      isFeatureEnabledForBillingComparison(plan.code, f.key, currentPlan, entitlements)
+                      isFeatureEnabledForBillingComparison(plan.code, f.key)
                     ).length;
                     return (
                       <div key={plan.code} className="text-center text-sm text-gray-500">
@@ -1404,9 +1430,7 @@ const BillingPage = () => {
                         {displayPlans.map((plan) => {
                           const isEnabled = isFeatureEnabledForBillingComparison(
                             plan.code,
-                            feature.key,
-                            currentPlan,
-                            entitlements
+                            feature.key
                           );
                           return (
                             <div key={plan.code} className="flex items-center justify-center">
@@ -1576,7 +1600,8 @@ const BillingPage = () => {
         </div>
       )}
       {billingStepUp.modal}
-    </div>
+      {resumeStepUpModal}
+    </PortalPageWithLifecyclePresentation>
   );
 };
 

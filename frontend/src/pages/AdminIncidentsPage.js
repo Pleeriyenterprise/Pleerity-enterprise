@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
+import OperationalEvidencePanel from '../components/admin/OperationalEvidencePanel';
 import { AlertTriangle, RefreshCw, CheckCircle, MessageSquare } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
 
@@ -178,31 +179,41 @@ export default function AdminIncidentsPage() {
                         {pr.recommended_actions}
                       </p>
                     )}
-                    {resLink && (
-                      <p className="mt-2">
-                        <Link to={resLink} className="text-sm text-indigo-600 font-medium hover:underline">
-                          Open incident
-                        </Link>
-                        {pr.resolution_links?.observability && pr.resolution_links.observability !== resLink && (
+                    <p className="mt-2">
+                      <Link
+                        to={`/admin/ops/evidence-timeline?incident_id=${encodeURIComponent(inc.id)}`}
+                        className="text-sm text-teal-700 font-medium hover:underline"
+                      >
+                        View in Evidence Timeline
+                      </Link>
+                      {resLink && (
+                        <>
+                          {' · '}
+                          <Link to={resLink} className="text-sm text-indigo-600 font-medium hover:underline">
+                            Open incident
+                          </Link>
+                        </>
+                      )}
+                      {pr.resolution_links?.observability && pr.resolution_links.observability !== resLink && (
+                        <>
+                          {' · '}
+                          <Link to={pr.resolution_links.observability} className="text-sm text-indigo-600 hover:underline">
+                            Observability
+                          </Link>
+                        </>
+                      )}
+                      {pr.resolution_links?.automation_centre &&
+                        pr.resolution_links.automation_centre !== resLink &&
+                        pr.resolution_links.automation_centre !== pr.resolution_links?.observability && (
                           <>
                             {' · '}
-                            <Link to={pr.resolution_links.observability} className="text-sm text-indigo-600 hover:underline">
-                              Observability
+                            <Link to={pr.resolution_links.automation_centre} className="text-sm text-indigo-600 hover:underline">
+                              Automation Centre
                             </Link>
                           </>
                         )}
-                        {pr.resolution_links?.automation_centre &&
-                          pr.resolution_links.automation_centre !== resLink &&
-                          pr.resolution_links.automation_centre !== pr.resolution_links?.observability && (
-                            <>
-                              {' · '}
-                              <Link to={pr.resolution_links.automation_centre} className="text-sm text-indigo-600 hover:underline">
-                                Automation Centre
-                              </Link>
-                            </>
-                          )}
-                      </p>
-                    )}
+                    </p>
+                    <OperationalEvidencePanel incidentId={inc.id} className="mt-3" />
                     {pr.technical_details && (
                       <details className="mt-3 text-xs text-gray-600">
                         <summary className="cursor-pointer text-gray-500 font-medium">Technical details</summary>

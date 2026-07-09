@@ -1411,6 +1411,33 @@ async def create_compliance_evidence_record(
     }
     await _evidence_coll(db).insert_one(doc)
     out = {k: v for k, v in doc.items() if k != "_id"}
+    try:
+        from services.compliance_evidence_graph.producers.hooks import dispatch_p1_producer
+        from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+        await dispatch_p1_producer(
+            ProducerContext(
+                mutation_kind="cer_linkage",
+                client_id=client_id,
+                source_collection="compliance_evidence_records",
+                source_id=eid,
+                property_id=property_id,
+                requirement_id=req_id,
+                mutation_timestamp=now,
+                authoritative_payload={
+                    "evidence_mode": mode,
+                    "verification_status": vs,
+                    "linked_document_ids": out.get("linked_document_ids"),
+                    "created_via": "create_compliance_evidence_record",
+                    "requirement": requirement,
+                    "authority_component": "create_compliance_evidence_record",
+                    "actor_type": "user",
+                    "actor_id": created_by_user_id,
+                },
+            )
+        )
+    except Exception:
+        pass
     return out
 
 
@@ -1658,7 +1685,35 @@ async def upsert_document_upload_evidence_for_linked_document(
         "archived_reason": None,
     }
     await coll.insert_one(rec)
-    return {k: v for k, v in rec.items() if k != "_id"}
+    out = {k: v for k, v in rec.items() if k != "_id"}
+    try:
+        from services.compliance_evidence_graph.producers.hooks import dispatch_p1_producer
+        from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+        await dispatch_p1_producer(
+            ProducerContext(
+                mutation_kind="cer_linkage",
+                client_id=cid,
+                source_collection="compliance_evidence_records",
+                source_id=eid,
+                property_id=pid,
+                requirement_id=rid,
+                mutation_timestamp=now,
+                authoritative_payload={
+                    "evidence_mode": EVIDENCE_MODE_DOCUMENT_UPLOAD,
+                    "verification_status": verification_status,
+                    "linked_document_ids": [doc_id],
+                    "created_via": "document_upload_normalization",
+                    "requirement": requirement,
+                    "authority_component": "upsert_document_upload_evidence_for_linked_document",
+                    "actor_type": "user",
+                    "actor_id": actor_user_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+    return out
 
 
 async def safe_upsert_document_upload_evidence_for_linked_document(

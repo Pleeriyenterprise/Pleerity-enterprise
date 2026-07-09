@@ -20,9 +20,15 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({ hasFeature: mockHasFeature }),
-}));
+jest.mock('../utils/propertyCapabilityAccess', () => {
+  const actual = jest.requireActual('../utils/propertyCapabilityAccess');
+  return {
+    ...actual,
+    usePropertyWorkflowCapabilities: jest.fn(),
+  };
+});
+
+const { usePropertyWorkflowCapabilities } = require('../utils/propertyCapabilityAccess');
 
 jest.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({ user: { portal_user_id: 'user-1', role: 'ROLE_CLIENT_ADMIN' } }),
@@ -117,6 +123,9 @@ function stubPropertyDetailApis(requirements) {
 describe('PropertyDetailPage mobile compliance requirement cards', () => {
   beforeEach(() => {
     jest.restoreAllMocks();
+    usePropertyWorkflowCapabilities.mockImplementation(() =>
+      require('../testUtils/propertyWorkflowTestCapabilities').defaultPropertyWorkflowTestCaps(mockHasFeature),
+    );
     mockNavigate.mockReset();
     mockOpenGuidedEvidence.mockReset();
     mockMobileViewport();
@@ -154,7 +163,7 @@ describe('PropertyDetailPage mobile compliance requirement cards', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Compliance' }));
 
     fireEvent.click(await screen.findByTestId('property-compliance-mobile-primary-req-epc'));
-    expect(mockNavigate).toHaveBeenCalledWith('/properties/prop-1?tab=evidence&requirement_id=req-epc&open=intel');
+    expect(mockNavigate).toHaveBeenCalledWith('/documents?property_id=prop-1&requirement_id=req-epc&focus=upload');
   });
 
   it('keeps guided primary CTA working on mobile cards', async () => {

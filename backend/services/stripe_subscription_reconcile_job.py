@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Dict
+from datetime import datetime, timezone
+from typing import Any, Dict, List
 
 from database import database
+from services.billing_scheduled_cancellation_authority import stale_scheduled_cancellation_mongo_filter
 from services.billing_stripe_sync_service import sync_client_billing_from_stripe_subscription_id
 from services.subscription_lifecycle_service import sync_subscription_lifecycle
 from services.billing_reconciliation_service import clear_billing_reconciliation_needed
@@ -32,7 +34,8 @@ async def reconcile_all_stripe_subscriptions() -> Dict[str, Any]:
         lim = 40
 
     db = database.get_db()
-    cursor = (
+    now = datetime.now(timezone.utc)
+    flagged = await (
         db.client_billing.find(
             {
                 "stripe_subscription_id": {"$exists": True, "$nin": [None, ""]},
@@ -46,8 +49,27 @@ async def reconcile_all_stripe_subscriptions() -> Dict[str, Any]:
         )
         .sort([("billing_last_synced_at", 1), ("updated_at", 1)])
         .limit(lim)
+        .to_list(lim)
     )
-    rows = await cursor.to_list(lim)
+    stale = await (
+        db.client_billing.find(
+            stale_scheduled_cancellation_mongo_filter(now=now),
+            {"_id": 0, "client_id": 1, "stripe_subscription_id": 1},
+        )
+        .sort([("current_period_end", 1), ("updated_at", 1)])
+        .limit(lim)
+        .to_list(lim)
+    )
+    rows: List[Dict[str, Any]] = []
+    seen = set()
+    for row in flagged + stale:
+        cid = row.get("client_id")
+        if not cid or cid in seen:
+            continue
+        seen.add(cid)
+        rows.append(row)
+        if len(rows) >= lim:
+            break
     ok = 0
     err = 0
     for row in rows:
@@ -63,7 +85,7 @@ async def reconcile_all_stripe_subscriptions() -> Dict[str, Any]:
                 update_plan=True,
                 increment_entitlements_version=0,
             )
-            await sync_subscription_lifecycle(cid, bump_version=False)
+            await sync_subscription_lifecycle(cid, bump_version=True)
             await clear_billing_reconciliation_needed(client_id=cid, reason="scheduled_reconcile_completed")
             ok += 1
         except Exception as ex:

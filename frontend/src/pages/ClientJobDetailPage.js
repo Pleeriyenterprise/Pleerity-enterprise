@@ -16,8 +16,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { clientAPI, parseApiError, contractorEvidenceFilenameFromKey, isContractorFileEvidenceKey, openBlobApiResponse } from '../api/client';
-import { useEntitlements } from '../contexts/EntitlementsContext';
-import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
+import { OperationalCapabilityProtectedRoute } from '../utils/CapabilityProtectedRoute';
+import {
+  useOperationalExecutionCapabilities,
+} from '../utils/operationalCapabilityAccess';
 import { jobLifecycleSuccessMessage, JOB_DETAIL_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 import { operationalLabelForToken } from '../utils/presentationLanguage';
 import { resolveClientPortalPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
@@ -266,7 +268,14 @@ function SectionCard({ title, icon: Icon, children }) {
 function ClientJobDetailInner() {
   const { jobId } = useParams();
   const navigate = useNavigate();
-  const { hasFeature } = useEntitlements();
+  const {
+    canUseOpsContractors,
+    canWriteOpsContractors,
+    canUseOpsApprovals,
+    canWriteOpsApprovals,
+    canUseOpsComplianceReview,
+    canWriteOpsMaintenance,
+  } = useOperationalExecutionCapabilities();
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -349,8 +358,8 @@ function ClientJobDetailInner() {
     [job],
   );
   const heroExecution = useMemo(
-    () => (job ? resolveHeroPrimaryExecution(job, hasFeature('contractor_network')) : null),
-    [job, hasFeature],
+    () => (job ? resolveHeroPrimaryExecution(job, canUseOpsContractors) : null),
+    [job, canUseOpsContractors],
   );
   const showCancelJob = useMemo(() => (job ? canShowCancelJob(job) : false), [job]);
   const cancelJobAction = useMemo(
@@ -405,7 +414,7 @@ function ClientJobDetailInner() {
   }, [assignModalOpen, assignableLoading, showAddContractorForm, serverEligibleCountForFocus]);
 
   const loadAssignableContractors = useCallback(async () => {
-    if (!jobId || !hasFeature('contractor_network')) return;
+    if (!jobId || !canUseOpsContractors) return;
     setAssignableLoading(true);
     try {
       const r = await clientAPI.getJobAssignableContractors(jobId, { limit: 200 });
@@ -427,12 +436,12 @@ function ClientJobDetailInner() {
     } finally {
       setAssignableLoading(false);
     }
-  }, [jobId, hasFeature]);
+  }, [jobId, canUseOpsContractors]);
 
   const openAssignModal = useCallback(
     async (opts = {}) => {
       const { focusAdd = false } = opts;
-      if (!jobId || !hasFeature('contractor_network')) return;
+      if (!jobId || !canUseOpsContractors) return;
       setAssignModalOpen(true);
       setShowAddContractorForm(!!focusAdd);
       setShowExcludedContractors(false);
@@ -449,7 +458,7 @@ function ClientJobDetailInner() {
           (job?.work_order_kind || '').toUpperCase() === 'COMPLIANCE' && jj ? [jj] : [],
       }));
     },
-    [jobId, job, hasFeature, loadAssignableContractors]
+    [jobId, job, canUseOpsContractors, loadAssignableContractors]
   );
 
   const kindLabel = useMemo(() => {
@@ -860,7 +869,7 @@ function ClientJobDetailInner() {
         </div>
       </header>
 
-      {isAssignContractorEntitlementBlocked(job, hasFeature('contractor_network')) ? (
+      {isAssignContractorEntitlementBlocked(job, canUseOpsContractors) ? (
         <Alert className="mb-6 border-slate-200 bg-slate-50 text-slate-900">
           <AlertDescription className="text-sm space-y-2">
             <p className="font-semibold text-midnight-blue">Contractor assignment is included on Professional</p>
@@ -963,7 +972,7 @@ function ClientJobDetailInner() {
           </div>
         ) : null}
         <div className="pt-3 border-t border-gray-100 flex flex-wrap gap-x-4 gap-y-2 text-xs">
-          {hasFeature('invoicing') ? (
+          {canUseOpsApprovals ? (
             <Link to={resolveClientPortalPath('/operations/approvals', '/operations/approvals')} className="text-electric-teal hover:underline inline-flex items-center gap-1 font-medium">
               Review invoice
             </Link>
@@ -1015,7 +1024,7 @@ function ClientJobDetailInner() {
         ) : (
           <p className="text-sm text-amber-800">No contractor assigned yet.</p>
         )}
-        {isAssignContractorEntitlementBlocked(job, hasFeature('contractor_network')) ? (
+        {isAssignContractorEntitlementBlocked(job, canUseOpsContractors) ? (
           <Button
             type="button"
             size="sm"
@@ -1027,17 +1036,21 @@ function ClientJobDetailInner() {
             Assign contractor
             <Lock className="w-3.5 h-3.5 ml-2 shrink-0" aria-hidden />
           </Button>
-        ) : canExecuteAssignContractor(job, hasFeature('contractor_network')) ? (
+        ) : canExecuteAssignContractor(job, canWriteOpsContractors) ? (
           <Button
             type="button"
             size="sm"
             className="mt-2 bg-midnight-blue hover:bg-midnight-blue/90"
             data-testid="open-assign-contractor-modal"
-            onClick={() =>
-              handleAssignContractorClick(job, hasFeature('contractor_network'), openAssignModal, {
+            onClick={() => {
+              if (!canUseOpsContractors) {
+                openContractorNetworkLocked();
+                return;
+              }
+              handleAssignContractorClick(job, canWriteOpsContractors, openAssignModal, {
                 onLocked: openContractorNetworkLocked,
-              })
-            }
+              });
+            }}
           >
             Assign contractor
           </Button>
@@ -1327,7 +1340,7 @@ function ClientJobDetailInner() {
             </li>
           ))}
         </ul>
-        {isCompliance && hasFeature('compliance_engine') && na.some((a) => a.id === 'link_document') ? (
+        {isCompliance && canUseOpsComplianceReview && na.some((a) => a.id === 'link_document') ? (
           <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100">
             <input
               className="flex-1 border rounded-lg px-3 py-2 text-sm"
@@ -1358,7 +1371,7 @@ function ClientJobDetailInner() {
         </Link>
       </SectionCard>
 
-      {hasFeature('invoicing') ? (
+      {canUseOpsApprovals ? (
         <SectionCard title="Billing / approvals" icon={Receipt}>
           {job.pricing?.pricing_workflow ? (
             <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-xs text-gray-800 space-y-1 mb-3">
@@ -1728,10 +1741,11 @@ function ClientJobDetailInner() {
               className="w-full sm:w-auto"
               onClick={() => {
                 setBookingGuardOpen(false);
-                if (!hasFeature('contractor_network')) {
+                if (!canUseOpsContractors) {
                   openContractorNetworkLocked();
                   return;
                 }
+                if (!canWriteOpsContractors) return;
                 openAssignModal();
               }}
             >
@@ -1742,10 +1756,11 @@ function ClientJobDetailInner() {
               className="w-full sm:w-auto bg-midnight-blue hover:bg-midnight-blue/90"
               onClick={() => {
                 setBookingGuardOpen(false);
-                if (!hasFeature('contractor_network')) {
+                if (!canUseOpsContractors) {
                   openContractorNetworkLocked();
                   return;
                 }
+                if (!canWriteOpsContractors) return;
                 openAssignModal({ focusAdd: true });
               }}
             >
@@ -2240,8 +2255,8 @@ function ClientJobDetailInner() {
 
 export default function ClientJobDetailPage() {
   return (
-    <EntitlementProtectedRoute requiredFeature="maintenance_workflows">
+    <OperationalCapabilityProtectedRoute requiredFeature="maintenance_workflows">
       <ClientJobDetailInner />
-    </EntitlementProtectedRoute>
+    </OperationalCapabilityProtectedRoute>
   );
 }

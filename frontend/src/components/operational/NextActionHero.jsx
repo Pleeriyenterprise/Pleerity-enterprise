@@ -9,6 +9,7 @@ import {
   progressionLabel,
   truthWarningsFromCognition,
 } from '../../utils/operationalCognition';
+import { coercePortalDisplayText } from '../../utils/capabilityRuntime';
 
 /**
  * Server-driven next-action hero — ONE dominant action, ONE blocker, ONE progression/escalation lane.
@@ -30,9 +31,11 @@ export function NextActionHero({
   const escalation = cognition.escalation_state || {};
   const degraded = cognition.degraded_state || {};
   const stale = cognition.stale_state || {};
-  const progression = progressionLabel(cognition);
+  const progression = coercePortalDisplayText(progressionLabel(cognition), '');
   const truthWarnings = truthWarningsFromCognition(cognition);
   const warning = truthWarnings[0] || (cognition.warnings || [])[0];
+  const primaryLabel = coercePortalDisplayText(primary.label, 'Continue');
+  const primaryHint = coercePortalDisplayText(primary.hint, '');
 
   return (
     <Card
@@ -43,10 +46,10 @@ export function NextActionHero({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1 min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-teal-800">Next action</p>
-            <p className="text-lg font-semibold text-midnight-blue">{primary.label}</p>
-            {primary.hint ? <p className="text-sm text-gray-600">{primary.hint}</p> : null}
+            <p className="text-lg font-semibold text-midnight-blue">{primaryLabel}</p>
+            {primaryHint ? <p className="text-sm text-gray-600">{primaryHint}</p> : null}
             {cognition.user_safe_summary ? (
-              <p className="text-xs text-gray-500">{cognition.user_safe_summary}</p>
+              <p className="text-xs text-gray-500">{coercePortalDisplayText(cognition.user_safe_summary)}</p>
             ) : null}
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
@@ -80,8 +83,10 @@ export function NextActionHero({
             <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
             <div>
               <p className="font-medium">Blocker</p>
-              <p>{blocker.message}</p>
-              {blocker.truth_note ? <p className="text-xs mt-1 text-amber-800">{blocker.truth_note}</p> : null}
+              <p>{coercePortalDisplayText(blocker.message)}</p>
+              {blocker.truth_note ? (
+                <p className="text-xs mt-1 text-amber-800">{coercePortalDisplayText(blocker.truth_note)}</p>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -89,7 +94,7 @@ export function NextActionHero({
         {warning && !blocker ? (
           <div className="flex gap-2 text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-md p-3">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
-            <p>{warning.message}</p>
+            <p>{coercePortalDisplayText(warning.message)}</p>
           </div>
         ) : null}
 
@@ -107,7 +112,7 @@ export function NextActionHero({
               disabled={primaryBusy}
               data-testid="next-action-hero-primary-locked"
             >
-              {primaryBusy ? 'Working…' : primary.label}
+              {primaryBusy ? 'Working…' : primaryLabel}
               <Lock className="w-4 h-4 ml-2 shrink-0" aria-hidden />
             </Button>
           ) : (
@@ -118,7 +123,7 @@ export function NextActionHero({
               disabled={primaryBusy || primaryDisabled}
               data-testid="next-action-hero-primary"
             >
-              {primaryBusy ? 'Working…' : primary.label}
+              {primaryBusy ? 'Working…' : primaryLabel}
               <ArrowRight className="w-4 h-4 ml-2" aria-hidden />
             </Button>
           )

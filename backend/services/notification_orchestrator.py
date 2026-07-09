@@ -108,6 +108,84 @@ class NotificationResult:
     details: Dict[str, Any] = field(default_factory=dict)
 
 
+async def _operational_evidence_notification_queued(
+    message_id: str,
+    client_id: Optional[str],
+    channel: str,
+    template_key: str,
+) -> None:
+    try:
+        from services.operational_evidence.producers import emit_notification_queued
+
+        await emit_notification_queued(
+            message_id=message_id,
+            client_id=client_id,
+            channel=channel,
+            template_key=template_key,
+        )
+    except Exception:
+        pass
+    if message_id and client_id:
+        try:
+            from services.compliance_evidence_graph.producers.ceg_dispatch import try_dispatch_p2
+
+            await try_dispatch_p2(
+                mutation_kind="notification_queued",
+                client_id=str(client_id),
+                source_collection="message_logs",
+                source_id=str(message_id),
+                correlation_id=f"NOTIF_Q:{message_id}",
+                authoritative_payload={"template_key": template_key, "channel": channel},
+            )
+        except Exception:
+            pass
+
+
+async def _operational_evidence_notification_result(
+    message_id: Optional[str],
+    client_id: Optional[str],
+    channel: str,
+    template_key: str,
+    result: NotificationResult,
+) -> None:
+    if not message_id or result.outcome in ("duplicate_ignored", "blocked"):
+        return
+    try:
+        from services.operational_evidence.producers import emit_notification_outcome
+
+        await emit_notification_outcome(
+            message_id=message_id,
+            client_id=client_id,
+            channel=channel,
+            template_key=template_key,
+            outcome=result.outcome,
+            error_message=result.error_message,
+            transient=bool(result.details.get("transient")),
+            attempt_count=result.details.get("attempt_count"),
+        )
+    except Exception:
+        pass
+    if result.outcome == "sent" and message_id and client_id:
+        try:
+            from services.compliance_evidence_graph.producers.ceg_dispatch import try_dispatch_p2
+
+            await try_dispatch_p2(
+                mutation_kind="notification_sent",
+                client_id=str(client_id),
+                source_collection="message_logs",
+                source_id=str(message_id),
+                correlation_id=f"NOTIF:{message_id}",
+                authoritative_payload={
+                    "template_key": template_key,
+                    "channel": channel,
+                    "message_id": message_id,
+                    "authority_service": "notification_orchestrator",
+                },
+            )
+        except Exception:
+            pass
+
+
 def _is_transient_error(exc: Exception) -> bool:
     """True if error is retryable (timeout, 5xx)."""
     if isinstance(exc, TimeoutError):
@@ -289,6 +367,7 @@ class NotificationOrchestrator:
                     existing = await db.message_logs.find_one({"idempotency_key": idempotency_key}, {"_id": 0, "message_id": 1})
                     return NotificationResult(outcome="duplicate_ignored", message_id=existing.get("message_id") if existing else None, details={"idempotency_key": idempotency_key})
                 raise
+            await _operational_evidence_notification_queued(message_id, None, channel, template_key)
             throttle_result = await self._check_global_throttle(db, channel, message_id, None, template_key)
             if throttle_result:
                 return throttle_result
@@ -296,6 +375,7 @@ class NotificationOrchestrator:
                 result = await self._send_email(template_key, template, client, context, message_id, db, datetime.now(timezone.utc), str(recipient).strip())
             else:
                 result = await self._send_sms(template_key, template, client, context, message_id, db, datetime.now(timezone.utc), str(recipient).strip())
+            await _operational_evidence_notification_result(message_id, None, channel, template_key, result)
             return result
 
         # Load client
@@ -465,6 +545,7 @@ class NotificationOrchestrator:
                 )
             raise
 
+        await _operational_evidence_notification_queued(message_id, client_id, channel, template_key)
         throttle_result = await self._check_global_throttle(db, channel, message_id, client_id, template_key)
         if throttle_result:
             return throttle_result
@@ -476,6 +557,7 @@ class NotificationOrchestrator:
             result = await self._send_sms(template_key, template, client, context, message_id, db, now, recipient)
 
         if result.outcome == "sent":
+            await _operational_evidence_notification_result(message_id, client_id, channel, template_key, result)
             return result
         if result.outcome == "failed" and result.details.get("transient") and result.details.get("attempt_count") is not None:
             # Enqueue retry
@@ -504,6 +586,7 @@ class NotificationOrchestrator:
                     "error": result.error_message,
                 },
             )
+        await _operational_evidence_notification_result(message_id, client_id, channel, template_key, result)
         return result
 
     async def _apply_gating(
@@ -541,48 +624,118 @@ class NotificationOrchestrator:
                     details={"error_code": "ACCOUNT_NOT_READY", "message": "Provisioning not completed."},
                 )
 
-        if template.get("requires_active_subscription"):
-            if (client.get("subscription_status") or "").upper() != "ACTIVE":
-                await self._write_blocked_log(
-                    db, client_id, template_key, channel, "BLOCKED_SUBSCRIPTION_INACTIVE", None, None, context, None,
-                )
-                await create_audit_log(
-                    action=AuditAction.NOTIFICATION_BLOCKED_SUBSCRIPTION_INACTIVE,
-                    client_id=client_id,
-                    metadata={"template_key": template_key, "subscription_status": client.get("subscription_status")},
-                )
-                return NotificationResult(outcome="blocked", block_reason="BLOCKED_SUBSCRIPTION_INACTIVE")
+        if template.get("requires_active_subscription") or template.get("requires_entitlement_enabled"):
+            from services.account_customer_communication_authority import (
+                enrich_context_with_lifecycle_placeholders,
+                evaluate_customer_communication,
+            )
+            from services.account_lifecycle_runtime_contract import build_runtime_contract
 
-        if template.get("requires_entitlement_enabled"):
-            if (client.get("entitlement_status") or "").upper() != "ENABLED":
+            billing_doc = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+            contract = build_runtime_contract(
+                client={**(client or {}), "client_id": client_id},
+                billing=billing_doc
+                or {
+                    "client_id": client_id,
+                    "subscription_status": (client or {}).get("subscription_status", "ACTIVE"),
+                    "billing_lifecycle_state": (client or {}).get("billing_lifecycle_state", "active"),
+                    "canonical_entitlement_state": (client or {}).get("entitlement_status", "ENABLED"),
+                },
+            )
+            comm_decision = await evaluate_customer_communication(
+                db,
+                client_id,
+                surface="notification",
+                channel=channel_key if (channel_key := str(channel or "").lower()) else "email",
+                template_key=template_key,
+                template=template,
+                event_type=event_type,
+                contract=contract,
+            )
+            if not comm_decision.allowed:
+                block_reason = "BLOCKED_COMMUNICATION_AUTHORITY"
                 await self._write_blocked_log(
-                    db, client_id, template_key, channel, "BLOCKED_SUBSCRIPTION_INACTIVE", None, None, context, None,
+                    db,
+                    client_id,
+                    template_key,
+                    channel,
+                    block_reason,
+                    comm_decision.suppression_reason or comm_decision.reason,
+                    None,
+                    context,
+                    event_type,
                 )
                 await create_audit_log(
                     action=AuditAction.NOTIFICATION_BLOCKED_SUBSCRIPTION_INACTIVE,
                     client_id=client_id,
-                    metadata={"template_key": template_key},
+                    metadata={
+                        "template_key": template_key,
+                        "communication_decision": comm_decision.to_dict(),
+                    },
                 )
-                return NotificationResult(outcome="blocked", block_reason="BLOCKED_SUBSCRIPTION_INACTIVE")
+                return NotificationResult(
+                    outcome="blocked",
+                    block_reason=block_reason,
+                    details={
+                        "error_code": "COMMUNICATION_SUPPRESSED",
+                        "message": comm_decision.suppression_reason or comm_decision.reason,
+                        "lifecycle_state": comm_decision.lifecycle_state,
+                        "suppression_reason": comm_decision.suppression_reason,
+                    },
+                )
+            enriched = enrich_context_with_lifecycle_placeholders(context, comm_decision)
+            context.clear()
+            context.update(enriched)
 
         plan_feature = template.get("plan_required_feature_key")
         if plan_feature:
-            from services.plan_registry import plan_registry
-            allowed, msg, details = await plan_registry.enforce_feature(client_id, plan_feature)
-            if not allowed:
+            from services.account_capability_enforcement import CapabilityEnforcementService
+            from services.account_lifecycle_runtime_contract import build_runtime_contract
+            from services.capability_compatibility import evaluate_feature_via_capability
+
+            billing_doc = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+            contract = build_runtime_contract(
+                client={**(client or {}), "client_id": client_id},
+                billing=billing_doc
+                or {
+                    "client_id": client_id,
+                    "subscription_status": (client or {}).get("subscription_status", "ACTIVE"),
+                    "billing_lifecycle_state": (client or {}).get("billing_lifecycle_state", "active"),
+                    "canonical_entitlement_state": (client or {}).get("entitlement_status", "ENABLED"),
+                },
+            )
+            enforcement = CapabilityEnforcementService(db)
+            cap_result = await evaluate_feature_via_capability(
+                enforcement,
+                client_id,
+                plan_feature,
+                "read",
+                contract=contract,
+            )
+            if not cap_result.allowed:
+                msg = cap_result.reason or f"Feature '{plan_feature}' not available"
                 await self._write_blocked_log(
                     db, client_id, template_key, channel, "BLOCKED_PLAN_GATE", msg, None, context, None,
                 )
                 await create_audit_log(
                     action=AuditAction.PLAN_GATE_DENIED,
                     client_id=client_id,
-                    metadata={"template_key": template_key, "feature_key": plan_feature, "reason": msg, **(details or {})},
+                    metadata={
+                        "template_key": template_key,
+                        "feature_key": plan_feature,
+                        "capability_id": cap_result.capability_id,
+                        "reason": msg,
+                        "lifecycle_state": cap_result.lifecycle_state,
+                    },
                 )
                 return NotificationResult(
                     outcome="blocked",
                     block_reason="BLOCKED_PLAN_GATE",
                     status_code=403,
-                    details={"error_code": "PLAN_GATE_DENIED", "message": msg or "Feature not available on plan"},
+                    details={
+                        "error_code": "PLAN_GATE_DENIED",
+                        "message": msg or "Feature not available on plan",
+                    },
                 )
         # Quiet-hours gate for non-critical notifications.
         prefs = client.get("notification_preferences") or {}
@@ -1185,6 +1338,7 @@ class NotificationOrchestrator:
         await db.notification_retry_queue.delete_many({"message_id": message_id})
 
         if result.outcome == "sent":
+            await _operational_evidence_notification_result(message_id, client_id, channel, template_key, result)
             return result
         if result.outcome == "failed":
             new_attempt = attempt + 1
@@ -1215,6 +1369,7 @@ class NotificationOrchestrator:
                     client_id=client_id,
                     metadata={"message_id": message_id, "template_key": template_key, "channel": channel},
                 )
+        await _operational_evidence_notification_result(message_id, client_id, channel, template_key, result)
         return result
 
 

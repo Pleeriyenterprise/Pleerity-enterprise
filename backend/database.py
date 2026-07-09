@@ -10,6 +10,10 @@ load_dotenv(ROOT_DIR / '.env')
 
 logger = logging.getLogger(__name__)
 
+# Compound unique idempotency indexes: sparse does not exclude explicit null values when
+# client_id is always present — index only rows with a string idempotency_key.
+_IDEM_COMPOUND_PARTIAL = {"idempotency_key": {"$type": "string"}}
+
 class Database:
     client: AsyncIOMotorClient = None
     db = None
@@ -41,6 +45,34 @@ class Database:
     
     def get_db(self):
         return self.db
+
+    async def _ensure_compound_idempotency_index(self, collection, *, label: str) -> None:
+        """Unique (client_id, idempotency_key) only when idempotency_key is a non-null string."""
+        name = "client_id_1_idempotency_key_1"
+        keys = [("client_id", 1), ("idempotency_key", 1)]
+
+        async def _create() -> None:
+            await collection.create_index(
+                keys,
+                unique=True,
+                name=name,
+                partialFilterExpression=_IDEM_COMPOUND_PARTIAL,
+            )
+
+        try:
+            await _create()
+        except Exception as e:
+            err = str(e).lower()
+            if "indexoptionsconflict" in err or "indexkeyspecsconflict" in err:
+                try:
+                    await collection.drop_index(name)
+                    await _create()
+                    logger.info("%s idempotency index rebuilt with partial filter", label)
+                    return
+                except Exception as rebuild_err:
+                    logger.warning("%s idempotency index rebuild failed: %s", label, rebuild_err)
+                    return
+            logger.warning("%s idempotency index: %s", label, e)
     
     async def _create_indexes(self):
         """Create MongoDB indexes for efficient queries."""
@@ -412,7 +444,135 @@ class Database:
             await self.db.job_runs.create_index([("job_name", 1), ("started_at", -1)])
             await self.db.job_runs.create_index([("status", 1), ("created_at", -1)])
             await self.db.job_runs.create_index("created_at")
-            # Incidents - system-wide P0/P1/P2 with ack/resolve workflow
+            await self.db.job_runs.create_index([("correlation_id", 1), ("created_at", -1)])
+            # Operational Evidence Platform — append-only correlation index (not authoritative)
+            try:
+                await self.db.operational_evidence_events.create_index([("occurred_at", -1), ("event_id", -1)])
+                await self.db.operational_evidence_events.create_index("event_id", unique=True)
+                await self.db.operational_evidence_events.create_index([("correlation_id", 1), ("occurred_at", 1)])
+                await self.db.operational_evidence_events.create_index([("root_execution_id", 1), ("execution.execution_sequence", 1)])
+                await self.db.operational_evidence_events.create_index([("execution_id", 1), ("occurred_at", 1)])
+                await self.db.operational_evidence_events.create_index([("category", 1), ("occurred_at", -1)])
+                await self.db.operational_evidence_events.create_index([("event_type", 1), ("occurred_at", -1)])
+                await self.db.operational_evidence_events.create_index([("client_id", 1), ("occurred_at", -1)])
+                await self.db.operational_evidence_events.create_index([("property_id", 1), ("occurred_at", -1)])
+                await self.db.operational_evidence_events.create_index([("requirement_id", 1), ("occurred_at", -1)])
+                await self.db.operational_evidence_events.create_index([("job_run_id", 1), ("occurred_at", -1)])
+                await self.db.operational_evidence_events.create_index([("incident_id", 1), ("occurred_at", -1)])
+                await self.db.operational_evidence_events.create_index([("notification_id", 1), ("occurred_at", -1)])
+                await self.db.operational_evidence_events.create_index([("severity", 1), ("occurred_at", -1)])
+                await self.db.operational_evidence_events.create_index([("status", 1), ("occurred_at", -1)])
+                await self.db.operational_evidence_events.create_index([("environment", 1), ("occurred_at", -1)])
+                await self.db.operational_evidence_events.create_index([("customer_impact.classification", 1), ("occurred_at", -1)])
+                await self.db.operational_evidence_events.create_index([("relationships.parent_event_id", 1)])
+                await self.db.operational_evidence_events.create_index([("relationships.caused_by_event_id", 1)])
+                await self.db.operational_evidence_executions.create_index("root_execution_id", unique=True)
+                await self.db.operational_evidence_executions.create_index([("correlation_id", 1), ("started_at", -1)])
+                await self.db.operational_evidence_events.create_index([("retention.tier", 1), ("occurred_at", -1)])
+                await self.db.operational_evidence_annotations.create_index([("event_id", 1), ("created_at", -1)])
+                await self.db.operational_evidence_annotations.create_index([("root_execution_id", 1), ("created_at", -1)])
+                await self.db.operational_evidence_annotations.create_index([("correlation_id", 1), ("created_at", -1)])
+            except Exception as e:
+                logger.warning("operational_evidence indexes: %s", e)
+            # Compliance Evidence Graph — decision foundation (Phase 1)
+            try:
+                await self.db.compliance_decisions.create_index("decision_id", unique=True)
+                await self.db.compliance_decisions.create_index("dedupe_key", unique=True)
+                await self.db.compliance_decisions.create_index([("client_id", 1), ("decision_timestamp", -1)])
+                await self.db.compliance_decisions.create_index([("property_id", 1), ("decision_timestamp", -1)])
+                await self.db.compliance_decisions.create_index([("requirement_id", 1), ("decision_timestamp", -1)])
+                await self.db.compliance_decisions.create_index([("decision_type", 1), ("decision_timestamp", -1)])
+                await self.db.compliance_decisions.create_index("previous_decision_id")
+                await self.db.compliance_decisions.create_index("operational_correlation_id")
+                await self.db.compliance_decisions.create_index("snapshot_id", unique=True)
+                await self.db.compliance_decision_snapshots.create_index("snapshot_id", unique=True)
+                await self.db.compliance_decision_snapshots.create_index("decision_id", unique=True)
+                await self.db.compliance_decision_snapshots.create_index([("client_id", 1), ("snapshot_timestamp", -1)])
+                await self.db.compliance_decision_snapshots.create_index([("property_id", 1), ("snapshot_timestamp", -1)])
+                await self.db.compliance_decision_snapshots.create_index("snapshot_hash")
+                await self.db.compliance_evidence_nodes.create_index("node_id", unique=True)
+                await self.db.compliance_evidence_nodes.create_index("dedupe_key", unique=True)
+                await self.db.compliance_evidence_nodes.create_index([("client_id", 1), ("occurred_at", -1)])
+                await self.db.compliance_evidence_nodes.create_index([("property_id", 1), ("occurred_at", -1)])
+                await self.db.compliance_evidence_nodes.create_index([("requirement_id", 1), ("occurred_at", -1)])
+                await self.db.compliance_evidence_nodes.create_index([("decision_id", 1), ("occurred_at", 1)])
+                await self.db.compliance_evidence_nodes.create_index([("node_type", 1), ("occurred_at", -1)])
+                await self.db.compliance_evidence_nodes.create_index([("correlation_id", 1), ("occurred_at", 1)])
+                await self.db.compliance_evidence_nodes.create_index(
+                    [("source.collection", 1), ("source.id", 1), ("node_type", 1)]
+                )
+                await self.db.compliance_evidence_edges.create_index("edge_id", unique=True)
+                await self.db.compliance_evidence_edges.create_index("dedupe_key", unique=True)
+                await self.db.compliance_evidence_edges.create_index([("from_node_id", 1), ("edge_type", 1)])
+                await self.db.compliance_evidence_edges.create_index([("to_node_id", 1), ("edge_type", 1)])
+                await self.db.compliance_evidence_edges.create_index(
+                    [("provenance.decision_id", 1), ("recorded_at", -1)]
+                )
+                await self.db.compliance_evidence_edges.create_index(
+                    [("provenance.correlation_id", 1), ("recorded_at", 1)]
+                )
+                await self.db.compliance_evidence_edges.create_index(
+                    [("provenance.is_active", 1), ("edge_type", 1)]
+                )
+            except Exception as e:
+                logger.warning("compliance_evidence_graph indexes: %s", e)
+            # Compliance AI narrations — intelligence audit trail (Phase 5)
+            try:
+                await self.db.compliance_ai_narrations.create_index("narration_id", unique=True)
+                await self.db.compliance_ai_narrations.create_index([("client_id", 1), ("created_at", -1)])
+                await self.db.compliance_ai_narrations.create_index("graph_service_response_hash")
+                await self.db.compliance_ai_narrations.create_index([("decision_id", 1), ("created_at", -1)])
+            except Exception as e:
+                logger.warning("compliance_ai_narrations indexes: %s", e)
+            try:
+                await self.db.compliance_intelligence_artefacts.create_index("artefact_id", unique=True)
+                await self.db.compliance_intelligence_artefacts.create_index(
+                    [("client_id", 1), ("artefact_type", 1), ("lifecycle_state", 1)]
+                )
+                await self.db.compliance_intelligence_artefacts.create_index(
+                    [("client_id", 1), ("generated_at", -1)]
+                )
+                await self.db.compliance_intelligence_artefacts.create_index("inputs_hash")
+                await self.db.compliance_intelligence_artefacts.create_index("dedupe_key", sparse=True)
+            except Exception as e:
+                logger.warning("compliance_intelligence_artefacts indexes: %s", e)
+            try:
+                await self.db.compliance_intelligence_transitions.create_index("transition_id", unique=True)
+                await self.db.compliance_intelligence_transitions.create_index(
+                    [("artefact_id", 1), ("transitioned_at", -1)]
+                )
+                await self.db.compliance_intelligence_transitions.create_index(
+                    [("client_id", 1), ("transitioned_at", -1)]
+                )
+            except Exception as e:
+                logger.warning("compliance_intelligence_transitions indexes: %s", e)
+            try:
+                await self.db.compliance_intelligence_provenance.create_index("provenance_id", unique=True)
+                await self.db.compliance_intelligence_provenance.create_index("artefact_id", unique=True)
+                await self.db.compliance_intelligence_provenance.create_index(
+                    [("client_id", 1), ("generated_at", -1)]
+                )
+                await self.db.compliance_intelligence_provenance.create_index("inputs_hash")
+                await self.db.compliance_intelligence_provenance.create_index("generation_decision_id", sparse=True)
+            except Exception as e:
+                logger.warning("compliance_intelligence_provenance indexes: %s", e)
+            try:
+                await self.db.compliance_intelligence_strategy_registry.create_index("strategy_id", unique=True)
+                await self.db.compliance_intelligence_strategy_registry.create_index(
+                    [("strategy_family", 1), ("semantic_version", -1)]
+                )
+            except Exception as e:
+                logger.warning("compliance_intelligence_strategy_registry indexes: %s", e)
+            try:
+                await self.db.compliance_intelligence_weight_registry.create_index("weight_set_id", unique=True)
+            except Exception as e:
+                logger.warning("compliance_intelligence_weight_registry indexes: %s", e)
+            try:
+                await self.db.compliance_intelligence_constraint_registry.create_index(
+                    "constraint_set_id", unique=True
+                )
+            except Exception as e:
+                logger.warning("compliance_intelligence_constraint_registry indexes: %s", e)
             await self.db.incidents.create_index([("status", 1), ("created_at", -1)])
             await self.db.incidents.create_index([("severity", 1), ("status", 1)])
             await self.db.incidents.create_index("created_at")
@@ -621,18 +781,20 @@ class Database:
             await self.db.rent_reminder_events.create_index([("client_id", 1), ("ledger_id", 1)])
             await self.db.rent_schedules.create_index("schedule_id", unique=True)
             await self.db.rent_schedules.create_index([("client_id", 1), ("property_id", 1), ("is_active", 1)])
-            await self.db.rent_schedules.create_index(
-                [("client_id", 1), ("idempotency_key", 1)], unique=True, sparse=True
-            )
+            try:
+                await self._ensure_compound_idempotency_index(self.db.rent_schedules, label="rent_schedules")
+            except Exception as e:
+                logger.warning("rent_schedules idempotency index: %s", e)
             await self.db.rent_schedules.create_index(
                 [("client_id", 1), ("property_id", 1), ("tenancy_id", 1), ("rent_type", 1), ("is_active", 1)]
             )
             await self.db.rent_ledger_periods.create_index(
                 [("client_id", 1), ("schedule_id", 1), ("period_key", 1)], unique=True, sparse=True
             )
-            await self.db.rent_payments.create_index(
-                [("client_id", 1), ("idempotency_key", 1)], unique=True, sparse=True
-            )
+            try:
+                await self._ensure_compound_idempotency_index(self.db.rent_payments, label="rent_payments")
+            except Exception as e:
+                logger.warning("rent_payments idempotency index: %s", e)
             await self.db.rent_payments.create_index([("client_id", 1), ("tenancy_id", 1), ("payment_date", -1)], sparse=True)
             await self.db.property_tenancies.create_index("tenancy_id", unique=True)
             await self.db.property_tenancies.create_index(
@@ -860,6 +1022,26 @@ class Database:
                     pass
                 try:
                     await self.db.subscription_operational_events.create_index("digest_date", sparse=True)
+                except Exception:
+                    pass
+            # Account lifecycle platform events (ILP-9 authoritative catalogue)
+            if hasattr(self.db, "account_lifecycle_events"):
+                try:
+                    await self.db.account_lifecycle_events.create_index(
+                        "idempotency_key", unique=True, sparse=True
+                    )
+                except Exception:
+                    pass
+                try:
+                    await self.db.account_lifecycle_events.create_index(
+                        [("client_id", 1), ("occurred_at", -1)]
+                    )
+                except Exception:
+                    pass
+                try:
+                    await self.db.account_lifecycle_events.create_index(
+                        [("event_type", 1), ("occurred_at", -1)]
+                    )
                 except Exception:
                     pass
             # MRR snapshots for NRR (Executive Overview)

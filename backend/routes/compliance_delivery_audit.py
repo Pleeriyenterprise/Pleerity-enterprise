@@ -12,11 +12,11 @@ from pydantic import BaseModel, Field
 
 from database import database
 from middleware import admin_route_guard, client_route_guard
+from middleware.capability_gating import assert_client_capability
 from models import AuditAction
 from utils.audit import create_audit_log
 from utils.request_ip import get_client_ip
 
-from services.plan_registry import plan_registry
 from services import tenant_delivery_proof_service as td_proof
 from services import compliance_audit_evidence_pack_service as audit_pack
 
@@ -76,28 +76,8 @@ async def post_tenant_compliance_delivery(request: Request, body: TenantDelivery
     if not client_id:
         raise HTTPException(status_code=403, detail="Client context required")
 
-    allowed, msg, details = await plan_registry.enforce_feature(client_id, "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error_code": (details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                "message": msg,
-                "feature": "tenant_portal",
-                **(details or {}),
-            },
-        )
-    allowed_pdf, msg_pdf, det_pdf = await plan_registry.enforce_feature(client_id, "reports_pdf")
-    if not allowed_pdf:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error_code": (det_pdf or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                "message": msg_pdf,
-                "feature": "reports_pdf",
-                **(det_pdf or {}),
-            },
-        )
+    await assert_client_capability(user, "CAP_TENANT_MANAGE", "write")
+    await assert_client_capability(user, "CAP_REPORT_GENERATE_PDF", "write")
 
     db = database.get_db()
     tenant_row = await db.portal_users.find_one(
@@ -145,6 +125,7 @@ async def get_client_tenant_deliveries(request: Request, property_id: Optional[s
     client_id = user.get("client_id")
     if not client_id:
         raise HTTPException(status_code=403, detail="Client context required")
+    await assert_client_capability(user, "CAP_TENANT_MANAGE", "read")
     rows = await td_proof.list_tenant_delivery_proofs_for_scope(
         client_id=client_id,
         property_id=(property_id.strip() if property_id else None),
@@ -163,17 +144,7 @@ async def post_generate_audit_pack(request: Request, body: AuditPackGenerateBody
     if not client_id:
         raise HTTPException(status_code=403, detail="Client context required")
 
-    allowed, msg, details = await plan_registry.enforce_feature(client_id, "reports_pdf")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error_code": (details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                "message": msg,
-                "feature": "reports_pdf",
-                **(details or {}),
-            },
-        )
+    await assert_client_capability(user, "CAP_REPORT_AUDIT_PACK", "write")
 
     try:
         summary = await audit_pack.build_compliance_audit_pack(
@@ -198,9 +169,7 @@ async def get_download_audit_pack(request: Request, pack_id: str):
     if not client_id:
         raise HTTPException(status_code=403, detail="Client context required")
 
-    allowed, msg, details = await plan_registry.enforce_feature(client_id, "reports_pdf")
-    if not allowed:
-        raise HTTPException(status_code=403, detail={"message": msg, **(details or {})})
+    await assert_client_capability(user, "CAP_REPORT_AUDIT_PACK", "read")
 
     rec = await audit_pack.get_audit_pack_record(client_id=client_id, pack_id=pack_id)
     if not rec or not rec.get("gridfs_id"):

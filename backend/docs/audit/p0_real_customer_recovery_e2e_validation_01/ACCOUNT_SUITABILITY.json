@@ -1,0 +1,28 @@
+{
+  "generated_at": "2026-07-08T17:10:00Z",
+  "accounts_evaluated": [
+    {
+      "email": "isabella@yopmail.com",
+      "login": "ok",
+      "lifecycle_state": "ACTIVE",
+      "portal_mode": "FULL_ACCESS",
+      "runtime_version": 1643383162,
+      "suitable_for_suspension_recovery_e2e": false,
+      "reason": "Already ACTIVE / FULL_ACCESS — not a recovery-state account"
+    },
+    {
+      "email": "lere@yopmail.com",
+      "login": "ok",
+      "lifecycle_state": "SUSPENDED",
+      "portal_mode": "SUSPENDED",
+      "runtime_version": 1727723729,
+      "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+      "current_plan_code": "PLAN_2_PORTFOLIO",
+      "billing_caps": "ALL ALLOW (CAP_BILLING_CHECKOUT, CAP_SUB_MANAGE, etc.)",
+      "suitable_for_suspension_recovery_e2e": true,
+      "reason": "Org SUSPENDED with billing recovery caps; governed staging recovery path"
+    }
+  ],
+  "selected_recovery_account": "lere@yopmail.com",
+  "note": "Do not use isabella@yopmail.com for suspension recovery — account is active."
+}

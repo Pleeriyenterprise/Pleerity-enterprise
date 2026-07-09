@@ -9,7 +9,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Loader2, PoundSterling, AlertTriangle } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
-import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
+import { AccountCapabilityProtectedRoute } from '../utils/CapabilityProtectedRoute';
 import { PortalFilterStack, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { RentSummaryCards } from '../components/rent/RentSummaryCards';
 import { RentAttentionList } from '../components/rent/RentAttentionList';
@@ -425,8 +425,8 @@ function ClientRentOperationsPageInner() {
 
 export default function ClientRentOperationsPage() {
   return (
-    <EntitlementProtectedRoute requiredFeature="rent_operations">
+    <AccountCapabilityProtectedRoute requiredFeature="rent_operations">
       <ClientRentOperationsPageInner />
-    </EntitlementProtectedRoute>
+    </AccountCapabilityProtectedRoute>
   );
 }

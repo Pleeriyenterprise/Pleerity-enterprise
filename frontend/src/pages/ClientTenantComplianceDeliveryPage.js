@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import { useLifecycleRuntime } from '../contexts/LifecycleRuntimeContext';
 import { UpgradeRequired } from '../components/UpgradePrompt';
+import { useTenantCapabilities } from '../utils/tenantCapabilityAccess';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Label } from '../components/ui/label';
@@ -35,10 +36,8 @@ function statusBadge(ui) {
  * Governed audit evidence ZIP generation lives under Reports → /reports/audit-pack.
  */
 export default function ClientTenantComplianceDeliveryPage() {
-  const { hasFeature, entitlementsLoadFailed, loading: entitlementsLoading } = useEntitlements();
-  const navHasFeature = (k) => entitlementsLoadFailed || hasFeature(k);
-  const hasTenantPortal = navHasFeature('tenant_portal');
-  const canSendPack = hasTenantPortal && navHasFeature('reports_pdf');
+  const { loading: runtimeLoading } = useLifecycleRuntime();
+  const { canViewTenantDeliveries, canSendTenantDelivery } = useTenantCapabilities();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const propertyId = searchParams.get('property_id') || '';
@@ -52,7 +51,7 @@ export default function ClientTenantComplianceDeliveryPage() {
   const [tenantId, setTenantId] = useState('');
 
   const load = useCallback(async () => {
-    if (!hasTenantPortal) {
+    if (!canViewTenantDeliveries) {
       setLoading(false);
       return;
     }
@@ -74,7 +73,7 @@ export default function ClientTenantComplianceDeliveryPage() {
     } finally {
       setLoading(false);
     }
-  }, [hasTenantPortal, propertyId]);
+  }, [canViewTenantDeliveries, propertyId]);
 
   useEffect(() => {
     load();
@@ -94,6 +93,10 @@ export default function ClientTenantComplianceDeliveryPage() {
   };
 
   const sendPack = async () => {
+    if (!canSendTenantDelivery) {
+      toast.error('Sending compliance packs is not available on your account');
+      return;
+    }
     if (!propertyId || !tenantId) {
       toast.error('Select a property and tenant');
       return;
@@ -114,7 +117,7 @@ export default function ClientTenantComplianceDeliveryPage() {
     }
   };
 
-  if (entitlementsLoading) {
+  if (runtimeLoading) {
     return (
       <div className={portalPageRoot} data-testid="tenant-delivery-loading">
         <PortalLoadingPanel message="Loading…" />
@@ -122,7 +125,7 @@ export default function ClientTenantComplianceDeliveryPage() {
     );
   }
 
-  if (!hasTenantPortal) {
+  if (!canViewTenantDeliveries) {
     return (
       <div className={portalPageRoot} data-testid="tenant-delivery-gate">
         <UpgradeRequired feature="tenant_portal" showBackToDashboard variant="card" />
@@ -163,10 +166,10 @@ export default function ClientTenantComplianceDeliveryPage() {
             <CardDescription>Choose a property and tenant, then send the pack. Immutable delivery records are retained.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {!canSendPack && (
+            {!canSendTenantDelivery && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                Sending packs requires <strong>PDF reports</strong> on your plan (same as the governed email payload). You
-                can still review delivery history below for properties you select.
+                Sending packs requires PDF report generation on your account. You can still review delivery history
+                below for properties you select.
               </div>
             )}
             <div>
@@ -192,64 +195,54 @@ export default function ClientTenantComplianceDeliveryPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {tenantsForProperty.map((t) => (
-                    <SelectItem key={t.portal_user_id} value={t.portal_user_id}>
-                      {t.full_name || t.email || t.portal_user_id}
+                    <SelectItem key={t.tenant_portal_user_id || t.user_id} value={t.tenant_portal_user_id || t.user_id}>
+                      {t.full_name || t.email || t.tenant_portal_user_id}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={sendPack} disabled={sending || !canSendPack || !propertyId || !tenantId} className="w-full sm:w-auto">
+            <Button
+              type="button"
+              className="bg-electric-teal hover:bg-electric-teal/90"
+              disabled={!canSendTenantDelivery || sending || !propertyId || !tenantId}
+              onClick={sendPack}
+            >
               {sending ? 'Sending…' : 'Send compliance pack'}
             </Button>
           </CardContent>
         </Card>
-      </div>
 
-      <Card className="mt-6" id="delivery-history" data-testid="tenant-delivery-history">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Delivery history</CardTitle>
-            <CardDescription>Filtered by selected property.</CardDescription>
-          </div>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading || !propertyId}>
-            <RefreshCw className="h-4 w-4 mr-1" />
-            Refresh
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <PortalLoadingPanel />
-          ) : !propertyId ? (
-            <p className="text-sm text-slate-600">Select a property to view delivery history.</p>
-          ) : deliveries.length === 0 ? (
-            <p className="text-sm text-slate-600">No deliveries yet for this property.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-slate-500">
-                    <th className="py-2 pr-4">When</th>
-                    <th className="py-2 pr-4">Recipient</th>
-                    <th className="py-2 pr-4">Status</th>
-                    <th className="py-2 pr-4">Provider ID</th>
-                  </tr>
-                </thead>
-                <tbody>
+        {propertyId && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Delivery history</CardTitle>
+              <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <PortalLoadingPanel message="Loading delivery records…" />
+              ) : deliveries.length === 0 ? (
+                <p className="text-sm text-slate-600">No delivery records for this property yet.</p>
+              ) : (
+                <ul className="space-y-3">
                   {deliveries.map((d) => (
-                    <tr key={d.delivery_id} className="border-b border-slate-100">
-                      <td className="py-2 pr-4 whitespace-nowrap">{d.created_at?.slice(0, 19) || '—'}</td>
-                      <td className="py-2 pr-4">{d.recipient_email || '—'}</td>
-                      <td className="py-2 pr-4">{statusBadge(d.ui_status)}</td>
-                      <td className="py-2 pr-4 font-mono text-xs">{d.provider_message_id || '—'}</td>
-                    </tr>
+                    <li key={d.delivery_id || d.id} className="rounded-lg border border-slate-200 p-3 text-sm">
+                      <div className="flex flex-wrap items-center gap-2 justify-between">
+                        <span className="font-medium text-midnight-blue">{d.tenant_email || d.recipient || 'Tenant'}</span>
+                        {statusBadge(d.ui_status || d)}
+                      </div>
+                      {d.sent_at && <p className="text-xs text-slate-500 mt-1">Sent: {String(d.sent_at).slice(0, 16)}</p>}
+                    </li>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

@@ -73,5 +73,10 @@ services:
         value: "shadow"
       - key: LIFECYCLE_AWARE_KPIS
         value: "shadow"
-      # - key: RENT_REMINDERS_PRODUCTION_MODE
-      #   value: "true"
+      # CEG Phase 5 — Graph intelligence Tier 1 (staging legacy service; narration/AI off).
+      - key: COMPLIANCE_EVIDENCE_GRAPH_MODE
+        value: enabled
+      - key: COMPLIANCE_INTELLIGENCE_NARRATION_ENABLED
+        value: "false"
+      - key: AI_ENABLED
+        value: "false"

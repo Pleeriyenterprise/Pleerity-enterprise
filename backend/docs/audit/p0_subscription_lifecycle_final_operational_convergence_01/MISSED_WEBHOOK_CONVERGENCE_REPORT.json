@@ -1,0 +1,28 @@
+{
+  "phase": 3,
+  "verdict": "PASS",
+  "sla": {
+    "scheduled_batch_job": "stripe_subscription_reconcile every 6h (00:45,06:45,12:45,18:45 UTC)",
+    "scheduled_batch_worst_case_minutes": 360,
+    "read_path_stale_reconcile_cooldown_minutes": 5,
+    "read_path_typical_max_minutes": 5,
+    "documented_guarantee": "Passive: up to 6h via batch; active portal load: up to 5m cooldown between stale pulls"
+  },
+  "convergence_probe": {
+    "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+    "converged": true,
+    "elapsed_seconds": 11.3,
+    "runtime_version_before": 1085437416,
+    "attempts": [
+      {
+        "attempt": 1,
+        "elapsed_s": 11.3,
+        "lifecycle_state": "SUSPENDED",
+        "portal_mode": "SUSPENDED",
+        "runtime_version": 1085437416,
+        "subscription_status": "CANCELED",
+        "billing_sync_state": "ok"
+      }
+    ]
+  }
+}

@@ -32,9 +32,15 @@ import {
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
+import {
+  getCapabilityDeniedMessage,
+  isCapabilityDeniedApiError,
+  usePropertyCapabilities,
+} from '../utils/propertyCapabilityAccess';
 
 const PropertiesPage = () => {
   const navigate = useNavigate();
+  const { canViewProperties, canCreateProperty } = usePropertyCapabilities();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [insightsLoading, setInsightsLoading] = useState(true);
@@ -45,8 +51,8 @@ const PropertiesPage = () => {
   const [valueInsights, setValueInsights] = useState(null);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (canViewProperties) fetchData();
+  }, [canViewProperties]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -76,7 +82,11 @@ const PropertiesPage = () => {
         .catch(() => setValueInsights(null))
         .finally(() => setInsightsLoading(false));
     } catch (error) {
-      toast.error(parseApiError(error, 'Failed to load properties'));
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to load properties'));
+      } else {
+        toast.error(parseApiError(error, 'Failed to load properties'));
+      }
       setLoading(false);
       setInsightsLoading(false);
     }
@@ -115,7 +125,7 @@ const PropertiesPage = () => {
     red: properties.filter(p => p.compliance_status === 'RED').length
   };
 
-  const headerActions = (
+  const headerActions = canCreateProperty ? (
     <Button
       onClick={() => navigate('/properties/create')}
       className="bg-electric-teal hover:bg-teal-600"
@@ -124,7 +134,7 @@ const PropertiesPage = () => {
       <Plus className="w-4 h-4 mr-2" />
       Add Property
     </Button>
-  );
+  ) : null;
 
   if (loading && properties.length === 0) {
     return (

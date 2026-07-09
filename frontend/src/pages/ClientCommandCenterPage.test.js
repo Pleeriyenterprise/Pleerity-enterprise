@@ -26,10 +26,20 @@ jest.mock('../contexts/AuthContext', () => ({
   }),
 }));
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({
-    hasFeature: () => false,
+jest.mock('../utils/operationalCapabilityAccess', () => ({
+  useCommandCentreCapabilities: () => ({
+    canViewCommandCentre: true,
+    canUseOpsMaintenance: false,
+    canUseOpsPredictive: false,
+    canUseOpsContractors: false,
+    canUseOpsApprovals: false,
+    canWriteOpsMaintenance: false,
+    canWriteOpsPredictive: false,
+    canWriteOpsApprovals: false,
+    canUseOpsRent: false,
   }),
+  getCapabilityDeniedMessage: (_e, fallback) => fallback,
+  isCapabilityDeniedApiError: () => false,
 }));
 
 jest.mock('../components/client/RequirementIntelligenceModal', () => {

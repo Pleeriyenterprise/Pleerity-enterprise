@@ -1,0 +1,39 @@
+{
+  "programme": "P0-FRONTEND-RUNTIME-CONTEXT-INITIALIZATION-CRASH-01",
+  "executed_at": "2026-07-07T21:25:00Z",
+  "verdict": "FRONTEND_RUNTIME_CONTEXT_CRASH_FIXED",
+  "broken_bundle": "main.a0738ee4.js",
+  "fixed_bundle_local": "main.c272bbcc.js",
+  "error": "Uncaught ReferenceError: Cannot access 'yn' before initialization",
+  "source_location": "LifecycleRuntimeContext.js:32",
+  "minified_variable_mapping": {
+    "yn": "EMPTY_CAPABILITIES",
+    "explanation": "Production minifier renamed const EMPTY_CAPABILITIES to yn; GOVERNED_FALLBACK referenced it before const initialization (TDZ)."
+  },
+  "root_cause": "GOVERNED_FALLBACK object literal (line 29-54) assigned capabilities: EMPTY_CAPABILITIES before const EMPTY_CAPABILITIES was declared (previously line 56). JavaScript temporal dead zone: const bindings are not initialized until their declaration is evaluated.",
+  "circular_dependency": false,
+  "fix": "Moved const EMPTY_CAPABILITIES = Object.freeze({}) above GOVERNED_FALLBACK definition.",
+  "files_changed": [
+    "frontend/src/contexts/LifecycleRuntimeContext.js"
+  ],
+  "validation": {
+    "npm_run_build": "PASS",
+    "production_serve_login_renders": true,
+    "reference_error_absent": true,
+    "targeted_tests": {
+      "LifecycleRuntimeContext.session.test.js": "PASS",
+      "capabilityRuntime.test.js": "PASS",
+      "accountCapabilityAccess": "PASS",
+      "ilp10PlatformConvergence.test.js": "PASS",
+      "LifecycleRuntimeContext.test.js": "2 pre-existing failures in PortalModePageBanner (unrelated to TDZ fix)"
+    }
+  },
+  "staging_deploy": {
+    "commit": "4fcda2a2",
+    "deployment_url": "pleerity-enterprise-9jjg-6bxnj71pu-victory-aigbochies-projects.vercel.app",
+    "stable_bundle": "main.0d840c6d.js",
+    "broken_bundle_replaced": "main.a0738ee4.js",
+    "login_renders": true,
+    "reference_error_absent": true
+  }
+}

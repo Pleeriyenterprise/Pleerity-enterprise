@@ -26,8 +26,11 @@ import {
   scoringProfileForDefaultLabel,
 } from '../utils/jurisdictionComplianceCopy';
 
+import { useProfileCapabilities } from '../utils/accountCapabilityAccess';
+
 export default function JurisdictionSettingsPage() {
   const navigate = useNavigate();
+  const { canEditJurisdiction } = useProfileCapabilities();
   const [searchParams] = useSearchParams();
   const fromOnboarding = searchParams.get('from') === 'onboarding';
 
@@ -89,6 +92,7 @@ export default function JurisdictionSettingsPage() {
   };
 
   const save = async () => {
+    if (!canEditJurisdiction) return;
     const enabled_jurisdictions = JURISDICTION_OPTIONS.filter((j) => enabledSet.has(j));
     if (enabled_jurisdictions.length === 0) {
       toast.error('Select at least one jurisdiction for your portfolio.');
@@ -299,7 +303,7 @@ export default function JurisdictionSettingsPage() {
               type="button"
               className="bg-electric-teal hover:bg-electric-teal/90"
               onClick={save}
-              disabled={saving}
+              disabled={saving || !canEditJurisdiction}
               data-testid="jurisdiction-save-btn"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}

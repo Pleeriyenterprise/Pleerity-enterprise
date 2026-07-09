@@ -1,0 +1,491 @@
+{
+  "programme": "P0-STAGING-RENT-PAYMENT-IDEMPOTENCY-INDEX-REMEDIATION-01",
+  "executed_at": "2026-07-07T21:46:14Z",
+  "db_name": "pleerity_staging",
+  "mode": "execute",
+  "duplicate_group_count": 5,
+  "duplicate_groups": [
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T141423Z-rent-866d6db9",
+      "count": 2,
+      "classification": "exact_duplicate",
+      "canonical": {
+        "_id": "6a21891ebfdf5043875f6e15",
+        "payment_id": "rp_040d58ca5ce3",
+        "created_at": "2026-06-04T14:18:06.041693+00:00",
+        "amount_minor": 500,
+        "ledger_id": "rlp_eaa80d462b1c",
+        "tenancy_id": null,
+        "schedule_id": "rs_da9f62d77236",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "reference": "OPS-RESIL-20260604T141423Z-rent-866d6db9",
+        "payment_date": "2026-06-04",
+        "currency": "GBP",
+        "payment_method": null,
+        "note": null,
+        "document_id": null,
+        "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+      },
+      "duplicates": [
+        {
+          "_id": "6a21891ebfdf5043875f6e16",
+          "payment_id": "rp_03ae294c7732",
+          "created_at": "2026-06-04T14:18:06.069726+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T141423Z-rent-866d6db9",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        }
+      ],
+      "documents": [
+        {
+          "_id": "6a21891ebfdf5043875f6e15",
+          "payment_id": "rp_040d58ca5ce3",
+          "created_at": "2026-06-04T14:18:06.041693+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T141423Z-rent-866d6db9",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        },
+        {
+          "_id": "6a21891ebfdf5043875f6e16",
+          "payment_id": "rp_03ae294c7732",
+          "created_at": "2026-06-04T14:18:06.069726+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T141423Z-rent-866d6db9",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        }
+      ]
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T143526Z-rent-4784a6f4",
+      "count": 2,
+      "classification": "exact_duplicate",
+      "canonical": {
+        "_id": "6a218e2abfdf5043875f7074",
+        "payment_id": "rp_48a83891c497",
+        "created_at": "2026-06-04T14:39:37.166347+00:00",
+        "amount_minor": 500,
+        "ledger_id": "rlp_eaa80d462b1c",
+        "tenancy_id": null,
+        "schedule_id": "rs_da9f62d77236",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "reference": "OPS-RESIL-20260604T143526Z-rent-4784a6f4",
+        "payment_date": "2026-06-04",
+        "currency": "GBP",
+        "payment_method": null,
+        "note": null,
+        "document_id": null,
+        "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+      },
+      "duplicates": [
+        {
+          "_id": "6a218e2abfdf5043875f7077",
+          "payment_id": "rp_53b33b04c2e7",
+          "created_at": "2026-06-04T14:39:37.768470+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T143526Z-rent-4784a6f4",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        }
+      ],
+      "documents": [
+        {
+          "_id": "6a218e2abfdf5043875f7074",
+          "payment_id": "rp_48a83891c497",
+          "created_at": "2026-06-04T14:39:37.166347+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T143526Z-rent-4784a6f4",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        },
+        {
+          "_id": "6a218e2abfdf5043875f7077",
+          "payment_id": "rp_53b33b04c2e7",
+          "created_at": "2026-06-04T14:39:37.768470+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T143526Z-rent-4784a6f4",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        }
+      ]
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T144203Z-rent-6509ef23",
+      "count": 2,
+      "classification": "exact_duplicate",
+      "canonical": {
+        "_id": "6a218fb7bfdf5043875f7165",
+        "payment_id": "rp_596d9b8127c7",
+        "created_at": "2026-06-04T14:46:14.601492+00:00",
+        "amount_minor": 500,
+        "ledger_id": "rlp_eaa80d462b1c",
+        "tenancy_id": null,
+        "schedule_id": "rs_da9f62d77236",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "reference": "OPS-RESIL-20260604T144203Z-rent-6509ef23",
+        "payment_date": "2026-06-04",
+        "currency": "GBP",
+        "payment_method": null,
+        "note": null,
+        "document_id": null,
+        "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+      },
+      "duplicates": [
+        {
+          "_id": "6a218fb7bfdf5043875f7167",
+          "payment_id": "rp_3cf51d088102",
+          "created_at": "2026-06-04T14:46:14.804545+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T144203Z-rent-6509ef23",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        }
+      ],
+      "documents": [
+        {
+          "_id": "6a218fb7bfdf5043875f7165",
+          "payment_id": "rp_596d9b8127c7",
+          "created_at": "2026-06-04T14:46:14.601492+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T144203Z-rent-6509ef23",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        },
+        {
+          "_id": "6a218fb7bfdf5043875f7167",
+          "payment_id": "rp_3cf51d088102",
+          "created_at": "2026-06-04T14:46:14.804545+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T144203Z-rent-6509ef23",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        }
+      ]
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T151348Z-rent-3d3de97a",
+      "count": 2,
+      "classification": "exact_duplicate",
+      "canonical": {
+        "_id": "6a21972fbfdf5043875f737e",
+        "payment_id": "rp_81c8a207662c",
+        "created_at": "2026-06-04T15:18:06.526470+00:00",
+        "amount_minor": 500,
+        "ledger_id": "rlp_eaa80d462b1c",
+        "tenancy_id": null,
+        "schedule_id": "rs_da9f62d77236",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "reference": "OPS-RESIL-20260604T151348Z-rent-3d3de97a",
+        "payment_date": "2026-06-04",
+        "currency": "GBP",
+        "payment_method": null,
+        "note": null,
+        "document_id": null,
+        "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+      },
+      "duplicates": [
+        {
+          "_id": "6a219730bfdf5043875f7381",
+          "payment_id": "rp_f36748ce1032",
+          "created_at": "2026-06-04T15:18:07.286642+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T151348Z-rent-3d3de97a",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        }
+      ],
+      "documents": [
+        {
+          "_id": "6a21972fbfdf5043875f737e",
+          "payment_id": "rp_81c8a207662c",
+          "created_at": "2026-06-04T15:18:06.526470+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T151348Z-rent-3d3de97a",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        },
+        {
+          "_id": "6a219730bfdf5043875f7381",
+          "payment_id": "rp_f36748ce1032",
+          "created_at": "2026-06-04T15:18:07.286642+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T151348Z-rent-3d3de97a",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        }
+      ]
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T140714Z-rent-a6b22d27",
+      "count": 2,
+      "classification": "exact_duplicate",
+      "canonical": {
+        "_id": "6a218771bfdf5043875f6cfa",
+        "payment_id": "rp_a392d611087b",
+        "created_at": "2026-06-04T14:10:56.452180+00:00",
+        "amount_minor": 500,
+        "ledger_id": "rlp_eaa80d462b1c",
+        "tenancy_id": null,
+        "schedule_id": "rs_da9f62d77236",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "reference": "OPS-RESIL-20260604T140714Z-rent-a6b22d27",
+        "payment_date": "2026-06-04",
+        "currency": "GBP",
+        "payment_method": null,
+        "note": null,
+        "document_id": null,
+        "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+      },
+      "duplicates": [
+        {
+          "_id": "6a218771bfdf5043875f6cfb",
+          "payment_id": "rp_4c47b5b3dc21",
+          "created_at": "2026-06-04T14:10:56.482283+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T140714Z-rent-a6b22d27",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        }
+      ],
+      "documents": [
+        {
+          "_id": "6a218771bfdf5043875f6cfa",
+          "payment_id": "rp_a392d611087b",
+          "created_at": "2026-06-04T14:10:56.452180+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T140714Z-rent-a6b22d27",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        },
+        {
+          "_id": "6a218771bfdf5043875f6cfb",
+          "payment_id": "rp_4c47b5b3dc21",
+          "created_at": "2026-06-04T14:10:56.482283+00:00",
+          "amount_minor": 500,
+          "ledger_id": "rlp_eaa80d462b1c",
+          "tenancy_id": null,
+          "schedule_id": "rs_da9f62d77236",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "reference": "OPS-RESIL-20260604T140714Z-rent-a6b22d27",
+          "payment_date": "2026-06-04",
+          "currency": "GBP",
+          "payment_method": null,
+          "note": null,
+          "document_id": null,
+          "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+        }
+      ]
+    }
+  ],
+  "remediations": [
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T141423Z-rent-866d6db9",
+      "classification": "exact_duplicate",
+      "action": "remove_duplicates_keep_earliest",
+      "removed_ids": [
+        "6a21891ebfdf5043875f6e16"
+      ],
+      "kept_payment_id": "rp_040d58ca5ce3"
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T143526Z-rent-4784a6f4",
+      "classification": "exact_duplicate",
+      "action": "remove_duplicates_keep_earliest",
+      "removed_ids": [
+        "6a218e2abfdf5043875f7077"
+      ],
+      "kept_payment_id": "rp_48a83891c497"
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T144203Z-rent-6509ef23",
+      "classification": "exact_duplicate",
+      "action": "remove_duplicates_keep_earliest",
+      "removed_ids": [
+        "6a218fb7bfdf5043875f7167"
+      ],
+      "kept_payment_id": "rp_596d9b8127c7"
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T151348Z-rent-3d3de97a",
+      "classification": "exact_duplicate",
+      "action": "remove_duplicates_keep_earliest",
+      "removed_ids": [
+        "6a219730bfdf5043875f7381"
+      ],
+      "kept_payment_id": "rp_81c8a207662c"
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T140714Z-rent-a6b22d27",
+      "classification": "exact_duplicate",
+      "action": "remove_duplicates_keep_earliest",
+      "removed_ids": [
+        "6a218771bfdf5043875f6cfb"
+      ],
+      "kept_payment_id": "rp_a392d611087b"
+    }
+  ],
+  "quarantined_count": 0,
+  "index": {
+    "index_present": true,
+    "index_spec": {
+      "v": 2,
+      "key": [
+        [
+          "client_id",
+          1
+        ],
+        [
+          "idempotency_key",
+          1
+        ]
+      ],
+      "unique": true,
+      "partialFilterExpression": {
+        "idempotency_key": {
+          "$type": "string"
+        }
+      }
+    }
+  },
+  "remaining_duplicate_groups": 0,
+  "ledger_recalc": [
+    {
+      "ledger_id": "rlp_eaa80d462b1c",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "before_total_paid_minor": null,
+      "before_outstanding_balance_minor": 37500,
+      "after_total_paid_minor": null,
+      "after_outstanding_balance_minor": 40000
+    }
+  ],
+  "verification": {
+    "index_exists": true,
+    "duplicate_insert_rejected": true,
+    "distinct_insert_succeeded": true
+  },
+  "verdict": "RENT_PAYMENT_IDEMPOTENCY_RESTORED"
+}

@@ -1,0 +1,24 @@
+{
+  "phase": 2,
+  "verdict": "PASS",
+  "scenarios": {
+    "B_stale_period_end": {
+      "skipped": "no_stale_cohort_on_staging"
+    },
+    "A_scheduled_not_expired": {
+      "satisfied_by_phase4_keep_subscription_e2e": true,
+      "target": {
+        "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+        "email": "lere@yopmail.com",
+        "mode": "schedule_then_resume"
+      },
+      "pass": true
+    }
+  },
+  "cohorts": {
+    "stale_scheduled_found": false,
+    "keep_subscription_found": false,
+    "stale_client_id": null,
+    "keep_client_id": null
+  }
+}

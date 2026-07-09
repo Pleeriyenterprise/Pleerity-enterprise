@@ -441,13 +441,30 @@ async def publish_publish_queue_item(
         },
     )
 
-    return {
+    result = {
         "queue_id": queue_id,
         "status": "published",
         "published_version": next_v,
         "entry_count": len(merged_entries),
         "keys_updated_this_publish": sorted(queue_entries.keys()),
     }
+    try:
+        from services.compliance_evidence_graph.producers.hooks import dispatch_p1_producer
+        from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+        await dispatch_p1_producer(
+            ProducerContext(
+                mutation_kind="registry_publish",
+                client_id="platform",
+                source_collection="compliance_requirement_registry_published",
+                source_id=queue_id,
+                mutation_timestamp=now,
+                authoritative_payload={**result, "published_at": now},
+            )
+        )
+    except Exception:
+        pass
+    return result
 
 
 async def record_publish_queue_review_ack(

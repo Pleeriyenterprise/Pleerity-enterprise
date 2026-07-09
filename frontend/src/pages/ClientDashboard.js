@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import {
+  getCapabilityDeniedMessage,
+  isCapabilityDeniedApiError,
+  useDashboardCapabilities,
+} from '../utils/operationalCapabilityAccess';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
@@ -32,8 +36,10 @@ import {
   PortalPageShell,
   PortalStaleRefreshBanner,
   portalPageRoot,
+  PortalPageWithLifecyclePresentation,
 } from '../components/client/ClientPortalPatterns';
 import PortalLoadingState from '../components/loading/PortalLoadingState';
+import { InPageCapabilityGate } from '../components/lifecycle/InPageCapabilityGate';
 import LifecycleKpiAttentionStrip from '../components/dashboard/LifecycleKpiAttentionStrip';
 import PortalCardLoading from '../components/loading/PortalCardLoading';
 import { dashboardLoadingStages } from '../components/loading/portalLoadingStageModels';
@@ -238,7 +244,16 @@ const ClientDashboard = () => {
   const { openGuidedEvidence } = useGuidedEvidenceModal();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, logout } = useAuth();
-  const { hasFeature } = useEntitlements();
+  const {
+    canViewDashboard,
+    canViewScore,
+    canViewCommandCentre,
+    canViewToday,
+    canUseOpsMaintenance,
+    canUseOpsPredictive,
+    canUseOpsContractors,
+    canUseOpsApprovals,
+  } = useDashboardCapabilities();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
@@ -318,7 +333,7 @@ const ClientDashboard = () => {
 
   const fetchTodayInbox = useCallback(
     ({ reset } = {}) => {
-      if (!isClientUser) return;
+      if (!isClientUser || !canViewToday) return;
       const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
       const cacheKey = `${OPERATIONAL_CACHE_KEYS.todayItems}:${commandCenterScopePropertyId || 'all'}`;
       if (reset) setTodayInboxPayload(undefined);
@@ -326,7 +341,7 @@ const ClientDashboard = () => {
         .then((hit) => setTodayInboxPayload(hit.data ?? null))
         .catch(() => setTodayInboxPayload(null));
     },
-    [isClientUser, commandCenterScopePropertyId],
+    [isClientUser, canViewToday, commandCenterScopePropertyId],
   );
 
   const [portalRequirementsForInbox, setPortalRequirementsForInbox] = useState([]);
@@ -359,7 +374,7 @@ const ClientDashboard = () => {
     return () => window.removeEventListener('compliance-outcome', onOutcome);
   }, [isClientUser, loadPortalRequirements, fetchTodayInbox]);
 
-  const contractorNetworkEnabled = hasFeature('contractor_network');
+  const contractorNetworkEnabled = canUseOpsContractors;
 
   const showJurisdictionOnboardingGate = useMemo(
     () =>
@@ -429,29 +444,35 @@ const ClientDashboard = () => {
       if (user && !user.client_id) setError('Client not found. Use the correct portal for your role.');
       return;
     }
+    if (!canViewDashboard) {
+      setLoading(false);
+      return;
+    }
     fetchDashboard();
     fetchNotificationPrefs();
-    fetchComplianceScore();
-    fetchScoreChanges();
+    if (canViewScore) {
+      fetchComplianceScore();
+      fetchScoreChanges();
+    }
     fetchPortfolioSummary();
     clientAPI.getOnboardingChecklist().then((r) => setOnboardingChecklist(r.data)).catch(() => {});
     clientAPI.getValueInsights().then((r) => setValueInsights(r.data)).catch(() => setValueInsights(null));
     // Intentionally depend only on role/client_id; fetch functions are stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClientUser, user?.role, user?.client_id]);
+  }, [isClientUser, user?.role, user?.client_id, canViewDashboard, canViewScore]);
 
   // Operations data for Executive KPIs and Action Required (feature-gated)
   useEffect(() => {
     if (!isClientUser) return;
-    if (hasFeature('maintenance_workflows')) {
+    if (canUseOpsMaintenance) {
       clientAPI.getMaintenanceWorkOrders({ skip: 0, limit: 200 })
         .then((res) => setWorkOrdersList(res.data?.work_orders || []))
         .catch(() => setWorkOrdersList([]));
     }
-  }, [isClientUser, hasFeature]);
+  }, [isClientUser, canUseOpsMaintenance]);
 
   useEffect(() => {
-    if (!isClientUser || !hasFeature('maintenance_workflows')) {
+    if (!isClientUser || !canUseOpsMaintenance) {
       setOpenIssuesCountKpi(null);
       setOpenIssuesKpiLoading(false);
       return;
@@ -462,10 +483,10 @@ const ClientDashboard = () => {
       .then((res) => setOpenIssuesCountKpi(res.data?.open_issues_count ?? 0))
       .catch(() => setOpenIssuesCountKpi(null))
       .finally(() => setOpenIssuesKpiLoading(false));
-  }, [isClientUser, hasFeature]);
+  }, [isClientUser, canUseOpsMaintenance]);
 
   useEffect(() => {
-    if (!isClientUser || !hasFeature('invoicing')) {
+    if (!isClientUser || !canUseOpsApprovals) {
       setMaintenanceSpendMonth(null);
       return;
     }
@@ -473,7 +494,7 @@ const ClientDashboard = () => {
       .getMaintenanceSpendThisMonth()
       .then((res) => setMaintenanceSpendMonth(res.data))
       .catch(() => setMaintenanceSpendMonth(null));
-  }, [isClientUser, hasFeature]);
+  }, [isClientUser, canUseOpsApprovals]);
 
   useEffect(() => {
     if (!isClientUser) {
@@ -510,6 +531,14 @@ const ClientDashboard = () => {
       setTodayInboxPayload(undefined);
       return;
     }
+    if (!canViewCommandCentre) {
+      setTasksDigest(null);
+      setCommandCenter(null);
+      if (!canViewToday) {
+        setTodayInboxPayload(null);
+      }
+      return;
+    }
     const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
     const ccKey = `${OPERATIONAL_CACHE_KEYS.commandCenterPrimary}:${commandCenterScopePropertyId || 'all'}`;
     fetchOperational(ccKey, () => clientAPI.getCommandCenterPrimary(params).then((r) => r.data))
@@ -528,10 +557,15 @@ const ClientDashboard = () => {
       });
     const todayTimer = window.setTimeout(() => fetchTodayInbox({ reset: true }), 0);
     return () => window.clearTimeout(todayTimer);
-  }, [isClientUser, commandCenterScopePropertyId, fetchTodayInbox]);
+  }, [isClientUser, canViewCommandCentre, canViewToday, commandCenterScopePropertyId, fetchTodayInbox]);
 
   useEffect(() => {
     if (!isClientUser) {
+      setProtectionSnapshot(null);
+      setProtectionSnapshotLoading(false);
+      return;
+    }
+    if (!canViewCommandCentre) {
       setProtectionSnapshot(null);
       setProtectionSnapshotLoading(false);
       return;
@@ -543,7 +577,7 @@ const ClientDashboard = () => {
       .then((res) => setProtectionSnapshot(res.data || null))
       .catch(() => setProtectionSnapshot(null))
       .finally(() => setProtectionSnapshotLoading(false));
-  }, [isClientUser, commandCenterScopePropertyId]);
+  }, [isClientUser, canViewCommandCentre, commandCenterScopePropertyId]);
 
   useEffect(() => {
     if (!isClientUser) {
@@ -604,7 +638,7 @@ const ClientDashboard = () => {
     window.addEventListener('compliance-outcome', onOutcome);
     return () => window.removeEventListener('compliance-outcome', onOutcome);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClientUser, hasFeature, commandCenterScopePropertyId, fetchTodayInbox]);
+  }, [isClientUser, canViewCommandCentre, canUseOpsMaintenance, commandCenterScopePropertyId, fetchTodayInbox]);
 
   const handleAckActivitySince = () => {
     setActivitySinceAckBusy(true);
@@ -664,9 +698,13 @@ const ClientDashboard = () => {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClientUser, commandCenterScopePropertyId, fetchTodayInbox]);
+  }, [isClientUser, canViewCommandCentre, commandCenterScopePropertyId, fetchTodayInbox]);
 
   const fetchDashboard = async () => {
+    if (!canViewDashboard) {
+      setLoading(false);
+      return;
+    }
     try {
       setRestrictReason(null);
       const response = await fetchOperational(OPERATIONAL_CACHE_KEYS.dashboard, () =>
@@ -689,7 +727,9 @@ const ClientDashboard = () => {
       const status = err.response?.status;
       const redirect = err.response?.headers?.['x-redirect'];
       if (redirect) setRedirectPath(redirect);
-      if (status === 403) {
+      if (isCapabilityDeniedApiError(err)) {
+        setError(getCapabilityDeniedMessage(err, 'Failed to load dashboard'));
+      } else if (status === 403) {
         const msg = typeof detail === 'string' ? detail.toLowerCase() : String(detail).toLowerCase();
         if (msg.includes('plan') || msg.includes('feature') || msg.includes('entitlement') || msg.includes('restricted')) {
           setRestrictReason('plan');
@@ -719,6 +759,7 @@ const ClientDashboard = () => {
   };
 
   const fetchComplianceScore = async () => {
+    if (!canViewScore) return;
     try {
       const response = await api.get('/client/compliance-score');
       setComplianceScore(response.data);
@@ -728,6 +769,7 @@ const ClientDashboard = () => {
   };
 
   const fetchScoreTrendCard = async (view = null, propertyId = null) => {
+    if (!canViewScore) return;
     const viewToUse = view ?? scoreTrendView;
     const propId = propertyId ?? selectedTrendPropertyId;
     try {
@@ -745,6 +787,7 @@ const ClientDashboard = () => {
   };
 
   const fetchScoreChanges = async () => {
+    if (!canViewScore) return;
     try {
       const response = await api.get('/client/score/changes?limit=20');
       setScoreChanges(response.data);
@@ -1155,6 +1198,17 @@ const ClientDashboard = () => {
   );
 
 
+  if (isClientUser && !canViewDashboard) {
+    return (
+      <InPageCapabilityGate
+        allowed={false}
+        presentationFeature="compliance_dashboard"
+        capabilityId="CAP_DASHBOARD_VIEW"
+        testId="dashboard-capability-denied"
+      />
+    );
+  }
+
   if (loading && !data) {
     return (
       <PortalPageShell
@@ -1197,7 +1251,7 @@ const ClientDashboard = () => {
 
   return (
     <TooltipProvider delayDuration={250}>
-    <div className={portalPageRoot} data-testid="client-dashboard">
+    <PortalPageWithLifecyclePresentation data-testid="client-dashboard">
         <PortalStaleRefreshBanner refreshing={dashboardRefreshing} />
         <ErrorBanner message={error} onRetry={fetchDashboard} retryLabel="Retry" />
 
@@ -1753,7 +1807,7 @@ const ClientDashboard = () => {
                 )}
               </CardContent>
             </Card>
-            {hasFeature('maintenance_workflows') && (
+            {canUseOpsMaintenance && (
               <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/operations/issues')}>
                 <CardContent className="p-3 sm:p-4 min-w-0">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Open issues</p>
@@ -1767,7 +1821,7 @@ const ClientDashboard = () => {
                 </CardContent>
               </Card>
             )}
-            {hasFeature('maintenance_workflows') && (
+            {canUseOpsMaintenance && (
               <Card
                 className="cursor-pointer hover:shadow-md transition-shadow min-w-0"
                 title="Jobs where the agreed response time has passed (current list, up to 500 loaded)."
@@ -1782,7 +1836,7 @@ const ClientDashboard = () => {
                 </CardContent>
               </Card>
             )}
-            {hasFeature('predictive_maintenance') && (
+            {canUseOpsPredictive && (
               <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/operations/risk-signals')}>
                 <CardContent className="p-3 sm:p-4 min-w-0">
                   <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center">
@@ -1801,7 +1855,7 @@ const ClientDashboard = () => {
                 </CardContent>
               </Card>
             )}
-            {hasFeature('invoicing') && maintenanceSpendMonth && maintenanceSpendMonth.has_any_invoices && (
+            {canUseOpsApprovals && maintenanceSpendMonth && maintenanceSpendMonth.has_any_invoices && (
               <Card
                 className="cursor-pointer hover:shadow-md transition-shadow min-w-0"
                 title={maintenanceSpendMonth.calculation_summary || 'Paid contractor invoices this UTC month.'}
@@ -1988,7 +2042,7 @@ const ClientDashboard = () => {
           const snoozedN = inboxReady ? dashboardAlignedInboxSections.snoozed.length : null;
           const hiddenN = inboxReady ? dashboardAlignedInboxSections.hidden.length : null;
           const queueN = inboxReady ? dashboardAlignedInboxSections.urgent.length : 0;
-          const riskN = hasFeature('predictive_maintenance') ? (cc?.upcoming_risks?.length ?? 0) : 0;
+          const riskN = canUseOpsPredictive ? (cc?.upcoming_risks?.length ?? 0) : 0;
           const n = (v) => (v === null ? '…' : v);
           return (
           <Card
@@ -2056,7 +2110,7 @@ const ClientDashboard = () => {
                   <p className="text-xs text-gray-700">
                     <span className="font-medium text-midnight-blue">This snapshot: </span>
                     {queueN} prioritised row{queueN === 1 ? '' : 's'}
-                    {hasFeature('predictive_maintenance') && riskN > 0
+                    {canUseOpsPredictive && riskN > 0
                       ? ` · ${riskN} risk signal${riskN === 1 ? '' : 's'} preview`
                       : ''}
                     . <span className="text-gray-600">Use Command Center to work the queue in order.</span>
@@ -2173,7 +2227,7 @@ const ClientDashboard = () => {
                       </ul>
                     </div>
                   )}
-                  {cc && hasFeature('predictive_maintenance') && (cc.upcoming_risks?.length ?? 0) > 0 && (
+                  {cc && canUseOpsPredictive && (cc.upcoming_risks?.length ?? 0) > 0 && (
                     <div>
                       <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Risk signals (preview)</p>
                       <ul className="space-y-2 text-sm">
@@ -2233,7 +2287,7 @@ const ClientDashboard = () => {
                   {cc &&
                     inboxReady &&
                     dashboardAlignedInboxSections.urgent.length === 0 &&
-                    (!hasFeature('predictive_maintenance') || (cc.upcoming_risks?.length ?? 0) === 0) &&
+                    (!canUseOpsPredictive || (cc.upcoming_risks?.length ?? 0) === 0) &&
                     !(
                       cc.compliance_status_summary &&
                       (cc.compliance_status_summary.score != null || cc.compliance_status_summary.score_status)
@@ -2968,9 +3022,9 @@ const ClientDashboard = () => {
         )}
 
         {/* Operations overview: work order funnel + risk signals (feature-gated) */}
-        {!setupView && (hasFeature('maintenance_workflows') || hasFeature('predictive_maintenance')) && (
+        {!setupView && (canUseOpsMaintenance || canUseOpsPredictive) && (
           <div className="mb-8 grid md:grid-cols-2 gap-6">
-            {hasFeature('maintenance_workflows') && (
+            {canUseOpsMaintenance && (
               <Card className="border border-gray-200 shadow-sm" data-testid="operations-overview-wo">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2 flex-wrap">
@@ -3000,7 +3054,7 @@ const ClientDashboard = () => {
                 </CardContent>
               </Card>
             )}
-            {hasFeature('predictive_maintenance') && (
+            {canUseOpsPredictive && (
               <Card className="border border-gray-200 shadow-sm" data-testid="operations-overview-risk">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2 flex-wrap">
@@ -3063,7 +3117,7 @@ const ClientDashboard = () => {
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
-                {(openIssuesCount ?? 0) > 0 && hasFeature('maintenance_workflows') && (
+                {(openIssuesCount ?? 0) > 0 && canUseOpsMaintenance && (
                   <li className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-3 border-b border-amber-200 last:border-0">
                     <span className="text-sm text-gray-800 min-w-0 break-words">{openIssuesCount} open maintenance issue{openIssuesCount !== 1 ? 's' : ''}</span>
                     <Button size="sm" className="w-full sm:w-auto min-h-11 h-11 sm:h-9 sm:min-h-0 bg-electric-teal hover:bg-electric-teal/90 shrink-0" onClick={() => navigate('/operations/issues')}>
@@ -3071,7 +3125,7 @@ const ClientDashboard = () => {
                     </Button>
                   </li>
                 )}
-                {riskSignalsCount > 0 && hasFeature('predictive_maintenance') && (
+                {riskSignalsCount > 0 && canUseOpsPredictive && (
                   <li className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-3 border-b border-amber-200 last:border-0">
                     <span className="text-sm text-gray-800 min-w-0 break-words">
                       {riskSignalsCount} active risk signal{riskSignalsCount !== 1 ? 's' : ''}
@@ -3159,7 +3213,7 @@ const ClientDashboard = () => {
                     <th className="p-3">Overdue</th>
                     <th className="p-3">Expiring soon</th>
                     <th className="p-3">Missing documents</th>
-                    {hasFeature('maintenance_workflows') && <th className="p-3">Open jobs</th>}
+                    {canUseOpsMaintenance && <th className="p-3">Open jobs</th>}
                     <th className="p-3">View</th>
                   </tr>
                 </thead>
@@ -3183,7 +3237,7 @@ const ClientDashboard = () => {
                       <td className="p-3">{p.overdue_count ?? 0}</td>
                       <td className="p-3">{p.expiring_30_count ?? p.expiring_soon_count ?? 0}</td>
                       <td className="p-3">{p.missing_count ?? 0}</td>
-                      {hasFeature('maintenance_workflows') && (
+                      {canUseOpsMaintenance && (
                         <td className="p-3" onClick={(e) => e.stopPropagation()}>
                           {openJobsByProperty[p.property_id] ?? 0}
                         </td>
@@ -3361,7 +3415,7 @@ const ClientDashboard = () => {
                       {dashboardFocusProperties.map((p) => {
                         const score = p.property_score ?? p.score;
                         const st = p.score_status;
-                        const gaps = buildDashboardComplianceGapsLine(p, openJobsByProperty, hasFeature('maintenance_workflows'));
+                        const gaps = buildDashboardComplianceGapsLine(p, openJobsByProperty, canUseOpsMaintenance);
                         return (
                           <button
                             key={p.property_id}
@@ -3402,7 +3456,7 @@ const ClientDashboard = () => {
                           {dashboardFocusProperties.map((p) => {
                             const score = p.property_score ?? p.score;
                             const st = p.score_status;
-                            const gaps = buildDashboardComplianceGapsLine(p, openJobsByProperty, hasFeature('maintenance_workflows'));
+                            const gaps = buildDashboardComplianceGapsLine(p, openJobsByProperty, canUseOpsMaintenance);
                             return (
                               <tr
                                 key={p.property_id}
@@ -3574,7 +3628,7 @@ const ClientDashboard = () => {
       )}
         </>
       )}
-    </div>
+    </PortalPageWithLifecyclePresentation>
     </TooltipProvider>
   );
 };

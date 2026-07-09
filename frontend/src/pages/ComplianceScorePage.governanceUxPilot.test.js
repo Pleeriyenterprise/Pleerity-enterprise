@@ -13,8 +13,9 @@ jest.mock('../context/GuidedEvidenceModalContext', () => ({
   useGuidedEvidenceModal: () => ({ openGuidedEvidence: jest.fn() }),
 }));
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({ hasFeature: () => false }),
+jest.mock('../utils/reportCapabilityAccess', () => ({
+  ...jest.requireActual('../utils/reportCapabilityAccess'),
+  useReportCapabilities: () => ({ canGeneratePdf: false, canGenerateCsv: false }),
 }));
 
 jest.mock('@/utils/portalNotifications', () => ({

@@ -9,6 +9,8 @@ import { Send, ArrowLeft, AlertCircle, Shield, ChevronDown, ChevronUp, FileText,
 import axios from 'axios';
 import { toast } from '@/utils/portalNotifications';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { useAssistantCapabilities } from '../utils/assistantCapabilityAccess';
+import { UpgradeRequired } from '../components/UpgradePrompt';
 import { cn } from '../lib/utils';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -16,6 +18,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 const AssistantPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { canViewAssistant, canUseAssistant } = useAssistantCapabilities();
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -87,7 +90,7 @@ const AssistantPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || !canUseAssistant) return;
 
     const userMessage = input.trim();
     setInput('');
@@ -144,7 +147,7 @@ const AssistantPage = () => {
   };
 
   const handleEscalate = async () => {
-    if (!conversationId || escalating) return;
+    if (!conversationId || escalating || !canUseAssistant) return;
     setEscalating(true);
     try {
       const token = localStorage.getItem('auth_token');
@@ -168,6 +171,16 @@ const AssistantPage = () => {
       setEscalating(false);
     }
   };
+
+  if (!canViewAssistant) {
+    return (
+      <div className={cn(portalPageRoot, 'bg-gray-50 flex items-center justify-center p-6')} data-testid="assistant-gate">
+        <div className="w-full max-w-md">
+          <UpgradeRequired feature="ai_assistant" showBackToDashboard variant="card" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(portalPageRoot, 'bg-gray-50')}>

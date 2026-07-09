@@ -8,11 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { ArrowLeft, Save, User, Bell, CheckCircle2, Camera } from 'lucide-react';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { PortalModePageBanner } from '../components/lifecycle/LifecycleShell';
+import { useProfileCapabilities } from '../utils/accountCapabilityAccess';
 import { cn } from '../lib/utils';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { canEditProfile } = useProfileCapabilities();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -61,6 +64,7 @@ const ProfilePage = () => {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+    if (!canEditProfile) return;
     setError('');
     setSuccess('');
     setSaving(true);
@@ -81,7 +85,7 @@ const ProfilePage = () => {
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !canEditProfile) return;
     setError('');
     setUploadingAvatar(true);
     try {
@@ -113,6 +117,7 @@ const ProfilePage = () => {
 
   return (
     <div className={cn(portalPageRoot, 'bg-gray-50')}>
+      <PortalModePageBanner />
       {/* Header */}
       <header className="bg-midnight-blue text-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -189,7 +194,7 @@ const ProfilePage = () => {
                     accept="image/jpeg,image/png,image/webp"
                     className="hidden"
                     onChange={handleAvatarChange}
-                    disabled={uploadingAvatar}
+                    disabled={uploadingAvatar || !canEditProfile}
                   />
                   <span className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background px-4 py-2 hover:bg-accent hover:text-accent-foreground disabled:opacity-50">
                     {uploadingAvatar ? 'Uploading...' : <><Camera className="w-4 h-4 mr-1" />Upload photo</>}
@@ -241,7 +246,7 @@ const ProfilePage = () => {
               <Button
                 type="submit"
                 className="btn-primary"
-                disabled={saving}
+                disabled={saving || !canEditProfile}
                 data-testid="save-profile-btn"
               >
                 <Save className="w-4 h-4 mr-2" />

@@ -143,7 +143,7 @@ async def enqueue_compliance_recalc(
             )
         else:
             try:
-                await db.compliance_recalc_queue.insert_one(doc)
+                insert_result = await db.compliance_recalc_queue.insert_one(doc)
             except DuplicateKeyError:
                 existing = await db.compliance_recalc_queue.find_one(
                     {"property_id": property_id, "correlation_id": correlation_id},
@@ -243,6 +243,19 @@ async def enqueue_compliance_recalc(
                     ),
                 )
                 branch = (True, None)
+                try:
+                    from services.operational_evidence.producers import emit_queue_item_created
+
+                    await emit_queue_item_created(
+                        queue_item_id=str(insert_result.inserted_id),
+                        queue_collection="compliance_recalc_queue",
+                        property_id=property_id,
+                        client_id=client_id,
+                        correlation_id=correlation_id,
+                        trigger_reason=trigger_reason,
+                    )
+                except Exception as emit_err:
+                    logger.debug("operational_evidence queue created emit skipped: %s", emit_err)
     finally:
         try:
             from services.risk_signal_regen_queue import enqueue_risk_signal_regen

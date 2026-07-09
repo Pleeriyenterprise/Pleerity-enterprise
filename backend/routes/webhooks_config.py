@@ -17,6 +17,7 @@ Endpoints:
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from database import database
 from middleware import client_route_guard
+from middleware.capability_gating import assert_client_capability
 from models import WebhookEventType, AuditAction
 from utils.audit import create_audit_log
 from services.webhook_service import webhook_service
@@ -54,10 +55,19 @@ class UpdateWebhookRequest(BaseModel):
     event_types: Optional[List[str]] = None
 
 
+async def _require_webhooks_read(user: dict) -> None:
+    await assert_client_capability(user, "CAP_INTEGRATION_WEBHOOKS", "read")
+
+
+async def _require_webhooks_write(user: dict) -> None:
+    await assert_client_capability(user, "CAP_INTEGRATION_WEBHOOKS", "write")
+
+
 @router.get("/events")
 async def get_available_events(request: Request):
     """Get list of available webhook event types with descriptions."""
-    await client_route_guard(request)
+    user = await client_route_guard(request)
+    await _require_webhooks_read(user)
     
     events = [
         {
@@ -122,6 +132,7 @@ async def get_available_events(request: Request):
 async def get_webhook_stats(request: Request):
     """Get webhook delivery statistics for the client."""
     user = await client_route_guard(request)
+    await _require_webhooks_read(user)
     
     try:
         stats = await webhook_service.get_webhook_stats(user["client_id"])
@@ -142,15 +153,7 @@ async def list_webhook_deliveries(
 ):
     """Recent webhook HTTP delivery rows from message logs (Professional / webhooks)."""
     user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "webhooks")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details
-            or {"message": error_msg, "feature": "webhooks", "upgrade_required": True},
-        )
+    await _require_webhooks_read(user)
     try:
         items = await webhook_service.list_recent_deliveries(
             user["client_id"],
@@ -173,28 +176,10 @@ async def create_webhook(request: Request, data: CreateWebhookRequest):
     Note: Webhooks require Portfolio plan (PLAN_6_15) or higher.
     """
     user = await client_route_guard(request)
+    await _require_webhooks_write(user)
     db = database.get_db()
     
     try:
-        # Plan gating: webhooks require PLAN_3_PRO (plan_registry)
-        from services.plan_registry import plan_registry
-
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            user["client_id"],
-            "webhooks"
-        )
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                    "message": error_msg,
-                    "feature": "webhooks",
-                    "upgrade_required": True,
-                    **(error_details or {})
-                }
-            )
-        
         # Validate event types
         valid_events = [e.value for e in WebhookEventType]
         for event in data.event_types:
@@ -284,15 +269,9 @@ async def create_webhook(request: Request, data: CreateWebhookRequest):
 
 @router.get("")
 async def list_webhooks(request: Request):
-    """List all webhooks for the client (excluding soft-deleted). Gated: Pro only (webhooks)."""
+    """List all webhooks for the client (excluding soft-deleted). Gated: CAP_INTEGRATION_WEBHOOKS."""
     user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "webhooks")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "webhooks", "upgrade_required": True}
-        )
+    await _require_webhooks_read(user)
     db = database.get_db()
     
     try:
@@ -326,15 +305,9 @@ async def list_webhooks(request: Request):
 
 @router.get("/{webhook_id}")
 async def get_webhook(request: Request, webhook_id: str):
-    """Get webhook details with masked secret. Gated: Pro only (webhooks)."""
+    """Get webhook details with masked secret. Gated: CAP_INTEGRATION_WEBHOOKS."""
     user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "webhooks")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "webhooks", "upgrade_required": True}
-        )
+    await _require_webhooks_read(user)
     db = database.get_db()
     
     try:
@@ -380,6 +353,7 @@ async def get_webhook(request: Request, webhook_id: str):
 async def update_webhook(request: Request, webhook_id: str, data: UpdateWebhookRequest):
     """Update webhook configuration."""
     user = await client_route_guard(request)
+    await _require_webhooks_write(user)
     db = database.get_db()
     
     try:
@@ -449,6 +423,7 @@ async def update_webhook(request: Request, webhook_id: str, data: UpdateWebhookR
 async def delete_webhook(request: Request, webhook_id: str):
     """Soft delete a webhook."""
     user = await client_route_guard(request)
+    await _require_webhooks_write(user)
     db = database.get_db()
     
     try:
@@ -501,6 +476,7 @@ async def delete_webhook(request: Request, webhook_id: str):
 async def test_webhook(request: Request, webhook_id: str):
     """Send a test request to the webhook URL."""
     user = await client_route_guard(request)
+    await _require_webhooks_write(user)
     
     try:
         result = await webhook_service.test_webhook(
@@ -537,6 +513,7 @@ async def test_webhook(request: Request, webhook_id: str):
 async def enable_webhook(request: Request, webhook_id: str):
     """Enable a webhook."""
     user = await client_route_guard(request)
+    await _require_webhooks_write(user)
     db = database.get_db()
     
     try:
@@ -571,6 +548,7 @@ async def enable_webhook(request: Request, webhook_id: str):
 async def disable_webhook(request: Request, webhook_id: str):
     """Disable a webhook."""
     user = await client_route_guard(request)
+    await _require_webhooks_write(user)
     db = database.get_db()
     
     try:
@@ -605,6 +583,7 @@ async def disable_webhook(request: Request, webhook_id: str):
 async def regenerate_webhook_secret(request: Request, webhook_id: str):
     """Regenerate the webhook signing secret."""
     user = await client_route_guard(request)
+    await _require_webhooks_write(user)
     db = database.get_db()
     
     try:

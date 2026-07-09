@@ -60,10 +60,10 @@ export const PORTAL_PRIMARY_NAV_ITEMS = [
  * Secondary navigation — grouped under "More" on desktop; sectioned on mobile.
  */
 export const PORTAL_SECONDARY_NAV_ITEMS = [
-  { path: '/calendar', label: 'Calendar', icon: Calendar, tier: NAV_TIER.SECONDARY },
+  { path: '/calendar', label: 'Calendar', icon: Calendar, tier: NAV_TIER.SECONDARY, calendarGate: true },
   { path: '/reports', label: 'Reports', icon: BarChart3, tier: NAV_TIER.SECONDARY, reportsGate: true },
   { path: '/tenants', label: 'Tenants', icon: Users, tier: NAV_TIER.SECONDARY, feature: 'tenant_portal' },
-  { path: '/settings/billing', label: 'Billing', icon: CreditCard, tier: NAV_TIER.SECONDARY, feature: 'invoicing' },
+  { path: '/settings/billing', label: 'Billing', icon: CreditCard, tier: NAV_TIER.SECONDARY, billingGate: true },
   { path: '/settings', label: 'Settings', icon: Settings, tier: NAV_TIER.SECONDARY, end: true },
 ];
 
@@ -96,8 +96,10 @@ function filterOperationsChildren(children, { navHasFeature, userRole }) {
   });
 }
 
-function filterLinkItem(item, { navHasFeature, showReports }) {
+function filterLinkItem(item, { navHasFeature, showReports, showBilling, showCalendar }) {
   if (item.reportsGate && !showReports) return null;
+  if (item.billingGate && !showBilling) return null;
+  if (item.calendarGate && !showCalendar) return null;
   if (item.feature && !navHasFeature(item.feature)) return null;
   return item;
 }
@@ -106,8 +108,8 @@ function filterLinkItem(item, { navHasFeature, showReports }) {
  * Build hierarchy-aware navigation model for client portal rendering.
  * @returns {{ primaryLinks: object[], operationsGroup: object|null, secondaryItems: object[] }}
  */
-export function buildPortalNavigationModel({ navHasFeature, showReports, userRole }) {
-  const filterCtx = { navHasFeature, showReports, userRole };
+export function buildPortalNavigationModel({ navHasFeature, showReports, showBilling, showCalendar, userRole }) {
+  const filterCtx = { navHasFeature, showReports, showBilling, showCalendar, userRole };
 
   const primaryLinks = [];
   let operationsGroup = null;

@@ -1,0 +1,118 @@
+{
+  "programme": "COMPLIANCE-EVIDENCE-GRAPH-PHASE-2B",
+  "validated_at": "2026-06-28T23:02:59.082402+00:00",
+  "run_tag": "20260628T230258Z",
+  "feature_flag": {
+    "mode": "shadow",
+    "producers_enabled": true
+  },
+  "checks": [
+    {
+      "name": "p0_registry_implemented",
+      "passed": true,
+      "p0_count": 5,
+      "live_active": 5
+    },
+    {
+      "name": "score_recalc_emit",
+      "passed": true,
+      "decision_id": "dec_f58b7d41f322498f9412e0d0c7c6b2d5",
+      "idempotent_match": true,
+      "latency_ms": 703.02
+    },
+    {
+      "name": "explain_decision_no_ai",
+      "passed": true,
+      "has_quality": true
+    },
+    {
+      "name": "replay_decision_no_ai",
+      "passed": true
+    },
+    {
+      "name": "decision_lineage_complete",
+      "passed": true,
+      "has_decision_quality": true,
+      "node_count": 2,
+      "edge_count": 1
+    },
+    {
+      "name": "integrity_validator_pass",
+      "passed": true
+    },
+    {
+      "name": "graph_health_acceptable",
+      "passed": true
+    }
+  ],
+  "integrity_validator": {
+    "valid": true,
+    "checks_run": 9,
+    "failures": [],
+    "warnings": [
+      {
+        "check": "validate_decision",
+        "severity": "warning",
+        "entity_type": "decision",
+        "entity_id": "dec_9e0cdc48e73746f0a8c3f1aae777a975",
+        "decision_id": "dec_9e0cdc48e73746f0a8c3f1aae777a975",
+        "message": "missing decision_quality",
+        "details": {}
+      },
+      {
+        "check": "validate_decision",
+        "severity": "warning",
+        "entity_type": "decision",
+        "entity_id": "dec_b72025dfeeda4ca1a4f8955e458af081",
+        "decision_id": "dec_b72025dfeeda4ca1a4f8955e458af081",
+        "message": "missing decision_quality",
+        "details": {}
+      },
+      {
+        "check": "validate_decision",
+        "severity": "warning",
+        "entity_type": "decision",
+        "entity_id": "dec_fbbe528782f140b0b4136c0b888e3b27",
+        "decision_id": "dec_fbbe528782f140b0b4136c0b888e3b27",
+        "message": "missing decision_quality",
+        "details": {}
+      }
+    ],
+    "stats": {
+      "decisions_examined": 4,
+      "nodes_examined": 8,
+      "edges_examined": 4
+    },
+    "duration_ms": 1958.99
+  },
+  "graph_health": {
+    "overall_status": "healthy",
+    "summary": {
+      "decisions_examined": 4,
+      "checks_passed": 9,
+      "checks_failed": 0,
+      "warnings": 3,
+      "integrity_failure_count": 0
+    },
+    "metrics": {
+      "decision_completeness_rate": 1.0,
+      "snapshot_pairing_rate": 1.0,
+      "orphan_node_count": 0,
+      "orphan_edge_count": 0,
+      "duplicate_dedupe_key_count": 0,
+      "broken_supersession_count": 0,
+      "missing_operational_link_count": 0,
+      "cross_tenant_violation_count": 0,
+      "decision_quality_present_rate": 0.25,
+      "integrity_failure_count": 0,
+      "warning_count": 3
+    }
+  },
+  "summary": {
+    "passed": 7,
+    "total": 7,
+    "verdict": "PHASE_2B_P0_ACCEPTED",
+    "phase_2c_ready_recommendation": true,
+    "emit_latency_ms": 703.02
+  }
+}

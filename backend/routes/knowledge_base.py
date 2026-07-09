@@ -15,6 +15,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from enum import Enum
 from middleware import admin_route_guard, client_route_guard, get_current_user
+from middleware.capability_gating import assert_client_capability
 from database import database
 from services import kb_article_feedback_service as kb_article_feedback_svc
 import logging
@@ -33,6 +34,14 @@ ARTICLES_COLLECTION = "kb_articles"
 CATEGORIES_COLLECTION = "kb_categories"
 SEARCH_ANALYTICS_COLLECTION = "kb_search_analytics"
 FEEDBACK_COLLECTION = "assistant_feedback"
+
+
+async def _require_help_read(user: dict) -> None:
+    await assert_client_capability(user, "CAP_KNOWLEDGE_CENTRE", "read")
+
+
+async def _require_support_write(user: dict) -> None:
+    await assert_client_capability(user, "CAP_SUPPORT_REQUEST", "write")
 
 
 async def sync_public_support_index_for_kb_article(article_id: str) -> None:
@@ -900,6 +909,7 @@ async def client_help_list_articles(
     current_user: dict = Depends(client_route_guard),
 ):
     """List published USER-scoped articles for Help Centre (authenticated client)."""
+    await _require_help_read(current_user)
     db = database.get_db()
 
     filter_query = {
@@ -939,6 +949,7 @@ async def client_help_get_article(
     current_user: dict = Depends(client_route_guard),
 ):
     """Get one published USER article by slug (for Help Centre)."""
+    await _require_help_read(current_user)
     db = database.get_db()
 
     article = await db[ARTICLES_COLLECTION].find_one(
@@ -978,6 +989,7 @@ async def client_help_list_categories(
     current_user: dict = Depends(client_route_guard),
 ):
     """List USER-scoped categories with article counts for Help Centre."""
+    await _require_help_read(current_user)
     db = database.get_db()
     await ensure_default_categories()
 
@@ -1010,6 +1022,7 @@ async def client_help_assistant_query(
     Help Assistant query: answers from published USER-scoped articles only.
     No LLM; no portal data. If no docs match, returns fallback and grounded=false.
     """
+    await _require_support_write(current_user)
     allowed = _allowed_audiences_for_role(current_user.get("role", "USER"))
     articles = await search_published_articles_for_assistant(
         query=data.query,
@@ -1027,6 +1040,7 @@ async def client_help_assistant_feedback(
     current_user: dict = Depends(client_route_guard),
 ):
     """Record Helpful / Not Helpful for a help-assistant answer."""
+    await _require_support_write(current_user)
     db = database.get_db()
     now = datetime.now(timezone.utc).isoformat()
     user_id = current_user.get("portal_user_id") or current_user.get("client_id") or "unknown"
@@ -1052,6 +1066,7 @@ async def client_help_article_feedback(
     current_user: dict = Depends(client_route_guard),
 ):
     """Record helpful / not helpful for a Help Centre article (dedupe per portal user)."""
+    await _require_support_write(current_user)
     article = await get_published_user_article_by_id(article_id)
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
@@ -1083,6 +1098,7 @@ async def client_help_article_feedback_comment(
     current_user: dict = Depends(client_route_guard),
 ):
     """Attach written note to existing vote (authenticated client)."""
+    await _require_support_write(current_user)
     article = await get_published_user_article_by_id(article_id)
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")

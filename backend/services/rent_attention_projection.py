@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional
 
 from database import database
 from models.rent_operations import RentLedgerStatus
-from services.ops_compliance_feature_flags import RENT_OPERATIONS, get_effective_flags
 
 SOURCE_RENT_OPS = "rent_operations"
 MAX_RENT_TODAY_ITEMS = 12
@@ -74,10 +73,7 @@ async def list_rent_attention_tasks(
     property_id_filter: Optional[str] = None,
     limit: int = MAX_RENT_TODAY_ITEMS,
 ) -> List[Dict[str, Any]]:
-    flags = await get_effective_flags(client_id)
-    if not flags.get(RENT_OPERATIONS):
-        return []
-
+    """List overdue rent ledger attention tasks. Caller must gate on CAP_OPS_RENT / rent_operations."""
     db = database.get_db()
     q: Dict[str, Any] = {
         "client_id": client_id,

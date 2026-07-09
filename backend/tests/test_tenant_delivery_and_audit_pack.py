@@ -418,7 +418,7 @@ def test_http_post_tenant_delivery_and_audit_pack_generate(client_http):
     with (
         patch.object(cda_routes, "client_route_guard", guard),
         patch.object(cda_routes.database, "get_db", return_value=mock_db),
-        patch.object(cda_routes.plan_registry, "enforce_feature", new=AsyncMock(return_value=(True, None, {}))),
+        patch.object(cda_routes, "assert_client_capability", new=AsyncMock()),
         patch.object(
             cda_routes.td_proof,
             "initiate_tenant_compliance_delivery",
@@ -447,7 +447,7 @@ def test_http_post_tenant_delivery_and_audit_pack_generate(client_http):
 
     with (
         patch.object(cda_routes, "client_route_guard", guard),
-        patch.object(cda_routes.plan_registry, "enforce_feature", new=AsyncMock(return_value=(True, None, {}))),
+        patch.object(cda_routes, "assert_client_capability", new=AsyncMock()),
         patch.object(
             cda_routes.audit_pack,
             "build_compliance_audit_pack",
@@ -665,10 +665,27 @@ def test_gap_closes_when_requirement_tenant_delivery_delivered():
 
 
 def test_http_client_tenant_deliveries_list_payload(client_http):
+    from services.account_capability_enforcement import CapabilityEnforcementService
+    from services.account_lifecycle_runtime_contract import build_runtime_contract
+
     user = {"client_id": "c-list", "portal_user_id": "pu-list", "role": "ROLE_CLIENT_ADMIN"}
 
     async def guard(request):
         return user
+
+    fixed_contract = build_runtime_contract(
+        client={"client_id": "c-list", "billing_plan": "PLAN_3_PRO", "subscription_status": "ACTIVE"},
+        billing={
+            "client_id": "c-list",
+            "subscription_status": "ACTIVE",
+            "billing_lifecycle_state": "active",
+            "canonical_entitlement_state": "ENABLED",
+        },
+    )
+    svc = CapabilityEnforcementService(db=None)
+
+    async def _evaluate(client_id, capability_id, action, *, contract=None):
+        return svc.evaluate_from_contract(fixed_contract, capability_id, action)
 
     row = {
         "delivery_id": "td-list",
@@ -679,6 +696,10 @@ def test_http_client_tenant_deliveries_list_payload(client_http):
     }
     with (
         patch.object(cda_routes, "client_route_guard", guard),
+        patch(
+            "middleware.capability_gating.CapabilityEnforcementService.evaluate",
+            new=AsyncMock(side_effect=_evaluate),
+        ),
         patch.object(
             cda_routes.td_proof,
             "list_tenant_delivery_proofs_for_scope",
@@ -765,7 +786,7 @@ def test_http_audit_pack_download_logs_audit(client_http):
 
     with (
         patch.object(cda_routes, "client_route_guard", guard),
-        patch.object(cda_routes.plan_registry, "enforce_feature", new=AsyncMock(return_value=(True, None, {}))),
+        patch.object(cda_routes, "assert_client_capability", new=AsyncMock()),
         patch.object(cda_routes.audit_pack, "get_audit_pack_record", new=AsyncMock(return_value=rec)),
         patch.object(cda_routes.audit_pack, "read_audit_pack_zip_bytes", new=AsyncMock(return_value=b"PK\x03\x04zz")),
         patch.object(cda_routes, "create_audit_log", new_callable=AsyncMock) as audit,

@@ -88,7 +88,10 @@ function rowDays(r) {
  */
 export default function PropertyOperatingHub({
   propertyId,
-  hasFeature,
+  canUseOpsMaintenance,
+  canUseOpsPredictive,
+  canUseOpsContractors,
+  canUseOpsComplianceReview,
   tabs,
   onSelectTab,
   priorityActions,
@@ -307,7 +310,7 @@ export default function PropertyOperatingHub({
         )}
       </section>
 
-      {hasFeature('predictive_maintenance') && (riskSignalsData?.signals || []).filter((s) => (s.status || 'active') === 'active').length > 0 && (
+      {canUseOpsPredictive && (riskSignalsData?.signals || []).filter((s) => (s.status || 'active') === 'active').length > 0 && (
         <section className="min-w-0" aria-labelledby="property-risk-hub-heading">
           <h2 id="property-risk-hub-heading" className="text-lg font-semibold text-midnight-blue border-b border-gray-200 pb-2 mb-3 flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
@@ -315,8 +318,8 @@ export default function PropertyOperatingHub({
           </h2>
           <ul className="space-y-3">
             {(riskSignalsData.signals || []).filter((s) => (s.status || 'active') === 'active').slice(0, 2).map((s) => {
-              const hasMaint = hasFeature('maintenance_workflows');
-              const hasComp = hasFeature('compliance_engine');
+              const hasMaint = canUseOpsMaintenance;
+              const hasComp = canUseOpsComplianceReview;
               const { key: primaryKey, label: primaryLabel } = resolveRiskSignalPrimaryKey(s, hasMaint, hasComp);
               const onCreateWo = async () => {
                 if (hasMaint) {
@@ -609,7 +612,7 @@ export default function PropertyOperatingHub({
         </Button>
       </section>
 
-      {hasFeature('maintenance_workflows') && (
+      {canUseOpsMaintenance && (
         <section className="min-w-0" aria-labelledby="property-jobs-hub-heading">
           <h2 id="property-jobs-hub-heading" className="text-lg font-semibold text-midnight-blue border-b border-gray-200 pb-2 mb-3">
             Jobs
@@ -738,7 +741,7 @@ export default function PropertyOperatingHub({
         )}
       </section>
 
-      {hasFeature('contractor_network') && (
+      {canUseOpsContractors && (
         <section className="min-w-0 border-t border-gray-100 pt-6">
           <Button type="button" variant="ghost" className="min-h-10 text-gray-600 -ml-2" onClick={() => onSelectTab(TAB_CONTRACTORS)}>
             Contractors for this property →

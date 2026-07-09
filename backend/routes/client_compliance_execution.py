@@ -2,24 +2,21 @@
 Client API: compliance execution jobs (compliance work orders + contractor confirmation flow).
 
 This is not maintenance repair: work orders are work_order_kind=COMPLIANCE (inspection / renewal / certification).
-Requires COMPLIANCE_ENGINE and MAINTENANCE_WORKFLOWS. Contractor recommendation actions require CONTRACTOR_NETWORK.
+Permission authority: Runtime Contract CAP_REQ_RESOLVE, CAP_OPS_MAINTENANCE, CAP_OPS_CONTRACTORS.
 """
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from pydantic import BaseModel, Field
 
+from database import database
 from middleware import client_route_guard
+from middleware.capability_gating import capability_denied_http_detail, enforce_route_capability
+from services.account_capability_enforcement import CapabilityEnforcementService
 from services import contractor_service
 from services import maintenance_service
 from services import work_order_contractor_routing_service as wo_contractor_routing
 from services.compliance_booking_service import create_compliance_execution_work_order, describe_compliance_booking_action
-from services.ops_compliance_feature_flags import (
-    get_effective_flags,
-    COMPLIANCE_ENGINE,
-    MAINTENANCE_WORKFLOWS,
-    CONTRACTOR_NETWORK,
-)
 from services.work_order_execution_constants import WORK_ORDER_KIND_COMPLIANCE
 
 router = APIRouter(
@@ -29,22 +26,14 @@ router = APIRouter(
 )
 
 
-async def _require_compliance_execution(request: Request):
+async def _enforce_capability(user: dict, capability_id: str, action: str) -> None:
+    await enforce_route_capability(user, capability_id, action)
+
+
+async def _require_compliance_execution(request: Request, action: str = "write"):
     user = await client_route_guard(request)
-    client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client context required")
-    flags = await get_effective_flags(client_id)
-    if not flags.get(COMPLIANCE_ENGINE):
-        raise HTTPException(
-            status_code=403,
-            detail="Compliance engine is not enabled for your account",
-        )
-    if not flags.get(MAINTENANCE_WORKFLOWS):
-        raise HTTPException(
-            status_code=403,
-            detail="Work order workflows are not enabled for your account",
-        )
+    await _enforce_capability(user, "CAP_REQ_RESOLVE", action)
+    await _enforce_capability(user, "CAP_OPS_MAINTENANCE", action)
     return user
 
 
@@ -88,7 +77,7 @@ async def book_compliance_execution_work_order(request: Request, body: Complianc
     Create a compliance execution work order (v1: no external calendar; real persisted WO + audit).
     Next: POST .../contractor-routing/generate to recommend a qualified compliance contractor.
     """
-    user = await _require_compliance_execution(request)
+    user = await _require_compliance_execution(request, "write")
     client_id = user["client_id"]
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
     try:
@@ -118,7 +107,7 @@ async def book_compliance_execution_work_order(request: Request, body: Complianc
 
 @router.get("/compliance-execution/work-orders/{work_order_id}/contractor-routing")
 async def get_compliance_work_order_contractor_routing(request: Request, work_order_id: str):
-    user = await _require_compliance_execution(request)
+    user = await _require_compliance_execution(request, "read")
     client_id = user["client_id"]
     wo = await maintenance_service.get_work_order(work_order_id)
     if not wo or wo.get("client_id") != client_id:
@@ -137,11 +126,9 @@ async def get_compliance_work_order_contractor_routing(request: Request, work_or
 
 @router.post("/compliance-execution/work-orders/{work_order_id}/contractor-routing/generate")
 async def generate_compliance_contractor_recommendation(request: Request, work_order_id: str):
-    user = await _require_compliance_execution(request)
+    user = await _require_compliance_execution(request, "write")
     client_id = user["client_id"]
-    flags = await get_effective_flags(client_id)
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "write")
     wo = await maintenance_service.get_work_order(work_order_id)
     if not wo or wo.get("client_id") != client_id:
         raise HTTPException(status_code=404, detail="Work order not found")
@@ -167,11 +154,9 @@ async def request_contractor_for_compliance_work_order(http_request: Request, wo
 
 @router.post("/compliance-execution/work-orders/{work_order_id}/contractor-routing/confirm")
 async def confirm_compliance_recommended_contractor(request: Request, work_order_id: str):
-    user = await _require_compliance_execution(request)
+    user = await _require_compliance_execution(request, "write")
     client_id = user["client_id"]
-    flags = await get_effective_flags(client_id)
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "write")
     await _assert_compliance_wo(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
     try:
@@ -184,11 +169,9 @@ async def confirm_compliance_recommended_contractor(request: Request, work_order
 
 @router.post("/compliance-execution/work-orders/{work_order_id}/contractor-routing/decline")
 async def decline_compliance_recommendation(request: Request, work_order_id: str, body: DeclineRecommendationBody):
-    user = await _require_compliance_execution(request)
+    user = await _require_compliance_execution(request, "write")
     client_id = user["client_id"]
-    flags = await get_effective_flags(client_id)
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "write")
     await _assert_compliance_wo(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
     try:
@@ -201,11 +184,9 @@ async def decline_compliance_recommendation(request: Request, work_order_id: str
 
 @router.post("/compliance-execution/work-orders/{work_order_id}/contractor-routing/confirm-alternate")
 async def confirm_compliance_alternate_contractor(request: Request, work_order_id: str, body: ConfirmAlternateBody):
-    user = await _require_compliance_execution(request)
+    user = await _require_compliance_execution(request, "write")
     client_id = user["client_id"]
-    flags = await get_effective_flags(client_id)
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "write")
     await _assert_compliance_wo(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
     try:
@@ -218,11 +199,9 @@ async def confirm_compliance_alternate_contractor(request: Request, work_order_i
 
 @router.post("/compliance-execution/work-orders/{work_order_id}/contractor-routing/request-admin")
 async def request_admin_compliance_routing(request: Request, work_order_id: str, body: RequestAdminRoutingBody):
-    user = await _require_compliance_execution(request)
+    user = await _require_compliance_execution(request, "write")
     client_id = user["client_id"]
-    flags = await get_effective_flags(client_id)
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "write")
     await _assert_compliance_wo(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
     try:
@@ -235,11 +214,9 @@ async def request_admin_compliance_routing(request: Request, work_order_id: str,
 
 @router.post("/compliance-execution/work-orders/{work_order_id}/contractor-routing/personal-contractor")
 async def add_compliance_personal_contractor_and_assign(request: Request, work_order_id: str, body: PersonalContractorBody):
-    user = await _require_compliance_execution(request)
+    user = await _require_compliance_execution(request, "write")
     client_id = user["client_id"]
-    flags = await get_effective_flags(client_id)
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "write")
     await _assert_compliance_wo(work_order_id, client_id)
     actor = user.get("portal_user_id") or user.get("email") or user.get("user_id")
     try:
@@ -262,11 +239,9 @@ async def recommend_compliance_contractors(
     work_order_id: str,
     limit: int = Query(10, ge=1, le=50),
 ):
-    user = await _require_compliance_execution(request)
+    user = await _require_compliance_execution(request, "read")
     client_id = user["client_id"]
-    flags = await get_effective_flags(client_id)
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "read")
     wo = await maintenance_service.get_work_order(work_order_id)
     if not wo or wo.get("client_id") != client_id:
         raise HTTPException(status_code=404, detail="Work order not found")
@@ -289,11 +264,9 @@ async def list_compliance_assignable_contractors(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
 ):
-    user = await _require_compliance_execution(request)
+    user = await _require_compliance_execution(request, "read")
     client_id = user["client_id"]
-    flags = await get_effective_flags(client_id)
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network is not enabled for your account")
+    await _enforce_capability(user, "CAP_OPS_CONTRACTORS", "read")
     wo = await maintenance_service.get_work_order(work_order_id)
     if not wo or wo.get("client_id") != client_id:
         raise HTTPException(status_code=404, detail="Work order not found")

@@ -4,7 +4,9 @@ from typing import Optional
 
 from middleware import admin_route_guard
 from services.security_monitoring_service import (
+    clear_ip_block,
     get_security_dashboard_summary,
+    list_active_ip_blocks,
     list_security_events,
     list_security_incidents,
     resolve_security_incident,
@@ -56,3 +58,21 @@ async def resolve_incident(incident_key: str, body: ResolveIncidentBody, user: d
     if not ok:
         raise HTTPException(status_code=404, detail="Incident not found or already resolved")
     return {"success": True, "incident_key": incident_key}
+
+
+@router.get("/ip-blocks")
+async def active_ip_blocks(
+    limit: int = Query(100, ge=1, le=500),
+    user: dict = Depends(admin_route_guard),
+):
+    _ = user
+    return await list_active_ip_blocks(limit=limit)
+
+
+@router.delete("/ip-blocks/{ip}")
+async def delete_ip_block(ip: str, user: dict = Depends(admin_route_guard)):
+    _ = user
+    ok = await clear_ip_block(ip)
+    if not ok:
+        raise HTTPException(status_code=404, detail="IP block not found")
+    return {"success": True, "ip": ip}

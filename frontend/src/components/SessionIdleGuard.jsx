@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLifecycleRuntime } from '../contexts/LifecycleRuntimeContext';
 import { authAPI } from '../api/client';
 import {
   Dialog,
@@ -39,6 +40,7 @@ function jwtExpSeconds(token) {
  */
 export default function SessionIdleGuard({ children }) {
   const { user, logout, loginWithToken, isStaff } = useAuth();
+  const { refreshSession } = useLifecycleRuntime();
   const [warningOpen, setWarningOpen] = useState(false);
   const [extendLoading, setExtendLoading] = useState(false);
   const lastActivityRef = useRef(Date.now());
@@ -142,6 +144,9 @@ export default function SessionIdleGuard({ children }) {
               prev = {};
             }
             loginWithToken(data.access_token, { ...prev, ...data.user });
+            if (refreshSession) {
+              refreshSession('session_extend');
+            }
           }
         } catch {
           /* Let the next 401 handler or idle flow deal with hard failure */
@@ -151,7 +156,7 @@ export default function SessionIdleGuard({ children }) {
     const id = window.setInterval(renewIfNeeded, 60 * 1000);
     renewIfNeeded();
     return () => window.clearInterval(id);
-  }, [user, loginWithToken]);
+  }, [user, loginWithToken, refreshSession]);
 
   const handleExtend = async () => {
     setExtendLoading(true);
@@ -168,6 +173,9 @@ export default function SessionIdleGuard({ children }) {
           prev = {};
         }
         loginWithToken(data.access_token, { ...prev, ...data.user });
+        if (refreshSession) {
+          await refreshSession('session_extend');
+        }
       }
       bumpActivity();
       hardLogoutRef.current = false;

@@ -28,6 +28,7 @@ import {
   sleep,
   SUPPORT_ACTIONS_REVEAL_MS,
 } from '../utils/supportChatPacing';
+import { useSupportCapabilities } from '../utils/accountCapabilityAccess';
 
 // Quick action icons mapping
 const QUICK_ACTION_ICONS = {
@@ -707,6 +708,7 @@ function FAQTab({ onStartChat, onSelectArticle }) {
 }
 
 export default function SupportChatWidget({ isAuthenticated = false, clientContext = null }) {
+  const { canAccessSupport, canRequestSupport } = useSupportCapabilities();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [activeTab, setActiveTab] = useState('faq'); // 'faq' or 'chat'
@@ -886,6 +888,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
 
   // Handle quick action
   const handleQuickAction = async (actionId) => {
+    if (isAuthenticated && !canRequestSupport) return;
     setLoading(true);
     setShowHandoff(false);
     const startedAt = Date.now();
@@ -929,6 +932,7 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
   // Send message
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
+    if (isAuthenticated && !canRequestSupport) return;
 
     const trimmed = input.trim();
     if (/^(reset|start over|new chat)$/i.test(trimmed)) {
@@ -1075,6 +1079,10 @@ export default function SupportChatWidget({ isAuthenticated = false, clientConte
       sendMessage();
     }
   };
+
+  if (isAuthenticated && !canAccessSupport) {
+    return null;
+  }
 
   if (!isOpen) {
     return (

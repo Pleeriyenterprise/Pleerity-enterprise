@@ -1,0 +1,119 @@
+{
+  "programme": "COMPLIANCE-EVIDENCE-GRAPH-PHASE-2E",
+  "validated_at": "2026-06-29T00:00:18.974051+00:00",
+  "run_tag": "20260629T000018Z",
+  "feature_flag": {
+    "mode": "shadow",
+    "producers_enabled": true
+  },
+  "checks": [
+    {
+      "name": "mutation_coverage_thresholds",
+      "passed": true,
+      "p0": {
+        "count": 5,
+        "implemented": 5,
+        "passed": true
+      },
+      "p1": {
+        "count": 11,
+        "implemented": 11,
+        "passed": true
+      },
+      "p2": {
+        "count": 14,
+        "implemented": 14,
+        "rate": 1.0,
+        "passed": true,
+        "deferred_ids": [
+          "P2-02",
+          "P2-11",
+          "P2-12",
+          "P2-15",
+          "P2-18",
+          "P2-19",
+          "P2-20"
+        ]
+      },
+      "all_passed": true
+    },
+    {
+      "name": "graph_health_report",
+      "passed": true,
+      "overall": "healthy"
+    },
+    {
+      "name": "integrity_validator",
+      "passed": true,
+      "failures": 0,
+      "warnings": 3,
+      "stats": {
+        "decisions_examined": 9,
+        "nodes_examined": 18,
+        "edges_examined": 9
+      }
+    },
+    {
+      "name": "backfill_dry_run_idempotent",
+      "passed": true,
+      "run1": {
+        "ok": true,
+        "dry_run": true,
+        "candidates": 5,
+        "backfilled": 5,
+        "skipped": 0,
+        "errors": [],
+        "completed_at": "2026-06-29T00:01:21.765234+00:00"
+      },
+      "run2": {
+        "ok": true,
+        "dry_run": true,
+        "candidates": 5,
+        "backfilled": 5,
+        "skipped": 0,
+        "errors": [],
+        "completed_at": "2026-06-29T00:01:21.835189+00:00"
+      }
+    },
+    {
+      "name": "p2_emit_idempotent",
+      "passed": true,
+      "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e"
+    },
+    {
+      "name": "graph_service_explain_replay",
+      "passed": true,
+      "explain_status": null
+    }
+  ],
+  "coverage": {
+    "p0": {
+      "count": 5,
+      "implemented": 5,
+      "passed": true
+    },
+    "p1": {
+      "count": 11,
+      "implemented": 11,
+      "passed": true
+    },
+    "p2": {
+      "count": 14,
+      "implemented": 14,
+      "rate": 1.0,
+      "passed": true,
+      "deferred_ids": [
+        "P2-02",
+        "P2-11",
+        "P2-12",
+        "P2-15",
+        "P2-18",
+        "P2-19",
+        "P2-20"
+      ]
+    },
+    "all_passed": true
+  },
+  "acceptance": "PHASE_2E_ACCEPTED",
+  "elapsed_ms": 64243
+}

@@ -1,0 +1,58 @@
+{
+  "programme": "ILP-8-CUSTOMER-COMMUNICATIONS-AND-REACTIVATION-01",
+  "branch": "develop",
+  "executed_at_utc": "2026-07-06T21:15:00Z",
+  "verdict": "ILP_08_IMPLEMENTED_TARGETED_VALIDATION_PASS_REGRESSION_DEFERRED",
+  "production_ready": false,
+  "communication_authority": {
+    "module": "backend/services/account_customer_communication_authority.py",
+    "policy_version": "account_customer_communication_v1"
+  },
+  "reactivation_authority": {
+    "module": "backend/services/account_lifecycle_reactivation_authority.py",
+    "policy_version": "account_lifecycle_reactivation_v1"
+  },
+  "communication_inventory": "backend/docs/audit/account_lifecycle_ilp_08/COMMUNICATION_INVENTORY.json",
+  "channel_matrix": "backend/docs/ACCOUNT_LIFECYCLE_COMMUNICATION_MATRIX.md",
+  "suppression_rules": [
+    "billing_recovery_suppress_operational_spam",
+    "suspended_suppress_operational_comms",
+    "archived_no_operational_comms",
+    "account_deleted_no_operational_comms",
+    "communication_policy_channel_denied"
+  ],
+  "recovery_journeys": [
+    "complete_payment",
+    "reactivate_account",
+    "undo_scheduled_cancellation",
+    "contact_support",
+    "review_invoices"
+  ],
+  "migrations": [
+    "notification_orchestrator._apply_gating → evaluate_customer_communication"
+  ],
+  "frontend_consumers": [
+    "frontend/src/utils/communicationRuntime.js"
+  ],
+  "lifecycle_states_validated": [
+    "ACTIVE", "TRIAL", "GRACE_PERIOD", "CANCELLATION_SCHEDULED", "READ_ONLY",
+    "CANCELLED_IMMEDIATE", "SUBSCRIPTION_EXPIRED", "SUSPENDED", "ARCHIVED",
+    "ACCOUNT_DELETED"
+  ],
+  "targeted_tests_passed": {
+    "total": 19,
+    "failed": 0,
+    "suite": "test_account_customer_communication_authority.py"
+  },
+  "deferred_items": [
+    "email_service direct send migration",
+    "admin_communications_service",
+    "push notification channel",
+    "stripe reactivation execution",
+    "full platform regression"
+  ],
+  "ilp9_readiness": {
+    "status": "READY_FOR_ILP9_PLANNING",
+    "notes": "Communication and reactivation metadata centralized; lifecycle event bus is ILP-9."
+  }
+}

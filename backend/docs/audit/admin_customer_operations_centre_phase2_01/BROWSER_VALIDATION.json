@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-07-09T10:40:00Z",
+  "checks": {
+    "customer_health_summary": true,
+    "authority_chain": true,
+    "operational_timeline": true,
+    "runtime_diagnostics": true,
+    "background_processing": true,
+    "communications_state": true,
+    "webhook_diagnostics": true,
+    "governed_actions": true,
+    "export_bundle_button": true,
+    "no_manual_override": true,
+    "customer_ops_tab": true,
+    "tabs_navigate": true
+  },
+  "console_errors": [],
+  "pass": true,
+  "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+  "url": "https://pleerity-enterprise-9jjg.vercel.app/admin/clients/ce8d3b56-0659-46d8-88af-0988fe48de25"
+}

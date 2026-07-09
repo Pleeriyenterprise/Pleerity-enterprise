@@ -3,15 +3,15 @@ import { clientAPI } from '../../api/client';
 import { formatMinorUnits } from '../../utils/rentMoney';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Loader2 } from 'lucide-react';
-import { useEntitlements } from '../../contexts/EntitlementsContext';
+import { usePropertyCapabilities } from '../../utils/propertyCapabilityAccess';
 
 export function PropertyFinancialSnapshotCard({ propertyId }) {
-  const { hasFeature } = useEntitlements();
+  const { canUseOpsRent } = usePropertyCapabilities();
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const enabled = hasFeature('rent_operations');
+  const enabled = canUseOpsRent;
 
   useEffect(() => {
     if (!enabled || !propertyId) return;

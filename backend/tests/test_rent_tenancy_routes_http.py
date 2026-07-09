@@ -7,8 +7,22 @@ from starlette.requests import Request
 from middleware import client_route_guard as middleware_client_route_guard
 from routes import client_rent_operations
 from server import app
+from services.account_capability_enforcement import CapabilityDecision, GRANT_ALLOW
 
 CLIENT_ID = "cli-rent-tenancy-routes"
+
+
+async def _allow_capability_evaluate(client_id, capability_id, action, *, contract=None):
+    return CapabilityDecision(
+        capability_id=capability_id,
+        action=action,
+        grant=GRANT_ALLOW,
+        effective_semantic=GRANT_ALLOW,
+        allowed=True,
+        source="test",
+        reason_code="allowed",
+        reason="test allow",
+    )
 
 
 async def _guard(request: Request):
@@ -18,11 +32,10 @@ async def _guard(request: Request):
 @pytest.fixture
 def rent_http():
     app.dependency_overrides[middleware_client_route_guard] = _guard
-    with patch.object(
-        client_rent_operations,
-        "get_effective_flags",
+    with patch(
+        "routes.client_rent_operations.CapabilityEnforcementService.evaluate",
         new_callable=AsyncMock,
-        return_value={"RENT_OPERATIONS": True},
+        side_effect=_allow_capability_evaluate,
     ), patch.object(client_rent_operations, "client_route_guard", new=_guard):
         yield
     app.dependency_overrides.pop(middleware_client_route_guard, None)

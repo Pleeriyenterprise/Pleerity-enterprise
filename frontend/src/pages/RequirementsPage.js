@@ -3,7 +3,11 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import api from '../api/client';
 import { toast } from '@/utils/portalNotifications';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import {
+  getCapabilityDeniedMessage,
+  isCapabilityDeniedApiError,
+  usePropertyWorkflowCapabilities,
+} from '../utils/propertyCapabilityAccess';
 import {
   FileCheck,
   Calendar,
@@ -31,6 +35,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import EmptyState from '../components/EmptyState';
 import { requirementDisplayTitle, requirementLabel } from '../domain/presentDomain';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import { PortalModePageBanner } from '../components/lifecycle/LifecycleShell';
 import {
   PortalPageShell,
   PortalSectionSkeleton,
@@ -93,7 +98,11 @@ const NOT_REQUIRED_REASONS = [
 const RequirementsPage = () => {
   const navigate = useNavigate();
   const { openGuidedEvidence } = useGuidedEvidenceModal();
-  const { hasFeature } = useEntitlements();
+  const {
+    canViewRequirements,
+    canResolveRequirements,
+    canMarkRequirementNotApplicable,
+  } = usePropertyWorkflowCapabilities();
   const [searchParams] = useSearchParams();
   const highlightParam = searchParams.get('highlight');
   const [flashRequirementId, setFlashRequirementId] = useState(null);
@@ -132,25 +141,6 @@ const RequirementsPage = () => {
   // Get filter from URL params
   const statusFilter = searchParams.get('status') || 'all';
   const windowDays = searchParams.get('window');
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    if (!highlightParam || loading) return undefined;
-    const scrollT = window.setTimeout(() => {
-      document
-        .querySelector(`[data-testid="requirement-row-${CSS.escape(highlightParam)}"]`)
-        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 150);
-    setFlashRequirementId(highlightParam);
-    const clearT = window.setTimeout(() => setFlashRequirementId(null), 2200);
-    return () => {
-      window.clearTimeout(scrollT);
-      window.clearTimeout(clearT);
-    };
-  }, [highlightParam, loading, requirements.length]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -208,6 +198,30 @@ const RequirementsPage = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!canViewRequirements) {
+      setLoading(false);
+      return undefined;
+    }
+    fetchData();
+    return undefined;
+  }, [canViewRequirements]);
+
+  useEffect(() => {
+    if (!highlightParam || loading) return undefined;
+    const scrollT = window.setTimeout(() => {
+      document
+        .querySelector(`[data-testid="requirement-row-${CSS.escape(highlightParam)}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+    setFlashRequirementId(highlightParam);
+    const clearT = window.setTimeout(() => setFlashRequirementId(null), 2200);
+    return () => {
+      window.clearTimeout(scrollT);
+      window.clearTimeout(clearT);
+    };
+  }, [highlightParam, loading, requirements.length]);
 
   useComplianceOutcomeRefresh(fetchData, []);
 
@@ -276,7 +290,7 @@ const RequirementsPage = () => {
   };
 
   const submitNotApplicable = async () => {
-    if (!notApplicableModal) return;
+    if (!notApplicableModal || !canMarkRequirementNotApplicable) return;
     const text = notApplicableReason.trim();
     if (text.length < 10) {
       toast.error('Please enter a reason (at least 10 characters) for the audit trail.');
@@ -303,13 +317,17 @@ const RequirementsPage = () => {
         window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: { property_id: propIdForOutcome } }));
       }
     } catch (error) {
-      const st = error.response?.status;
-      const det = error.response?.data?.detail;
-      if (st === 409 && det && typeof det === 'object' && det.code === 'ACTIVE_COMPLIANCE_JOB_EXISTS') {
-        setNotApplicableActiveJobId(det.work_order_id || null);
-        toast.error(det.message || 'An open compliance job must be cancelled to record this as not applicable.');
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Could not update requirement'));
       } else {
-        toast.error(typeof det === 'string' ? det : det?.message || 'Could not update requirement');
+        const st = error.response?.status;
+        const det = error.response?.data?.detail;
+        if (st === 409 && det && typeof det === 'object' && det.code === 'ACTIVE_COMPLIANCE_JOB_EXISTS') {
+          setNotApplicableActiveJobId(det.work_order_id || null);
+          toast.error(det.message || 'An open compliance job must be cancelled to record this as not applicable.');
+        } else {
+          toast.error(typeof det === 'string' ? det : det?.message || 'Could not update requirement');
+        }
       }
     } finally {
       setNotApplicableSaving(false);
@@ -317,6 +335,7 @@ const RequirementsPage = () => {
   };
 
   const handleReopenRequirement = async (req) => {
+    if (!canResolveRequirements) return;
     setReopenSavingId(req.requirement_id);
     try {
       await clientAPI.reopenRequirementById(req.requirement_id);
@@ -328,15 +347,19 @@ const RequirementsPage = () => {
         window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: { property_id: req.property_id } }));
       }
     } catch (error) {
-      const det = error.response?.data?.detail;
-      toast.error(typeof det === 'string' ? det : det?.message || 'Could not restore requirement');
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Could not restore requirement'));
+      } else {
+        const det = error.response?.data?.detail;
+        toast.error(typeof det === 'string' ? det : det?.message || 'Could not restore requirement');
+      }
     } finally {
       setReopenSavingId(null);
     }
   };
 
   const handleEditSubmit = async () => {
-    if (!editModal) return;
+    if (!editModal || !canResolveRequirements) return;
     const { requirement } = editModal;
     setEditSaving(true);
     try {
@@ -379,7 +402,11 @@ const RequirementsPage = () => {
         window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: { property_id: requirement.property_id } }));
       }
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to update requirement');
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to update requirement'));
+      } else {
+        toast.error(error.response?.data?.detail || 'Failed to update requirement');
+      }
     } finally {
       setEditSaving(false);
     }
@@ -657,7 +684,7 @@ const RequirementsPage = () => {
             )}
             {(() => {
               const ta = takeActionResolved;
-              const primaryError = ta.primary_action_handler === 'guided_evidence_error';
+              const primaryError = ta.primary_action_handler === 'guided_evidence_error' || !canResolveRequirements;
               const onPrimary = () => {
                 if (primaryError) return;
                 const { handled } = executeRequirementPrimaryCta({
@@ -743,13 +770,15 @@ const RequirementsPage = () => {
               </button>
               <button
                 type="button"
-                className="text-xs text-gray-500 hover:text-midnight-blue text-left underline"
+                className="text-xs text-gray-500 hover:text-midnight-blue text-left underline disabled:opacity-50"
+                disabled={!canResolveRequirements}
                 onClick={() => openEditModal(req)}
                 data-testid={`edit-requirement-${req.requirement_id}`}
               >
                 Edit dates and applicability
               </button>
               {String(req.applicability || '').toUpperCase() === 'NOT_REQUIRED' ? (
+                canResolveRequirements ? (
                 <button
                   type="button"
                   className="text-xs text-gray-500 hover:text-midnight-blue text-left underline disabled:opacity-50"
@@ -759,7 +788,9 @@ const RequirementsPage = () => {
                 >
                   {reopenSavingId === req.requirement_id ? 'Restoring…' : 'Restore to active tracking'}
                 </button>
+                ) : null
               ) : (
+                canMarkRequirementNotApplicable ? (
                 <button
                   type="button"
                   className="text-xs text-gray-500 hover:text-midnight-blue text-left underline"
@@ -774,6 +805,7 @@ const RequirementsPage = () => {
                 >
                   Record as not applicable
                 </button>
+                ) : null
               )}
             </div>
           </div>
@@ -829,6 +861,7 @@ const RequirementsPage = () => {
 
   return (
     <div data-testid="requirements-page">
+        <PortalModePageBanner />
         <PortalStaleRefreshBanner refreshing={refreshing} />
         {documentsEnrichmentLoading ? (
           <p className="text-xs text-gray-500 mb-3" data-testid="requirements-doc-counts-loading">

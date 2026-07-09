@@ -1,0 +1,233 @@
+{
+  "programme": "CEG-PHASE-5-STAGING-SMOKE",
+  "run_tag": "20260629T115845Z",
+  "validated_at": "2026-06-29T11:58:45.124849+00:00",
+  "expected_staging_flags": {
+    "COMPLIANCE_EVIDENCE_GRAPH_MODE": "enabled",
+    "COMPLIANCE_INTELLIGENCE_NARRATION_ENABLED": "false",
+    "AI_ENABLED": "false"
+  },
+  "checks": [
+    {
+      "name": "staging_deploy_sha_aligned",
+      "passed": true,
+      "aligned": true,
+      "commit_sha": "b6edbb27fe1f9a3ae39cdbade166a9d04c9f4662",
+      "attempts": 1
+    },
+    {
+      "name": "admin_route_requires_auth",
+      "passed": true,
+      "status": 401
+    },
+    {
+      "name": "admin_login",
+      "passed": true,
+      "meta": "pro***"
+    },
+    {
+      "name": "production_not_phase5_sha",
+      "passed": true,
+      "prod_sha": null
+    },
+    {
+      "name": "sample_decision_found",
+      "passed": true,
+      "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+      "client_id": "ceg-2e-20260629T000018Z"
+    },
+    {
+      "name": "staging_intelligence_flag_enabled",
+      "passed": true,
+      "enabled": true,
+      "reason": null,
+      "note": "Requires COMPLIANCE_EVIDENCE_GRAPH_MODE=enabled on staging Render env."
+    },
+    {
+      "name": "tier1_explain_decision",
+      "passed": true,
+      "status": 200,
+      "latency_ms": 1548.93,
+      "insufficient": false
+    },
+    {
+      "name": "tier1_replay_decision",
+      "passed": true,
+      "status": 200,
+      "latency_ms": 1977.13,
+      "insufficient": false
+    },
+    {
+      "name": "tier1_compare_decision",
+      "passed": true,
+      "status": 200,
+      "latency_ms": 1679.37,
+      "insufficient": false
+    },
+    {
+      "name": "tier1_trace_evidence",
+      "passed": true,
+      "status": 200,
+      "latency_ms": 1742.32,
+      "insufficient": false
+    },
+    {
+      "name": "tier1_trace_operational_impact",
+      "passed": true,
+      "status": 200,
+      "latency_ms": 1694.18,
+      "insufficient": false
+    },
+    {
+      "name": "tier1_insufficient_safe",
+      "passed": true
+    },
+    {
+      "name": "tier1_cross_tenant_blocked",
+      "passed": true,
+      "mode": "local_non_admin_actor",
+      "detail": "http_403",
+      "note": "Admin investigate HTTP allows cross-tenant ops; boundary enforced for portal actors."
+    },
+    {
+      "name": "tier1_no_tier2_when_narration_disabled",
+      "passed": true
+    },
+    {
+      "name": "tier1_no_new_narration_records",
+      "passed": true,
+      "before": 2,
+      "after": 2
+    },
+    {
+      "name": "tier1_read_only_graph_health_ok",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "name": "regression_http_surfaces",
+      "passed": true,
+      "http_passed": 5,
+      "total": 5
+    },
+    {
+      "name": "regression_pytest_local",
+      "passed": true,
+      "tests_passed": 72,
+      "tests_failed": 0
+    },
+    {
+      "name": "tier2_local_cited_retained",
+      "passed": true,
+      "paragraphs": 1
+    },
+    {
+      "name": "tier2_local_hash_linked",
+      "passed": true
+    },
+    {
+      "name": "tier2_local_tier1_unchanged",
+      "passed": true
+    },
+    {
+      "name": "tier2_local_narration_id",
+      "passed": true
+    },
+    {
+      "name": "tier2_local_blocked_on_insufficient",
+      "passed": true
+    }
+  ],
+  "tier1": {
+    "explain_decision": {
+      "status": 200,
+      "hash": "sha256:0a86ea6c6f095861e5a61ec1a8f762d83a24f9d6228517077a0d69d99bb5ed68"
+    },
+    "replay_decision": {
+      "status": 200,
+      "hash": "sha256:7855cb49e451d43a0f1186d43e9fead713e7e0f42b0d69a894c831326eab6598"
+    },
+    "compare_decision": {
+      "status": 200,
+      "hash": "sha256:224bb6bcb1df45479b76a7dcd4fb98303d6d1d825a4760c38bfffa9fe5678f66"
+    },
+    "trace_evidence": {
+      "status": 200,
+      "hash": "sha256:c1e7b4b161733ccec8097d9bc47f74e2a12e76eaba5a1f0273189f3fbc3bcafb"
+    },
+    "trace_operational_impact": {
+      "status": 200,
+      "hash": "sha256:289cefa9824f0edbf50d605c9295c4d5fb5c425f18a7c510d999b9b418a8782e"
+    }
+  },
+  "regression_http": [
+    {
+      "name": "graph_health",
+      "status": 200,
+      "latency_ms": 10965.91,
+      "passed": true
+    },
+    {
+      "name": "graph_list",
+      "status": 200,
+      "latency_ms": 1535.16,
+      "passed": true
+    },
+    {
+      "name": "oe_timeline",
+      "status": 200,
+      "latency_ms": 2059.88,
+      "passed": true
+    },
+    {
+      "name": "system_health",
+      "status": 200,
+      "latency_ms": 16883.58,
+      "passed": true
+    },
+    {
+      "name": "control_centre",
+      "status": 200,
+      "latency_ms": 30240.76,
+      "passed": true
+    }
+  ],
+  "deploy": {
+    "aligned": true,
+    "commit_sha": "b6edbb27fe1f9a3ae39cdbade166a9d04c9f4662",
+    "attempts": 1
+  },
+  "observed_staging_intelligence": {
+    "enabled": true,
+    "reason": null,
+    "note": "Requires COMPLIANCE_EVIDENCE_GRAPH_MODE=enabled on staging Render env."
+  },
+  "regression_pytest": {
+    "exit_code": 0,
+    "passed": 72,
+    "failed": 0
+  },
+  "tier2_controlled": {
+    "mode": "local_mocked_llm",
+    "passed_checks": 5
+  },
+  "feature_flag_matrix": {
+    "expected_staging": {
+      "COMPLIANCE_EVIDENCE_GRAPH_MODE": "enabled",
+      "COMPLIANCE_INTELLIGENCE_NARRATION_ENABLED": "false",
+      "AI_ENABLED": "false"
+    },
+    "note": "Staging env vars are not mutated by this script; tier1_no_tier2_when_narration_disabled validates runtime behaviour."
+  },
+  "remaining_risks": [
+    "Tier 2 HTTP on staging deferred until narration flags explicitly enabled.",
+    "Tier 2 local mock validates citation pipeline without live LLM on staging.",
+    "No customer-facing intelligence UI shipped.",
+    "Production flags unchanged.",
+    "Do not proceed to Tier 2 staging, AI narration, or next Phase 5 slice without explicit approval."
+  ],
+  "failed_critical": [],
+  "verdict": "PHASE_5_TIER1_STAGING_ACCEPTED",
+  "tier1_staging_accepted": true,
+  "next_slice_readiness": "Phase 5 Tier 1 staging accepted. Do not proceed to Tier 2, AI narration, or next slice without explicit approval."
+}

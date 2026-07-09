@@ -76,10 +76,19 @@ async def build_admin_client_compliance_explain(client_id: str) -> Dict[str, Any
             }
         )
 
-    return {
+    result = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "client_id": client_id,
         "authority": "project_requirement_row_client_runtime + filter_requirement_rows_for_client_runtime_surfaces + client_portal_surface_visible_row",
         "portfolio_counts": counts,
         "rows": explain_rows,
     }
+
+    from services.compliance_evidence_graph.config import graph_consumers_enabled
+
+    if graph_consumers_enabled():
+        from services.compliance_graph_service.consumer_adapter import enrich_admin_compliance_explain
+
+        result = await enrich_admin_compliance_explain(result, client_id=client_id)
+
+    return result

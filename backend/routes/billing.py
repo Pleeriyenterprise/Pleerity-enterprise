@@ -5,6 +5,7 @@ Endpoints:
 - GET /api/billing/status - Get current subscription status
 - POST /api/billing/portal - Create Stripe billing portal session
 - POST /api/billing/cancel - Cancel subscription
+- POST /api/billing/resume - Undo cancel-at-period-end (keep subscription)
 """
 from fastapi import APIRouter, HTTPException, Request, status, Depends
 from pydantic import BaseModel
@@ -15,10 +16,9 @@ from services.plan_registry import plan_registry, PlanCode, PriceConfigMissingEr
 from services.stripe_mode_containment_service import (
     StripeModeDriftError,
     record_stripe_mode_drift,
-    resolve_stripe_context,
-    validate_portal_billing_preflight,
 )
 from middleware import client_route_guard
+from middleware.capability_gating import assert_client_capability
 from middleware.step_up_auth import require_recent_step_up
 from utils.audit import create_audit_log
 from models import AuditAction
@@ -54,6 +54,7 @@ async def create_checkout(request: Request, body: CheckoutRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user"
         )
+    await assert_client_capability(user, "CAP_BILLING_CHECKOUT", "write")
     await require_recent_step_up(request, user)
 
     # Validate plan code
@@ -133,6 +134,7 @@ async def get_payment_method_summary(request: Request):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user",
         )
+    await assert_client_capability(user, "CAP_BILLING_PAYMENT_METHODS", "read")
     try:
         summary = await stripe_service.get_payment_method_summary(client_id)
         if summary:
@@ -154,6 +156,7 @@ async def get_billing_status(request: Request):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user"
         )
+    await assert_client_capability(user, "CAP_BILLING_VIEW", "read")
     
     try:
         billing_status = await stripe_service.get_subscription_status(client_id)
@@ -195,22 +198,9 @@ async def create_billing_portal(request: Request):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user"
         )
+    await assert_client_capability(user, "CAP_SUB_MANAGE", "write")
     await require_recent_step_up(request, user)
 
-    db = database.get_db()
-    
-    # Get billing record
-    billing = await db.client_billing.find_one(
-        {"client_id": client_id},
-        {"_id": 0}
-    )
-    
-    if not billing or not billing.get("stripe_customer_id"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No active subscription found"
-        )
-    
     # Get origin URL
     origin = request.headers.get("origin", "")
     if not origin:
@@ -219,23 +209,12 @@ async def create_billing_portal(request: Request):
         origin = f"{scheme}://{host}"
     
     try:
-        await resolve_stripe_context(
+        result = await stripe_service.create_billing_portal_session(
             client_id=client_id,
-            billing=billing,
-            operation="billing_portal",
-            legacy_caller="routes.billing.create_billing_portal",
-            require_preflight=True,
+            origin_url=origin,
+            runtime_contract=user.get("runtime_contract"),
         )
-        import stripe
-
-        portal_session = stripe.billing_portal.Session.create(
-            customer=billing.get("stripe_customer_id"),
-            return_url=f"{origin}/settings/billing",
-        )
-        
-        return {
-            "portal_url": portal_session.url,
-        }
+        return result
 
     except StripeModeDriftError as drift:
         await record_stripe_mode_drift(drift, actor_id=user.get("portal_user_id"), actor_role=user.get("role", "CLIENT"))
@@ -243,7 +222,11 @@ async def create_billing_portal(request: Request):
             status_code=status.HTTP_409_CONFLICT,
             detail=drift.to_customer_detail(),
         )
-        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     except Exception as e:
         logger.error(f"Failed to create billing portal: {e}")
         raise HTTPException(
@@ -268,6 +251,7 @@ async def cancel_subscription(request: Request, body: CancelRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user"
         )
+    await assert_client_capability(user, "CAP_SUB_CANCEL", "write")
     await require_recent_step_up(request, user)
 
     try:
@@ -291,6 +275,48 @@ async def cancel_subscription(request: Request, body: CancelRequest):
         )
 
 
+@router.post("/resume")
+async def resume_subscription(request: Request):
+    """Undo cancel-at-period-end and keep the subscription active."""
+    user = await client_route_guard(request)
+    client_id = user.get("client_id")
+
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No client_id associated with user",
+        )
+    await assert_client_capability(user, "CAP_SUB_MANAGE", "write")
+    await require_recent_step_up(request, user)
+
+    try:
+        result = await stripe_service.resume_subscription(
+            client_id=client_id,
+            actor_role=user.get("role", "CLIENT"),
+            actor_id=user.get("portal_user_id"),
+        )
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role=user.get("role", "CLIENT"),
+            actor_id=user.get("portal_user_id"),
+            client_id=client_id,
+            metadata={
+                "action_type": "SUBSCRIPTION_RESUME_COMPLETED",
+                "source": "billing_resume_route",
+                "already_active": bool(result.get("already_active")),
+            },
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error("Failed to resume subscription: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to resume subscription",
+        )
+
+
 @router.get("/invoices")
 async def get_billing_invoices(request: Request, limit: int = 24):
     """Get billing history (paid invoices) for the current client. Includes subscription and setup fee line items."""
@@ -301,6 +327,7 @@ async def get_billing_invoices(request: Request, limit: int = 24):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user"
         )
+    await assert_client_capability(user, "CAP_BILLING_INVOICES", "read")
     try:
         result = await stripe_service.list_invoices(client_id=client_id, limit=min(limit, 100))
         return result

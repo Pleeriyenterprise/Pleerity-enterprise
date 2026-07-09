@@ -39,38 +39,37 @@ PLAN_1_SOLO = "PLAN_1_SOLO"
 PLAN_2_PORTFOLIO = "PLAN_2_PORTFOLIO"
 PLAN_3_PRO = "PLAN_3_PRO"
 
-# Defaults by plan: Solo = compliance only; Portfolio = maintenance + predictive; Pro = all including contractors
+# Defaults by plan: derived from plan_registry FEATURE_MATRIX (canonical SSOT).
+# Admin overrides in client_feature_flags collection still apply via get_effective_flags().
+
+_OPS_FLAG_TO_FEATURE_KEY: Dict[str, str] = {
+    COMPLIANCE_ENGINE: "compliance_engine",
+    COMPLIANCE_PACKS: "compliance_packs",
+    MAINTENANCE_WORKFLOWS: "maintenance_workflows",
+    PREDICTIVE_MAINTENANCE: "predictive_maintenance",
+    CONTRACTOR_NETWORK: "contractor_network",
+    INVOICING: "invoicing",
+    CONTRACTOR_SELF_REGISTRATION: "contractor_self_registration",
+    RENT_OPERATIONS: "rent_operations",
+}
+
+
+def _plan_defaults_from_registry(plan_code: Optional[str]) -> Dict[str, bool]:
+    from services.plan_registry import plan_registry
+
+    resolved = plan_registry.resolve_plan_code(plan_code or PLAN_1_SOLO)
+    features = plan_registry.get_features(resolved)
+    return {
+        flag_key: bool(features.get(feature_key, False))
+        for flag_key, feature_key in _OPS_FLAG_TO_FEATURE_KEY.items()
+    }
+
+
+# Backward-compatible export — values mirror plan_registry FEATURE_MATRIX at import time.
 DEFAULTS_BY_PLAN: Dict[str, Dict[str, bool]] = {
-    PLAN_1_SOLO: {
-        COMPLIANCE_ENGINE: True,
-        COMPLIANCE_PACKS: True,
-        MAINTENANCE_WORKFLOWS: False,
-        PREDICTIVE_MAINTENANCE: False,
-    CONTRACTOR_NETWORK: False,
-    INVOICING: False,
-    CONTRACTOR_SELF_REGISTRATION: False,
-    RENT_OPERATIONS: False,
-},
-PLAN_2_PORTFOLIO: {
-        COMPLIANCE_ENGINE: True,
-        COMPLIANCE_PACKS: True,
-        MAINTENANCE_WORKFLOWS: True,
-        PREDICTIVE_MAINTENANCE: True,
-    CONTRACTOR_NETWORK: False,
-    INVOICING: False,
-    CONTRACTOR_SELF_REGISTRATION: False,
-    RENT_OPERATIONS: True,
-},
-PLAN_3_PRO: {
-        COMPLIANCE_ENGINE: True,
-        COMPLIANCE_PACKS: True,
-        MAINTENANCE_WORKFLOWS: True,
-        PREDICTIVE_MAINTENANCE: True,
-    CONTRACTOR_NETWORK: True,
-    INVOICING: False,
-    CONTRACTOR_SELF_REGISTRATION: False,
-    RENT_OPERATIONS: True,
-},
+    PLAN_1_SOLO: _plan_defaults_from_registry(PLAN_1_SOLO),
+    PLAN_2_PORTFOLIO: _plan_defaults_from_registry(PLAN_2_PORTFOLIO),
+    PLAN_3_PRO: _plan_defaults_from_registry(PLAN_3_PRO),
 }
 
 # Human-readable labels for admin UI
@@ -87,9 +86,7 @@ FLAG_LABELS: Dict[str, str] = {
 
 
 def _defaults_for_plan(plan_code: Optional[str]) -> Dict[str, bool]:
-    if not plan_code:
-        return DEFAULTS_BY_PLAN[PLAN_1_SOLO].copy()
-    return DEFAULTS_BY_PLAN.get(plan_code, DEFAULTS_BY_PLAN[PLAN_1_SOLO]).copy()
+    return _plan_defaults_from_registry(plan_code)
 
 
 async def get_effective_flags(client_id: str, plan_code: Optional[str] = None) -> Dict[str, bool]:

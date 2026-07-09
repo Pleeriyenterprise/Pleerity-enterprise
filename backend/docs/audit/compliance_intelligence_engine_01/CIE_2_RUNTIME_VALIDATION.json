@@ -1,0 +1,70 @@
+{
+  "programme": "CIE-2-RECOMMENDATION-AND-PRIORITY-FOUNDATION-LOCAL-VALIDATION-GATE",
+  "run_tag": "20260629T171325Z",
+  "validated_at": "2026-06-29T17:13:25.382732+00:00",
+  "checks": [
+    {
+      "name": "feature_flag_defaults_disabled",
+      "passed": true,
+      "mode": "disabled"
+    },
+    {
+      "name": "engine_version_cie2",
+      "passed": true,
+      "version": "cie-2.0.0"
+    },
+    {
+      "name": "domain_engines_package_exists",
+      "passed": true
+    },
+    {
+      "name": "recommendation_engine_exists",
+      "passed": true
+    },
+    {
+      "name": "priority_engine_exists",
+      "passed": true
+    },
+    {
+      "name": "registry_v1_seeds_validate",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "no_cie_route",
+      "passed": true
+    },
+    {
+      "name": "no_production_cie_flag_in_render",
+      "passed": true
+    },
+    {
+      "name": "recommendation_generation_with_provenance",
+      "passed": true,
+      "detail": {
+        "artefact_count": 2,
+        "has_provenance": true,
+        "engine_version": "cie-2.0.0"
+      }
+    },
+    {
+      "name": "cie_pytest_suite",
+      "passed": true,
+      "pytest": {
+        "exit_code": 0,
+        "passed": 77,
+        "failed": 0,
+        "output_tail": "........................................................................ [ 93%]\n.....                                                                    [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n77 passed, 4 warnings in 4.67s\n"
+      }
+    }
+  ],
+  "sections": {
+    "generation": {
+      "artefact_count": 2,
+      "has_provenance": true,
+      "engine_version": "cie-2.0.0"
+    }
+  },
+  "elapsed_seconds": 14.62,
+  "verdict": "CIE_2_FOUNDATION_VALIDATED"
+}

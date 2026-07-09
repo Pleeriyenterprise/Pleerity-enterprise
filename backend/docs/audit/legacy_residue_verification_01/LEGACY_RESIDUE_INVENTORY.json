@@ -1,0 +1,207 @@
+{
+  "programme": "LEGACY-RESIDUE-VERIFICATION-01",
+  "audited_at": "2026-07-06T21:14:00Z",
+  "branch": "develop",
+  "inventory": [
+    {
+      "id": "FE-001",
+      "location": "frontend/src/contexts/EntitlementsContext.js",
+      "symbol": "useEntitlements / hasFeature",
+      "classification": "OBSOLETE",
+      "compatibility_layer": "COMPATIBILITY_ONLY",
+      "production_use": false,
+      "reason": "Deprecated ILP-4 context; not mounted in App.js",
+      "removal_recommendation": "REMOVABLE_NOW after test mock migration; retained for historical reference and unit-test stubs"
+    },
+    {
+      "id": "FE-002",
+      "location": "frontend/src/hooks/usePortfolioUsageContext.js",
+      "symbol": "GET /client/entitlements/context",
+      "classification": "Production",
+      "compatibility_layer": "COMPATIBILITY_ONLY",
+      "production_use": true,
+      "reason": "Display-only portfolio usage hints (property count vs cap); backend gated by CAP_DASHBOARD_VIEW",
+      "removal_recommendation": "Optional rename endpoint to /client/portfolio-usage; not a permission authority"
+    },
+    {
+      "id": "FE-003",
+      "location": "frontend/src/api/client.js",
+      "symbol": "getEntitlements",
+      "classification": "Dead code",
+      "compatibility_layer": "COMPATIBILITY_ONLY",
+      "production_use": false,
+      "reason": "API wrapper with no production page callers after BillingPage cleanup (547f7f84)",
+      "removal_recommendation": "REMOVABLE_NOW in a hygiene pass"
+    },
+    {
+      "id": "FE-004",
+      "location": "frontend/src/pages/* (customer)",
+      "symbol": "useEntitlements / hasFeature / EntitlementsContext",
+      "classification": "Production",
+      "compatibility_layer": null,
+      "production_use": false,
+      "reason": "Automated scan confirms zero customer page imports",
+      "removal_recommendation": "None — verified clean"
+    },
+    {
+      "id": "FE-005",
+      "location": "frontend/src/contexts/LifecycleRuntimeContext.js",
+      "symbol": "capabilityAllowed / portalMode",
+      "classification": "Production",
+      "compatibility_layer": "ACTIVE_PRODUCTION",
+      "production_use": true,
+      "reason": "Authoritative frontend Runtime Contract consumer; portal mode is presentation-only",
+      "removal_recommendation": "Keep — canonical"
+    },
+    {
+      "id": "FE-006",
+      "location": "frontend/src/pages/Admin*.js",
+      "symbol": "subscription_status / entitlement_status",
+      "classification": "Production",
+      "compatibility_layer": "COMPATIBILITY_ONLY",
+      "production_use": true,
+      "reason": "Admin/ops display and filtering only — outside customer permission chain",
+      "removal_recommendation": "Keep for admin surfaces"
+    },
+    {
+      "id": "BE-001",
+      "location": "backend/middleware/__init__.py",
+      "symbol": "_client_context_guard",
+      "classification": "Production",
+      "compatibility_layer": "ACTIVE_PRODUCTION",
+      "production_use": true,
+      "reason": "Uses resolve_runtime_contract_for_client(emit_events=False) and lifecycle_denial_for_client",
+      "removal_recommendation": "Keep — canonical guard"
+    },
+    {
+      "id": "BE-002",
+      "location": "backend/middleware/feature_gating.py",
+      "symbol": "require_feature",
+      "classification": "Diagnostic",
+      "compatibility_layer": "OBSOLETE",
+      "production_use": false,
+      "reason": "Marked OBSOLETE ILP-10; no production route applies decorator",
+      "removal_recommendation": "TEST_ONLY retention for governance regression tests"
+    },
+    {
+      "id": "BE-003",
+      "location": "backend/services/plan_registry.py",
+      "symbol": "enforce_feature / subscription_allows_feature_access",
+      "classification": "Compatibility",
+      "compatibility_layer": "COMPATIBILITY_ONLY",
+      "production_use": false,
+      "reason": "Legacy helpers retained; no production service callers after branding_resolver migration",
+      "removal_recommendation": "Retain for tests and Stripe/plan metadata; do not use for new permission paths"
+    },
+    {
+      "id": "BE-004",
+      "location": "backend/services/branding_resolver_service.py",
+      "symbol": "CAP_BRANDING_WHITE_LABEL",
+      "classification": "Production",
+      "compatibility_layer": "ACTIVE_PRODUCTION",
+      "production_use": true,
+      "reason": "Migrated from enforce_feature during LEGACY-RESIDUE-VERIFICATION-01",
+      "removal_recommendation": "Keep — fixed in this programme"
+    },
+    {
+      "id": "BE-005",
+      "location": "backend/services/capability_compatibility.py",
+      "symbol": "evaluate_feature_via_capability",
+      "classification": "Compatibility",
+      "compatibility_layer": "COMPATIBILITY_ONLY",
+      "production_use": true,
+      "reason": "Maps legacy feature_key template metadata to CAP_* via CapabilityEnforcementService",
+      "removal_recommendation": "Keep until notification template keys fully migrate to CAP ids"
+    },
+    {
+      "id": "BE-006",
+      "location": "backend/routes/client.py",
+      "symbol": "GET /entitlements, /plan-features, /entitlements/context",
+      "classification": "Compatibility",
+      "compatibility_layer": "COMPATIBILITY_ONLY",
+      "production_use": true,
+      "reason": "Presentation/metadata endpoints; all gated by Runtime Contract CAP_* (not legacy permission)",
+      "removal_recommendation": "Deprecate /entitlements when all consumers gone; context endpoint rename optional"
+    },
+    {
+      "id": "BE-007",
+      "location": "backend/routes/client_lifecycle_runtime.py",
+      "symbol": "compare_runtime_with_legacy",
+      "classification": "Diagnostic",
+      "compatibility_layer": "DIAGNOSTIC_ONLY",
+      "production_use": true,
+      "reason": "Exposed only on /lifecycle-runtime/diagnostic behind CAP_PROFILE_VIEW",
+      "removal_recommendation": "Keep for drift diagnostics"
+    },
+    {
+      "id": "BE-008",
+      "location": "backend/services/account_lifecycle_state_resolver.py",
+      "symbol": "subscription_status / entitlement_status facts",
+      "classification": "Production",
+      "compatibility_layer": "ACTIVE_PRODUCTION",
+      "production_use": true,
+      "reason": "Lifecycle Resolver input facts from billing records — not a bypass of Runtime Contract",
+      "removal_recommendation": "Keep — resolver layer"
+    },
+    {
+      "id": "BE-009",
+      "location": "backend/services/jobs.py",
+      "symbol": "renewal_reminders / subscription_lifecycle",
+      "classification": "Production",
+      "compatibility_layer": "ACTIVE_PRODUCTION",
+      "production_use": true,
+      "reason": "Migrated entitlement_status skip to gate_client_background_job during this programme",
+      "removal_recommendation": "Keep — uses Background Authority"
+    },
+    {
+      "id": "BE-010",
+      "location": "backend/services/notification_orchestrator.py",
+      "symbol": "evaluate_customer_communication",
+      "classification": "Production",
+      "compatibility_layer": "ACTIVE_PRODUCTION",
+      "production_use": true,
+      "reason": "Communication Authority canonical path; subscription fields only seed build_runtime_contract facts",
+      "removal_recommendation": "Keep — canonical"
+    },
+    {
+      "id": "BE-011",
+      "location": "backend/job_runner.py",
+      "symbol": "pending_payment lifecycle subscription_status query",
+      "classification": "Production",
+      "compatibility_layer": "COMPATIBILITY_ONLY",
+      "production_use": true,
+      "reason": "Onboarding lifecycle batch job uses Stripe sync fields for lead→abandoned transitions, not customer API permission",
+      "removal_recommendation": "Future: route through lifecycle event authority; not a customer permission bypass"
+    },
+    {
+      "id": "BE-012",
+      "location": "backend/services/stripe_webhook_service.py",
+      "symbol": "entitlement_status persistence",
+      "classification": "Production",
+      "compatibility_layer": "COMPATIBILITY_ONLY",
+      "production_use": true,
+      "reason": "Writes billing sync fields to Mongo; resolver consumes as facts",
+      "removal_recommendation": "Keep — billing sync not permission authority"
+    },
+    {
+      "id": "TEST-001",
+      "location": "frontend/src/**/*.test.js",
+      "symbol": "jest.mock EntitlementsContext",
+      "classification": "Test",
+      "compatibility_layer": "TEST_ONLY",
+      "production_use": false,
+      "reason": "Legacy mocks for dashboard/command centre unit tests",
+      "removal_recommendation": "Migrate mocks to LifecycleRuntimeContext when convenient"
+    }
+  ],
+  "fixes_applied_in_programme": [
+    {
+      "file": "backend/services/branding_resolver_service.py",
+      "change": "enforce_feature(white_label_reports) → CapabilityEnforcementService CAP_BRANDING_WHITE_LABEL read"
+    },
+    {
+      "file": "backend/services/jobs.py",
+      "change": "entitlement_status renewal skip → gate_client_background_job(renewal_reminders / subscription_lifecycle)"
+    }
+  ]
+}

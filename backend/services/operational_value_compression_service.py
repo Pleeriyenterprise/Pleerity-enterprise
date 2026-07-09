@@ -199,9 +199,11 @@ async def load_operational_inventory(client_id: str, property_id_filter: Optiona
 async def build_pressure_compression_v1(
     client_id: str,
     property_id_filter: Optional[str] = None,
+    *,
+    inventory: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Phase 2 — group raw pressure into landlord-meaningful clusters."""
-    inv = await _load_inventory(client_id, property_id_filter)
+    inv = inventory or await _load_inventory(client_id, property_id_filter)
     issues, wos, risks = inv["issues"], inv["work_orders"], inv["risk_signals"]
 
     groups: List[Dict[str, Any]] = []
@@ -342,9 +344,10 @@ async def build_operational_focus_v1(
     property_id_filter: Optional[str] = None,
     *,
     compression: Optional[Dict[str, Any]] = None,
+    inventory: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Phase 3 — landlord-first guidance: what first, what is dangerous, what is fake progress."""
-    inv = await _load_inventory(client_id, property_id_filter)
+    inv = inventory or await _load_inventory(client_id, property_id_filter)
     compression = compression or await build_pressure_compression_v1(client_id, property_id_filter)
     issues, wos, risks = inv["issues"], inv["work_orders"], inv["risk_signals"]
 
@@ -423,9 +426,11 @@ async def build_operational_focus_v1(
 async def build_landlord_outcome_kpis_v1(
     client_id: str,
     property_id_filter: Optional[str] = None,
+    *,
+    inventory: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Phase 5 — measure operational improvement, not workflow activity."""
-    inv = await _load_inventory(client_id, property_id_filter)
+    inv = inventory or await _load_inventory(client_id, property_id_filter)
     issues, wos, risks = inv["issues"], inv["work_orders"], inv["risk_signals"]
 
     open_issues = [i for i in issues if (i.get("status") or "").lower() in OPEN_ISSUE_STATUSES]
@@ -485,59 +490,75 @@ async def build_landlord_outcome_kpis_v1(
     }
 
 
+async def _build_optional_operational_sub_bundle(
+    client_id: str,
+    property_id_filter: Optional[str],
+    *,
+    builder_path: str,
+    programme: str,
+) -> Dict[str, Any]:
+    try:
+        if builder_path == "closure":
+            from services.operational_closure_conversion_service import build_operational_closure_bundle_v1
+
+            out = await build_operational_closure_bundle_v1(client_id, property_id_filter)
+        elif builder_path == "backlog":
+            from services.backlog_reduction_runtime_service import build_backlog_reduction_bundle_v1
+
+            out = await build_backlog_reduction_bundle_v1(client_id, property_id_filter)
+        elif builder_path == "execution_capacity":
+            from services.execution_capacity_network_service import build_execution_capacity_bundle_v1
+
+            out = await build_execution_capacity_bundle_v1(client_id, property_id_filter)
+        elif builder_path == "assignment_momentum":
+            from services.assignment_execution_momentum_service import (
+                build_assignment_execution_momentum_bundle_v1,
+            )
+
+            out = await build_assignment_execution_momentum_bundle_v1(client_id, property_id_filter)
+        else:
+            raise ValueError(f"unknown_builder:{builder_path}")
+        out["available"] = True
+        return out
+    except Exception as exc:
+        logger.warning("%s degraded client_id=%s: %s", builder_path, client_id, exc)
+        return {"available": False, "error": str(exc)[:200], "programme": programme}
+
+
 async def build_operational_value_bundle_v1(
     client_id: str,
     property_id_filter: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Single bundle for Command Centre + Support alignment (Phase 6)."""
+    import asyncio
+
     compression, focus, kpis = await asyncio_gather_bundle(client_id, property_id_filter)
-    closure: Dict[str, Any] = {"available": False}
-    try:
-        from services.operational_closure_conversion_service import build_operational_closure_bundle_v1
-
-        closure = await build_operational_closure_bundle_v1(client_id, property_id_filter)
-        closure["available"] = True
-    except Exception as exc:
-        logger.warning("closure_conversion_v1 degraded client_id=%s: %s", client_id, exc)
-        closure = {"available": False, "error": str(exc)[:200], "programme": "OPERATIONAL-CLOSURE-CONVERSION-01"}
-
-    backlog: Dict[str, Any] = {"available": False}
-    try:
-        from services.backlog_reduction_runtime_service import build_backlog_reduction_bundle_v1
-
-        backlog = await build_backlog_reduction_bundle_v1(client_id, property_id_filter)
-        backlog["available"] = True
-    except Exception as exc:
-        logger.warning("backlog_reduction_v1 degraded client_id=%s: %s", client_id, exc)
-        backlog = {"available": False, "error": str(exc)[:200], "programme": "BACKLOG-REDUCTION-RUNTIME-01"}
-
-    execution_capacity: Dict[str, Any] = {"available": False}
-    try:
-        from services.execution_capacity_network_service import build_execution_capacity_bundle_v1
-
-        execution_capacity = await build_execution_capacity_bundle_v1(client_id, property_id_filter)
-        execution_capacity["available"] = True
-    except Exception as exc:
-        logger.warning("execution_capacity_v1 degraded client_id=%s: %s", client_id, exc)
-        execution_capacity = {
-            "available": False,
-            "error": str(exc)[:200],
-            "programme": "EXECUTION-CAPACITY-AND-NETWORK-RELIABILITY-01",
-        }
-
-    assignment_momentum: Dict[str, Any] = {"available": False}
-    try:
-        from services.assignment_execution_momentum_service import build_assignment_execution_momentum_bundle_v1
-
-        assignment_momentum = await build_assignment_execution_momentum_bundle_v1(client_id, property_id_filter)
-        assignment_momentum["available"] = True
-    except Exception as exc:
-        logger.warning("assignment_execution_momentum_v1 degraded client_id=%s: %s", client_id, exc)
-        assignment_momentum = {
-            "available": False,
-            "error": str(exc)[:200],
-            "programme": "ASSIGNMENT-CONVERSION-AND-EXECUTION-MOMENTUM-01",
-        }
+    closure, backlog, execution_capacity, assignment_momentum = await asyncio.gather(
+        _build_optional_operational_sub_bundle(
+            client_id,
+            property_id_filter,
+            builder_path="closure",
+            programme="OPERATIONAL-CLOSURE-CONVERSION-01",
+        ),
+        _build_optional_operational_sub_bundle(
+            client_id,
+            property_id_filter,
+            builder_path="backlog",
+            programme="BACKLOG-REDUCTION-RUNTIME-01",
+        ),
+        _build_optional_operational_sub_bundle(
+            client_id,
+            property_id_filter,
+            builder_path="execution_capacity",
+            programme="EXECUTION-CAPACITY-AND-NETWORK-RELIABILITY-01",
+        ),
+        _build_optional_operational_sub_bundle(
+            client_id,
+            property_id_filter,
+            builder_path="assignment_momentum",
+            programme="ASSIGNMENT-CONVERSION-AND-EXECUTION-MOMENTUM-01",
+        ),
+    )
 
     return {
         "pressure_compression_v1": compression,
@@ -554,10 +575,15 @@ async def build_operational_value_bundle_v1(
 async def asyncio_gather_bundle(client_id: str, property_id_filter: Optional[str]) -> Tuple[Dict, Dict, Dict]:
     import asyncio
 
-    compression = await build_pressure_compression_v1(client_id, property_id_filter)
+    inventory = await _load_inventory(client_id, property_id_filter)
+    compression = await build_pressure_compression_v1(
+        client_id, property_id_filter, inventory=inventory
+    )
     focus, kpis = await asyncio.gather(
-        build_operational_focus_v1(client_id, property_id_filter, compression=compression),
-        build_landlord_outcome_kpis_v1(client_id, property_id_filter),
+        build_operational_focus_v1(
+            client_id, property_id_filter, compression=compression, inventory=inventory
+        ),
+        build_landlord_outcome_kpis_v1(client_id, property_id_filter, inventory=inventory),
     )
     return compression, focus, kpis
 

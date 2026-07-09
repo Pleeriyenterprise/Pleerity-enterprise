@@ -1,0 +1,85 @@
+{
+  "programme": "ILP-5-SESSION-RUNTIME-AUTHORITY-01",
+  "phase": "ilp5_closeout_complete",
+  "verdict": "ILP_05_PRODUCTION_READY",
+  "branch": "develop",
+  "date": "2026-07-06",
+  "objective": "Runtime Contract as live session authority; JWT authentication only",
+  "backend": {
+    "session_runtime_service": "backend/services/account_session_runtime_service.py",
+    "session_middleware": "backend/middleware/session_runtime.py",
+    "session_routes": "backend/routes/client_session_runtime.py",
+    "auth_integration": [
+      "backend/routes/auth.py login",
+      "backend/routes/auth.py password_set",
+      "backend/routes/auth.py session_extend"
+    ],
+    "persistence_collection": "portal_session_runtime",
+    "endpoints": [
+      "GET /api/client/session-runtime/status",
+      "POST /api/client/session-runtime/validate",
+      "POST /api/client/session-runtime/refresh"
+    ]
+  },
+  "frontend": {
+    "lifecycle_context": "frontend/src/contexts/LifecycleRuntimeContext.js",
+    "session_sync": "frontend/src/utils/sessionRuntimeSync.js",
+    "session_store": "frontend/src/utils/sessionRuntimeStore.js",
+    "api_client": "frontend/src/api/client.js",
+    "auth_context": "frontend/src/contexts/AuthContext.js",
+    "session_idle_guard": "frontend/src/components/SessionIdleGuard.jsx"
+  },
+  "documentation": [
+    "backend/docs/ACCOUNT_SESSION_RUNTIME_AUTHORITY.md",
+    "backend/docs/ACCOUNT_RUNTIME_SESSION_MODEL.md",
+    "backend/docs/ACCOUNT_RUNTIME_REFRESH_ARCHITECTURE.md",
+    "backend/docs/ACCOUNT_RUNTIME_VERSIONING_SESSION.md",
+    "backend/docs/audit/account_lifecycle_ilp_05/ACCOUNT_LIFECYCLE_ILP_05_REPORT.md"
+  ],
+  "targeted_tests": {
+    "backend_session_service_passed": 9,
+    "frontend_session_tests_passed": 20
+  },
+  "authority_checks": {
+    "jwt_no_capability_claims": true,
+    "runtime_contract_sole_permission_authority": true,
+    "lifecycle_refresh_without_logout": true,
+    "multi_tab_synchronization": true,
+    "refresh_throttling": true
+  },
+  "ilp5_closeout_validation": {
+    "programme": "ILP-5-REGRESSION-CLOSEOUT",
+    "verdict": "PRODUCTION_READY",
+    "executed_at_utc": "2026-07-06T11:45:00Z",
+    "regression_failures": [],
+    "backend_regression": {
+      "verdict": "PASS",
+      "tests_passed": 925,
+      "tests_failed": 0,
+      "duration_seconds": 14683,
+      "exit_code": 0,
+      "log_path": "backend/tmp_ilp5_regression_backend.log",
+      "note": "925 = 916 ILP-4 closeout baseline + 9 session runtime tests"
+    },
+    "frontend_regression": {
+      "verdict": "PASS",
+      "suites_passed": 212,
+      "tests_passed": 968,
+      "tests_failed": 0,
+      "duration_seconds": 34,
+      "log_path": "frontend/tmp_ilp5_regression_frontend.log"
+    },
+    "ci_build": {
+      "verdict": "PASS",
+      "command": "CI=true npm run build",
+      "fix_commit": "5937accd"
+    },
+    "commits": [
+      "02cdaf01",
+      "917f98a5",
+      "50392d74",
+      "5937accd"
+    ]
+  },
+  "completion_report": "backend/docs/audit/account_lifecycle_ilp_05/ACCOUNT_LIFECYCLE_ILP_05_REPORT.md"
+}

@@ -11,6 +11,14 @@ jest.mock('../contexts/AuthContext', () => ({
   }),
 }));
 
+jest.mock('../utils/propertyCapabilityAccess', () => ({
+  usePropertyCapabilities: () => ({
+    canCreateProperty: true,
+    canEditProperty: true,
+    canViewProperties: true,
+  }),
+}));
+
 describe('PropertyCreatePage address lookup', () => {
   beforeEach(() => {
     jest.spyOn(api, 'get').mockResolvedValue({ data: { default_jurisdiction: 'England' } });

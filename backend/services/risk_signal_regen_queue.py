@@ -146,13 +146,24 @@ async def enqueue_risk_signal_regen(
         "updated_at": now.isoformat(),
     }
     try:
-        await db.risk_signal_regen_queue.insert_one(doc)
+        insert_result = await db.risk_signal_regen_queue.insert_one(doc)
         logger.info(
             "risk_regen_queue enqueued property_id=%s next_run_at=%s trigger=%s",
             property_id,
             next_run,
             trigger_reason,
         )
+        try:
+            from services.operational_evidence.producers import emit_risk_regen_queue_created
+
+            await emit_risk_regen_queue_created(
+                queue_item_id=str(insert_result.inserted_id),
+                property_id=property_id,
+                client_id=client_id,
+                trigger_reason=trigger_reason,
+            )
+        except Exception as emit_err:
+            logger.debug("operational_evidence risk regen created emit skipped: %s", emit_err)
         return {
             "merged": False,
             "next_run_at": next_run,
@@ -183,7 +194,6 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
         OUTCOME_FAILED,
         OUTCOME_SUCCESS,
     )
-    from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
     from services.operational_automation_service import evaluate_operational_automation_after_risk_refresh
     from models import AuditAction
     from utils.audit import create_audit_log
@@ -223,6 +233,26 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
         property_id = job["property_id"]
         client_id = job.get("client_id") or ""
         attempts = int(job.get("attempts") or 0)
+        queue_item_id = str(jid)
+
+        try:
+            from services.operational_evidence.context import merge_context, set_operational_context
+            from services.operational_evidence.producers import emit_risk_regen_queue_claimed
+
+            octx = merge_context(
+                queue_item_id=queue_item_id,
+                property_id=property_id,
+                client_id=client_id,
+                correlation_id=f"risk-regen:{property_id}",
+            ).fork_execution()
+            set_operational_context(octx)
+            await emit_risk_regen_queue_claimed(
+                queue_item_id=queue_item_id,
+                property_id=property_id,
+                client_id=client_id,
+            )
+        except Exception as emit_err:
+            logger.debug("operational_evidence risk regen claimed emit skipped: %s", emit_err)
 
         try:
             if not client_id:
@@ -231,13 +261,32 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
                     {"_id": 0, "client_id": 1, "billing_plan": 1},
                 )
                 client_id = (prop or {}).get("client_id") or ""
-            client_doc = await db.clients.find_one(
-                {"client_id": client_id},
-                {"_id": 0, "billing_plan": 1},
+            from services.account_background_runtime_authority import (
+                apply_queue_runtime_suppression,
+                evaluate_background_runtime,
+                log_background_decision,
+                queue_runtime_action,
             )
-            billing = (client_doc or {}).get("billing_plan")
-            flags = await get_effective_flags(client_id, billing)
-            if not flags.get(PREDICTIVE_MAINTENANCE):
+
+            bg = await evaluate_background_runtime(db, client_id, "risk_signal_regen_queue")
+            if client_id and not bg.allowed:
+                log_background_decision(bg)
+                await apply_queue_runtime_suppression(
+                    db,
+                    collection_name="risk_signal_regen_queue",
+                    item_id=jid,
+                    decision=bg,
+                    status_pending=STATUS_PENDING,
+                    status_dead=STATUS_DEAD,
+                )
+                if queue_runtime_action(bg) == "terminate":
+                    failed_count += 1
+                else:
+                    skipped_feature_flag_count += 1
+                continue
+            from services.capability_compatibility import feature_enabled_for_client
+
+            if not await feature_enabled_for_client(db, client_id, "predictive_maintenance", "read"):
                 await db.risk_signal_regen_queue.delete_one({"_id": jid})
                 logger.info(
                     "risk_regen_worker skip (no PREDICTIVE_MAINTENANCE) property_id=%s",
@@ -249,6 +298,18 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
             logger.info("risk_regen_worker start property_id=%s client_id=%s", property_id, client_id)
             out = await risk_signal_service.generate_risk_signals_for_property(property_id, client_id)
             await evaluate_operational_automation_after_risk_refresh(property_id, client_id)
+
+            try:
+                from services.operational_evidence.producers import emit_risk_regen_queue_completed
+
+                await emit_risk_regen_queue_completed(
+                    queue_item_id=queue_item_id,
+                    property_id=property_id,
+                    client_id=client_id,
+                    generated=out.get("generated"),
+                )
+            except Exception as emit_err:
+                logger.debug("operational_evidence risk regen completed emit skipped: %s", emit_err)
 
             await db.risk_signal_regen_queue.delete_one({"_id": jid})
             await create_audit_log(
@@ -267,6 +328,28 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
                 property_id,
                 out.get("generated"),
             )
+            try:
+                from services.compliance_evidence_graph.producers.hooks import dispatch_p1_producer
+                from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+                await dispatch_p1_producer(
+                    ProducerContext(
+                        mutation_kind="risk_signal_regen_worker",
+                        client_id=client_id,
+                        source_collection="risk_signal_regen_queue",
+                        source_id=queue_item_id,
+                        property_id=property_id,
+                        correlation_id=f"risk-regen:{property_id}",
+                        mutation_timestamp=now_iso,
+                        authoritative_payload={
+                            "generated": out.get("generated"),
+                            "previous_active_removed": out.get("previous_active_removed"),
+                            "trigger_reasons": job.get("trigger_reasons") or [],
+                        },
+                    )
+                )
+            except Exception:
+                pass
             regenerated_count += 1
         except Exception as e:
             failed_count += 1
@@ -284,6 +367,17 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
                         }
                     },
                 )
+                try:
+                    from services.operational_evidence.producers import emit_risk_regen_queue_dead
+
+                    await emit_risk_regen_queue_dead(
+                        queue_item_id=queue_item_id,
+                        property_id=property_id,
+                        client_id=client_id,
+                        error_message=err_str,
+                    )
+                except Exception as emit_err:
+                    logger.debug("operational_evidence risk regen dead emit skipped: %s", emit_err)
                 await create_audit_log(
                     action=AuditAction.RISK_SIGNAL_REGEN_FAILED,
                     client_id=client_id,
@@ -312,6 +406,18 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
                         }
                     },
                 )
+                try:
+                    from services.operational_evidence.producers import emit_risk_regen_queue_failed
+
+                    await emit_risk_regen_queue_failed(
+                        queue_item_id=queue_item_id,
+                        property_id=property_id,
+                        client_id=client_id,
+                        error_message=err_str,
+                        will_retry=True,
+                    )
+                except Exception as emit_err:
+                    logger.debug("operational_evidence risk regen failed emit skipped: %s", emit_err)
                 await create_audit_log(
                     action=AuditAction.RISK_SIGNAL_REGEN_FAILED,
                     client_id=client_id,

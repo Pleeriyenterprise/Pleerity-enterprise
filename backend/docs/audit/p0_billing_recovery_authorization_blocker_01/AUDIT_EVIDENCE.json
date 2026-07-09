@@ -1,0 +1,17 @@
+{
+  "verdict": "BILLING_RECOVERY_AUTHORIZATION_RESTORED_WITH_CONDITIONS",
+  "root_cause_summary": "Capability matrix was correct; blockers were STEP_UP_REQUIRED (expected without token) and portal MODE_UNVERIFIED preflight (409) without checkout fallback.",
+  "fix_summary": "Portal route falls back to deployment Checkout when drift blocks portal; frontend follows checkout_url and 409 fallback.",
+  "tests_backend_passed": 60,
+  "tests_frontend_passed": 28,
+  "deploy_required": [
+    "Render staging backend",
+    "Vercel staging frontend pleerity-enterprise-9jjg"
+  ],
+  "evidence_files": [
+    "REPORT.md",
+    "BILLING_RECOVERY_STATE_MATRIX.json",
+    "STAGING_API_PROBE_WITH_STEP_UP.json",
+    "TESTS_RUN.md"
+  ]
+}

@@ -27,10 +27,40 @@ jest.mock('../contexts/AuthContext', () => ({
   }),
 }));
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({
-    hasFeature: () => true,
-    entitlementsLoadFailed: false,
+jest.mock('../contexts/LifecycleRuntimeContext', () => ({
+  usePortalMode: () => ({
+    portalMode: 'FULL_ACCESS',
+    navigationPolicy: {
+      landing_route: '/today',
+      locked_routes: [],
+      read_only_routes: [],
+      hidden_routes: [],
+    },
+    customerExperience: { heading: '', current_state_label: 'Active' },
+    runtimeAvailable: true,
+  }),
+  useLifecycleRuntime: () => ({
+    loading: false,
+    error: null,
+    runtimeAvailable: true,
+    portalMode: 'FULL_ACCESS',
+    warnings: [],
+    capabilityAllowed: () => true,
+    getCapabilityGrant: () => ({ allowed: true }),
+  }),
+}));
+
+jest.mock('../utils/accountCapabilityAccess', () => ({
+  usePortalNavigationCapabilities: () => ({
+    navHasFeature: () => true,
+    showReports: true,
+    showBilling: true,
+    showCalendar: true,
+    showAssistant: true,
+    invoicingEnabled: true,
+  }),
+  useProfileCapabilities: () => ({
+    canEditProfile: true,
   }),
 }));
 

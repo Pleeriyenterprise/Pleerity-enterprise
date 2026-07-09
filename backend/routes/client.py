@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 from database import database
 from middleware import client_route_guard
+from middleware.capability_gating import assert_client_capability, client_require_capability
 from services.compliance_score import calculate_compliance_score
 from services.evidence_review_config import is_feature_evidence_review_v2
 from services.customer_status_projector_config import get_customer_status_projector_mode
@@ -58,6 +59,12 @@ async def _resolved_jurisdiction_settings_for_client(db, client_id: str) -> Dict
     return {"default_jurisdiction": "Scotland", "enabled_jurisdictions": ["Scotland"]}
 
 
+async def _require_capability_from_request(request: Request, capability_id: str, action: str) -> dict:
+    user = await client_route_guard(request)
+    await assert_client_capability(user, capability_id, action)
+    return user
+
+
 def _compute_property_compliance_status(requirements: List[Dict[str, Any]]) -> str:
     """Live property RAG from enriched requirement rows (delegates to shared service)."""
     from services.property_compliance_status_service import compute_property_compliance_rag
@@ -65,9 +72,11 @@ def _compute_property_compliance_status(requirements: List[Dict[str, Any]]) -> s
     return compute_property_compliance_rag(requirements)
 
 @router.get("/compliance-score")
-async def get_compliance_score(request: Request):
+async def get_compliance_score(
+    request: Request,
+    user: dict = client_require_capability("CAP_SCORE_VIEW", "read"),
+):
     """Get the client's overall compliance score. Headline ``score`` is the persisted portfolio aggregate; optional ``catalog_portfolio_view`` is a non-authoritative matrix preview."""
-    user = await client_route_guard(request)
     client_id = user["client_id"]
 
     try:
@@ -82,12 +91,15 @@ async def get_compliance_score(request: Request):
 
 
 @router.get("/properties/{property_id}/compliance-score/explanation")
-async def get_property_compliance_score_explanation(request: Request, property_id: str):
+async def get_property_compliance_score_explanation(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_SCORE_EXPLAIN", "read"),
+):
     """
     Property-level compliance explainability payload for v2 scoring.
     Returns score, jurisdiction, bucket breakdown, requirement breakdown, deficits, and next actions.
     """
-    user = await client_route_guard(request)
     db = database.get_db()
 
     prop = await db.properties.find_one(
@@ -116,7 +128,8 @@ async def get_property_compliance_score_explanation(request: Request, property_i
 async def get_compliance_score_trend(
     request: Request,
     days: int = 30,
-    include_breakdown: bool = False
+    include_breakdown: bool = False,
+    user: dict = client_require_capability("CAP_SCORE_TREND", "read"),
 ):
     """Get compliance score trend data for trend visualization.
     
@@ -126,7 +139,6 @@ async def get_compliance_score_trend(
         days: Number of days of history (default 30, max 90)
         include_breakdown: Include detailed breakdown per day
     """
-    user = await client_route_guard(request)
     
     try:
         from services.compliance_trending import get_score_trend
@@ -153,9 +165,9 @@ async def get_score_timeline(
     request: Request,
     days: int = 90,
     interval: str = "week",
+    user: dict = client_require_capability("CAP_SCORE_TREND", "read"),
 ):
     """Score trend (90 days): points from SCORE_RECALCULATED events, latest per bucket. Fallback: current score flat line."""
-    user = await client_route_guard(request)
     try:
         from services.score_events_service import get_timeline
         days = min(max(1, days), 90)
@@ -173,9 +185,9 @@ async def get_score_timeline(
 async def get_score_trend_portfolio(
     request: Request,
     days: int = 90,
+    user: dict = client_require_capability("CAP_SCORE_TREND", "read"),
 ):
     """Portfolio score trend for last N days (daily snapshots) with summary stats for Score Trend card."""
-    user = await client_route_guard(request)
     try:
         from services.compliance_trending import get_portfolio_trend_with_summary
         days = min(max(1, days), 90)
@@ -194,9 +206,9 @@ async def get_score_trend_property(
     request: Request,
     property_id: str,
     days: int = 90,
+    user: dict = client_require_capability("CAP_SCORE_TREND", "read"),
 ):
     """Property score trend for last N days (daily snapshots) with summary stats. Property must belong to client."""
-    user = await client_route_guard(request)
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
@@ -225,9 +237,9 @@ async def get_score_trend_property(
 async def get_score_changes(
     request: Request,
     limit: int = 20,
+    user: dict = client_require_capability("CAP_SCORE_TREND", "read"),
 ):
     """What Changed: recent score-affecting events with title, details, delta, deep-link ids."""
-    user = await client_route_guard(request)
     try:
         from services.score_events_service import get_changes
         data = await get_changes(client_id=user["client_id"], limit=min(max(1, limit), 100))
@@ -245,9 +257,9 @@ async def get_compliance_activity(
     request: Request,
     property_id: Optional[str] = None,
     limit: int = 50,
+    user: dict = client_require_capability("CAP_COMPLIANCE_ACTIVITY", "read"),
 ):
     """Action -> Outcome activity timeline for client-visible UX feedback."""
-    user = await client_route_guard(request)
     try:
         from services.compliance_outcome_engine import list_activity
         return await list_activity(
@@ -272,9 +284,9 @@ async def get_ledger(
     to_date: Optional[str] = None,
     limit: int = 50,
     cursor: Optional[str] = None,
+    user: dict = client_require_capability("CAP_LEDGER_VIEW", "read"),
 ):
     """Score ledger: paginated list of score change events (before/after, delta, trigger, drivers)."""
-    user = await client_route_guard(request)
     try:
         from services.score_ledger_service import list_ledger
         data = await list_ledger(
@@ -302,9 +314,9 @@ async def export_ledger_csv(
     trigger_type: Optional[str] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
+    user: dict = client_require_capability("CAP_LEDGER_EXPORT", "read"),
 ):
     """Export score ledger as CSV (current filters; max 5000 rows)."""
-    user = await client_route_guard(request)
     try:
         from services.score_ledger_service import list_ledger_export
         import csv as csv_module
@@ -357,52 +369,12 @@ async def export_ledger_csv(
         )
 
 
-@router.get("/score-trend/portfolio")
-async def get_score_trend_portfolio(request: Request, days: int = 90):
-    """Portfolio score trend for last N days (snapshot-based). Returns points + summary stats for Score Trend card."""
-    user = await client_route_guard(request)
-    try:
-        from services.compliance_trending import get_portfolio_trend_with_summary
-        days = min(max(1, days), 90)
-        data = await get_portfolio_trend_with_summary(user["client_id"], days=days)
-        return data
-    except Exception as e:
-        logger.error(f"Score trend portfolio error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get portfolio score trend"
-        )
-
-
-@router.get("/score-trend/property/{property_id}")
-async def get_score_trend_property(request: Request, property_id: str, days: int = 90):
-    """Property score trend for last N days (snapshot-based). Returns points + summary stats. Property must belong to client."""
-    user = await client_route_guard(request)
-    db = database.get_db()
-    prop = await db.properties.find_one(
-        {"property_id": property_id, "client_id": user["client_id"]},
-        {"_id": 0, "property_id": 1},
-    )
-    if not prop:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
-    try:
-        from services.compliance_trending import get_property_trend_with_summary
-        days = min(max(1, days), 90)
-        data = await get_property_trend_with_summary(user["client_id"], property_id, days=days)
-        return data
-    except Exception as e:
-        logger.error(f"Score trend property error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get property score trend"
-        )
-
-
 @router.get("/compliance-score/explanation")
 async def get_compliance_score_explanation(
     request: Request,
     compare_days: int = 7,
-    property_id: Optional[str] = None
+    property_id: Optional[str] = None,
+    user: dict = client_require_capability("CAP_SCORE_EXPLAIN", "read"),
 ):
     """Get explanation of compliance score: per-property (stored breakdown) or client-level trend.
     
@@ -414,7 +386,6 @@ async def get_compliance_score_explanation(
         compare_days: Days back to compare for client-level trend (default 7, max 30)
         property_id: Optional; when set, return property-level explanation from stored data
     """
-    user = await client_route_guard(request)
     
     try:
         if property_id:
@@ -457,13 +428,15 @@ async def get_compliance_score_explanation(
 
 
 @router.post("/compliance-score/snapshot")
-async def trigger_compliance_snapshot(request: Request):
+async def trigger_compliance_snapshot(
+    request: Request,
+    user: dict = client_require_capability("CAP_SCORE_SNAPSHOT", "write"),
+):
     """Manually trigger a compliance score snapshot (for testing/admin).
     
     Creates an immediate snapshot of the current compliance score.
     Useful for manual updates or debugging.
     """
-    user = await client_route_guard(request)
     
     try:
         from services.compliance_trending import capture_daily_snapshot
@@ -485,9 +458,9 @@ async def get_dashboard(
         description="When true, runs calculate_compliance_score for headline block (slow). "
         "Prefer GET /client/compliance-score for score authority.",
     ),
+    user: dict = client_require_capability("CAP_DASHBOARD_VIEW", "read"),
 ):
     """Get client dashboard data."""
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:
@@ -582,6 +555,7 @@ async def get_dashboard(
 
         compliance_score_headline = None
         if include_score_headline:
+            await assert_client_capability(user, "CAP_SCORE_VIEW", "read")
             try:
                 cs = await calculate_compliance_score(user["client_id"])
                 compliance_score_headline = {
@@ -650,12 +624,14 @@ async def get_dashboard(
 
 
 @router.get("/dashboard/roi-summary")
-async def get_dashboard_roi_summary(request: Request):
+async def get_dashboard_roi_summary(
+    request: Request,
+    user: dict = client_require_capability("CAP_DASHBOARD_VIEW", "read"),
+):
     """
     Month-to-date ROI-style metrics (v1 approximations). Separate from /dashboard so the main
     dashboard load stays fast; clients may fetch this after first paint.
     """
-    user = await client_route_guard(request)
     db = database.get_db()
     try:
         from services.client_roi_summary_service import get_roi_summary_month_to_date
@@ -690,20 +666,19 @@ async def get_client_priority_actions(
     request: Request,
     property_id: Optional[str] = Query(None, description="Filter by property"),
     limit: int = Query(20, ge=1, le=50),
+    user: dict = client_require_capability("CAP_TODAY_VIEW", "read"),
 ):
     """Compatibility endpoint: routes through command center urgent actions only."""
-    user = await client_route_guard(request)
     try:
+        from middleware.capability_gating import contract_capability_allowed
         from services.command_center_service import get_command_center_bundle
-        from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
 
-        flags = await get_effective_flags(
-            client_id=user["client_id"],
-        )
+        contract = user.get("runtime_contract")
         result = await get_command_center_bundle(
             client_id=user["client_id"],
             property_id_filter=property_id,
-            predictive_enabled=bool(flags.get(PREDICTIVE_MAINTENANCE)),
+            predictive_enabled=contract_capability_allowed(contract, "CAP_OPS_PREDICTIVE", "read"),
+            rent_enabled=contract_capability_allowed(contract, "CAP_OPS_RENT", "read"),
             portal_user_id=user.get("portal_user_id"),
         )
         actions = (result.get("urgent_actions") or [])[:limit]
@@ -721,9 +696,9 @@ async def get_client_tasks_digest(
     request: Request,
     property_id: Optional[str] = Query(None, description="Filter by property"),
     activity_limit: int = Query(8, ge=1, le=25),
+    user: dict = client_require_capability("CAP_TODAY_VIEW", "read"),
 ):
     """Dashboard-sized snapshot: task counts, freshness, short activity feed (no full task lists)."""
-    user = await client_route_guard(request)
     try:
         from services.unified_tasks_service import get_unified_tasks_digest
 
@@ -753,27 +728,29 @@ async def get_client_command_center(
         False,
         description="When true, includes HIUA operational uncertainty block (slower). Used with projection=full or secondary.",
     ),
+    user: dict = client_require_capability("CAP_CMD_CTR_VIEW", "read"),
 ):
     """
     Composed operations + compliance snapshot: urgent task rows, active risk signals,
     recent inbox activity, compliance summary. Reuses unified tasks, risk signals, and score services.
     """
-    user = await client_route_guard(request)
     try:
-        from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
+        from middleware.capability_gating import contract_capability_allowed
         from services.command_center_service import (
             get_command_center_bundle,
             get_command_center_primary_bundle,
             get_command_center_secondary_bundle,
         )
 
-        flags = await get_effective_flags(user["client_id"])
-        pred = bool(flags.get(PREDICTIVE_MAINTENANCE))
+        contract = user.get("runtime_contract")
+        pred = contract_capability_allowed(contract, "CAP_OPS_PREDICTIVE", "read")
+        rent = contract_capability_allowed(contract, "CAP_OPS_RENT", "read")
         mode = str(projection or "full").strip().lower()
         if mode == "primary":
             return await get_command_center_primary_bundle(
                 user["client_id"],
                 predictive_enabled=pred,
+                rent_enabled=rent,
                 property_id_filter=property_id,
                 portal_user_id=user.get("portal_user_id"),
             )
@@ -788,6 +765,7 @@ async def get_client_command_center(
         return await get_command_center_bundle(
             user["client_id"],
             predictive_enabled=pred,
+            rent_enabled=rent,
             property_id_filter=property_id,
             portal_user_id=user.get("portal_user_id"),
             include_secondary_sections=include_secondary,
@@ -819,12 +797,12 @@ def _portal_locked_until_active(locked_until: Any) -> bool:
 async def get_protection_snapshot(
     request: Request,
     property_id: Optional[str] = Query(None, description="Optional filter for open issues and risk counts"),
+    user: dict = client_require_capability("CAP_CMD_CTR_VIEW", "read"),
 ):
     """
     Read-only aggregate for security/value surfaces: account sign-in hints, compliance requirement counts,
     open maintenance issues (when enabled), active risk signals (when predictive is enabled).
     """
-    user = await client_route_guard(request)
     client_id = user["client_id"]
     portal_user_id = user.get("portal_user_id")
     db = database.get_db()
@@ -837,7 +815,7 @@ async def get_protection_snapshot(
         if not prop:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
 
-    from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS, PREDICTIVE_MAINTENANCE
+    from middleware.capability_gating import contract_capability_allowed
     from services import maintenance_issues_service
     from services.risk_signal_service import (
         STATUS_ACTIVE,
@@ -845,9 +823,9 @@ async def get_protection_snapshot(
         RISK_LEVEL_CRITICAL,
     )
 
-    flags = await get_effective_flags(client_id)
-    maintenance_on = bool(flags.get(MAINTENANCE_WORKFLOWS))
-    predictive_on = bool(flags.get(PREDICTIVE_MAINTENANCE))
+    contract = user.get("runtime_contract")
+    maintenance_on = contract_capability_allowed(contract, "CAP_OPS_MAINTENANCE", "read")
+    predictive_on = contract_capability_allowed(contract, "CAP_OPS_PREDICTIVE", "read")
 
     async def load_portal_row():
         if not portal_user_id:
@@ -940,12 +918,12 @@ async def get_client_unified_tasks(
     request: Request,
     property_id: Optional[str] = Query(None, description="Filter by property"),
     limit: int = Query(120, ge=1, le=200, description="Max raw priority rows pulled before sectioning"),
+    user: dict = client_require_capability("CAP_TODAY_VIEW", "read"),
 ):
     """
     Unified Command Centre tasks: aggregated open work from compliance, maintenance, approvals,
     and risk signals; sections, freshness, and optional spend summary. Server-side prioritization.
     """
-    user = await client_route_guard(request)
     try:
         from services.unified_tasks_service import get_unified_tasks_for_client
 
@@ -981,11 +959,11 @@ async def get_client_priorities(
     request: Request,
     property_id: Optional[str] = Query(None, description="Filter by property"),
     limit: int = Query(120, ge=1, le=200, description="Max raw priority rows pulled before sectioning"),
+    user: dict = client_require_capability("CAP_TODAY_VIEW", "read"),
 ):
     """
     Same payload as GET /api/client/tasks — canonical “priorities / Today” inbox for API clients and integrations.
     """
-    user = await client_route_guard(request)
     try:
         from services.unified_tasks_service import get_unified_tasks_for_client
 
@@ -1012,12 +990,12 @@ async def get_client_unified_compliance_work_queue(
     request: Request,
     property_id: Optional[str] = Query(None, description="Filter by property"),
     limit: int = Query(120, ge=1, le=200, description="Max raw priority rows pulled before projection"),
+    user: dict = client_require_capability("CAP_TODAY_VIEW", "read"),
 ):
     """
     UCWQ v1: a single list of open work items (compliance + operations) with v1 DTO fields only.
     Projection is built only from the same unified task pipeline as Today / priorities — no parallel gap reads.
     """
-    user = await client_route_guard(request)
     try:
         from services.unified_compliance_work_queue_service import get_unified_compliance_work_queue_v1
 
@@ -1052,9 +1030,12 @@ class EvidencePackJobCreateBody(BaseModel):
 
 
 @router.get("/analytics/summary")
-async def get_client_analytics_summary(request: Request, days: int = Query(30, ge=7, le=90)):
+async def get_client_analytics_summary(
+    request: Request,
+    days: int = Query(30, ge=7, le=90),
+    user: dict = client_require_capability("CAP_COMPLIANCE_ACTIVITY", "read"),
+):
     """First-party event totals by name for this client (Mongo aggregates; not a full warehouse)."""
-    user = await client_route_guard(request)
     try:
         from services.product_analytics_service import summarize_client_events
 
@@ -1068,12 +1049,14 @@ async def get_client_analytics_summary(request: Request, days: int = Query(30, g
 
 
 @router.get("/activity-since")
-async def get_client_activity_since(request: Request):
+async def get_client_activity_since(
+    request: Request,
+    user: dict = client_require_capability("CAP_COMPLIANCE_ACTIVITY", "read"),
+):
     """
     Structured deltas since this user's last acknowledged visit (or last login / 30 days).
     Does not advance the cursor; POST /activity-since/acknowledge after the user marks the feed as seen.
     """
-    user = await client_route_guard(request)
     portal_user_id = user.get("portal_user_id")
     if not portal_user_id:
         raise HTTPException(
@@ -1093,9 +1076,11 @@ async def get_client_activity_since(request: Request):
 
 
 @router.post("/activity-since/acknowledge")
-async def post_client_activity_since_acknowledge(request: Request):
+async def post_client_activity_since_acknowledge(
+    request: Request,
+    user: dict = client_require_capability("CAP_COMPLIANCE_ACTIVITY", "write"),
+):
     """Advance the 'since last visit' cursor to now."""
-    user = await client_route_guard(request)
     portal_user_id = user.get("portal_user_id")
     if not portal_user_id:
         raise HTTPException(
@@ -1116,9 +1101,12 @@ async def post_client_activity_since_acknowledge(request: Request):
 
 
 @router.post("/analytics/events")
-async def post_client_analytics_event(request: Request, body: ClientAnalyticsEventBody):
+async def post_client_analytics_event(
+    request: Request,
+    body: ClientAnalyticsEventBody,
+    user: dict = client_require_capability("CAP_COMPLIANCE_ACTIVITY", "write"),
+):
     """First-party product analytics (Mongo). Unknown event names are ignored."""
-    user = await client_route_guard(request)
     try:
         from utils.analytics_event_logger import record_portal_analytics_event
 
@@ -1141,6 +1129,7 @@ async def post_client_evidence_pack_job(
     request: Request,
     background_tasks: BackgroundTasks,
     body: Optional[EvidencePackJobCreateBody] = Body(default=None),
+    user: dict = client_require_capability("CAP_REPORT_AUDIT_PACK", "write"),
 ):
     """
     Build a ZIP evidence pack (CSVs + manifest) and store in GridFS.
@@ -1151,24 +1140,12 @@ async def post_client_evidence_pack_job(
     For a single governed **per-property** audit bundle (PDF report + verified certs + timeline +
     delivery proof + checksum manifest), use ``POST /api/client/compliance/audit-pack/generate`` instead.
     """
-    from services.plan_registry import plan_registry
     from models import AuditAction
     from utils.audit import create_audit_log
     from services.evidence_pack_service import parse_export_period
 
-    user = await client_route_guard(request)
     b = body or EvidencePackJobCreateBody()
     client_id = user["client_id"]
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(client_id, "audit_log_export")
-    if not allowed:
-        detail = {
-            "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-            "message": error_msg,
-            "upgrade_required": True,
-            **(error_details or {}),
-        }
-        detail["feature"] = "audit_log_export"
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
     db = database.get_db()
     now = datetime.now(timezone.utc)
@@ -1236,41 +1213,24 @@ async def post_client_evidence_pack_job(
 
 
 @router.get("/evidence-pack/jobs")
-async def list_client_evidence_pack_jobs(request: Request, limit: int = Query(10, ge=1, le=30)):
-    from services.plan_registry import plan_registry
+async def list_client_evidence_pack_jobs(
+    request: Request,
+    limit: int = Query(10, ge=1, le=30),
+    user: dict = client_require_capability("CAP_REPORT_AUDIT_PACK", "read"),
+):
     from services.evidence_pack_service import recent_jobs
 
-    user = await client_route_guard(request)
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "audit_log_export")
-    if not allowed:
-        detail = {
-            "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-            "message": error_msg,
-            "upgrade_required": True,
-            **(error_details or {}),
-        }
-        detail["feature"] = "audit_log_export"
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
     items = await recent_jobs(user["client_id"], limit=limit)
     return {"jobs": items}
 
 
 @router.get("/evidence-pack/jobs/{job_id}/file")
-async def download_client_evidence_pack_file(request: Request, job_id: str):
-    from services.plan_registry import plan_registry
+async def download_client_evidence_pack_file(
+    request: Request,
+    job_id: str,
+    user: dict = client_require_capability("CAP_REPORT_AUDIT_PACK", "read"),
+):
     from services.evidence_pack_service import get_job, read_pack_bytes
-
-    user = await client_route_guard(request)
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "audit_log_export")
-    if not allowed:
-        detail = {
-            "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-            "message": error_msg,
-            "upgrade_required": True,
-            **(error_details or {}),
-        }
-        detail["feature"] = "audit_log_export"
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
     job = await get_job(user["client_id"], job_id.strip())
     if not job:
@@ -1342,9 +1302,12 @@ class ClientTaskNavigationIntentBody(BaseModel):
 
 
 @router.post("/tasks/record-intent")
-async def post_client_task_navigation_intent(request: Request, body: ClientTaskNavigationIntentBody):
+async def post_client_task_navigation_intent(
+    request: Request,
+    body: ClientTaskNavigationIntentBody,
+    user: dict = client_require_capability("CAP_TODAY_ACT", "write"),
+):
     """Persist an audit trail row when the user follows a task deep-link from Today (analytics complement)."""
-    user = await client_route_guard(request)
     from services.client_task_state_service import is_valid_task_id
     from utils.audit import create_audit_log
     from models import AuditAction
@@ -1377,9 +1340,12 @@ async def post_client_task_navigation_intent(request: Request, body: ClientTaskN
 
 
 @router.post("/tasks/override")
-async def post_client_task_override(request: Request, body: ClientTaskOverrideBody):
+async def post_client_task_override(
+    request: Request,
+    body: ClientTaskOverrideBody,
+    user: dict = client_require_capability("CAP_TODAY_ACT", "write"),
+):
     """Apply or clear a personal task override (snooze, dismiss, done, restore). Audited."""
-    user = await client_route_guard(request)
     try:
         from services.client_task_state_service import apply_task_action
 
@@ -1409,9 +1375,9 @@ async def post_client_task_override(request: Request, body: ClientTaskOverrideBo
 async def get_client_task_activity(
     request: Request,
     limit: int = Query(30, ge=1, le=100),
+    user: dict = client_require_capability("CAP_TODAY_VIEW", "read"),
 ):
     """Recent Today inbox visibility actions (snooze, dismiss, reviewed, done, restore)—not domain completion."""
-    user = await client_route_guard(request)
     from services.client_task_state_service import list_recent_activity
 
     items = await list_recent_activity(
@@ -1425,7 +1391,7 @@ async def get_client_task_activity(
 @router.get("/onboarding/checklist")
 async def get_onboarding_checklist(request: Request):
     """Get server-driven onboarding checklist (items + completion)."""
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_BILLING_CHECKOUT", "read")
     from services.onboarding_checklist_service import get_checklist_state
     return await get_checklist_state(user["client_id"], portal_user_id=user.get("portal_user_id"))
 
@@ -1433,7 +1399,7 @@ async def get_onboarding_checklist(request: Request):
 @router.get("/value-insights")
 async def get_client_value_insights(request: Request):
     """Plan-aware achievements, risk snapshot, and upgrade unlock copy (entitlements from billing plan)."""
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_DASHBOARD_VIEW", "read")
     from services.client_value_insights_service import get_value_insights
 
     return await get_value_insights(user["client_id"])
@@ -1495,7 +1461,7 @@ async def acknowledge_jurisdiction_fallback_assumptions(
     Record explicit consent to continue while some properties lack jurisdiction on the property record.
     Does not change scoring; enables onboarding checklist completion when defaults apply.
     """
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_PROFILE_JURISDICTION", "write")
     if not body.confirm:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1530,7 +1496,7 @@ async def acknowledge_jurisdiction_fallback_assumptions(
 @router.post("/onboarding/checklist/items/{item_id}/complete")
 async def complete_onboarding_item(request: Request, item_id: str):
     """Mark one checklist item complete. Server-validates before accepting."""
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_BILLING_CHECKOUT", "write")
     from services.onboarding_checklist_service import mark_item_complete
     from models import AuditAction
     from utils.audit import create_audit_log
@@ -1567,7 +1533,7 @@ async def complete_onboarding_item(request: Request, item_id: str):
 @router.get("/settings/jurisdiction")
 async def get_jurisdiction_settings(request: Request):
     """Get client jurisdiction settings (default_jurisdiction, enabled_jurisdictions)."""
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_PROFILE_JURISDICTION", "read")
     db = database.get_db()
     return await _resolved_jurisdiction_settings_for_client(db, user["client_id"])
 
@@ -1580,7 +1546,7 @@ class JurisdictionSettingsBody(BaseModel):
 @router.patch("/settings/jurisdiction")
 async def update_jurisdiction_settings(request: Request, body: JurisdictionSettingsBody):
     """Update client jurisdiction settings. Valid: Scotland, England, Wales, Northern Ireland."""
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_PROFILE_JURISDICTION", "write")
     valid = {"Scotland", "England", "Wales", "Northern Ireland"}
     updates = {}
     if body.default_jurisdiction is not None:
@@ -1633,7 +1599,7 @@ async def apply_default_jurisdiction_to_missing_properties(request: Request):
     UK portfolio label yet. Does not overwrite properties that already have a jurisdiction on record
     (supports mixed-jurisdiction portfolios).
     """
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_PROFILE_JURISDICTION", "write")
     db = database.get_db()
     from services.compliance_rules_registry import (
         canonicalize_uk_portfolio_label,
@@ -1691,9 +1657,10 @@ async def apply_default_jurisdiction_to_missing_properties(request: Request):
 
 
 @router.get("/properties")
-async def get_properties(request: Request):
+async def get_properties(
+    user: dict = client_require_capability("CAP_PROP_VIEW", "read"),
+):
     """Get client properties."""
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:
@@ -1740,31 +1707,33 @@ async def get_properties(request: Request):
 
 
 @router.get("/properties/{property_id}/occupancy-operational-summary")
-async def get_property_occupancy_operational_summary(request: Request, property_id: str):
+async def get_property_occupancy_operational_summary(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_PROP_VIEW", "read"),
+):
     """
     Read-only property-scoped tenant/occupancy operational aggregation.
     Composes tenant portal, maintenance, rent ops, and calendar projections — does not own domain truth.
     """
-    from services.plan_registry import plan_registry
-    from services.ops_compliance_feature_flags import get_effective_flags, RENT_OPERATIONS, MAINTENANCE_WORKFLOWS
+    from middleware.capability_gating import contract_capability_allowed
     from services.property_occupancy_operational_service import build_property_occupancy_operational_summary
 
-    user = await client_route_guard(request)
     client_id = user["client_id"]
-    flags = await get_effective_flags(client_id)
-    tenant_allowed, _, _ = await plan_registry.enforce_feature(client_id, "tenant_portal")
+    contract = user.get("runtime_contract")
+    tenant_allowed = contract_capability_allowed(contract, "CAP_TENANT_PORTAL", "read")
     try:
         body = await build_property_occupancy_operational_summary(
             client_id,
             property_id,
-            include_rent=bool(flags.get(RENT_OPERATIONS)),
-            include_maintenance=bool(flags.get(MAINTENANCE_WORKFLOWS)),
+            include_rent=contract_capability_allowed(contract, "CAP_OPS_RENT", "read"),
+            include_maintenance=contract_capability_allowed(contract, "CAP_OPS_MAINTENANCE", "read"),
             include_tenant_portal=tenant_allowed,
         )
         body["feature_gates"] = {
             "tenant_portal": tenant_allowed,
-            "rent_operations": bool(flags.get(RENT_OPERATIONS)),
-            "maintenance_workflows": bool(flags.get(MAINTENANCE_WORKFLOWS)),
+            "rent_operations": contract_capability_allowed(contract, "CAP_OPS_RENT", "read"),
+            "maintenance_workflows": contract_capability_allowed(contract, "CAP_OPS_MAINTENANCE", "read"),
         }
         return body
     except ValueError as e:
@@ -1780,9 +1749,12 @@ async def get_property_occupancy_operational_summary(request: Request, property_
 
 
 @router.get("/properties/{property_id}/requirements")
-async def get_property_requirements(request: Request, property_id: str):
+async def get_property_requirements(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_REQ_VIEW", "read"),
+):
     """Get requirements for a property."""
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:
@@ -1859,9 +1831,9 @@ async def get_requirement_explanation(
     property_id: str,
     requirement_code: Optional[str] = Query(None, description="Requirement code (e.g. gas_safety, eicr)"),
     requirement_id: Optional[str] = Query(None, description="Requirement row id if used by client"),
+    user: dict = client_require_capability("CAP_REQ_VIEW", "read"),
 ):
     """Get contextual explanation for a compliance requirement (why it matters, legal context, recommended action)."""
-    user = await client_route_guard(request)
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
@@ -1898,10 +1870,13 @@ async def get_requirement_explanation(
 
 
 @router.post("/properties/{property_id}/requirements/mark-not-applicable")
-async def mark_requirement_not_applicable(request: Request, property_id: str):
+async def mark_requirement_not_applicable(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_REQ_MARK_N_A", "write"),
+):
     """Create or update a requirement row as NOT_REQUIRED for a catalog item (e.g. from Property detail).
     Aligns with requirement-id mark: audit free-text reason, evidence authority sync, audit log, async recalc enqueue."""
-    user = await client_route_guard(request)
     db = database.get_db()
     client_id = user["client_id"]
     try:
@@ -1956,9 +1931,9 @@ async def get_all_requirements(
         "list",
         description="list = faster portal list projection; full = enriched presentation + evidence linkage",
     ),
+    user: dict = client_require_capability("CAP_REQ_VIEW", "read"),
 ):
     """Get all requirements for the client."""
-    user = await client_route_guard(request)
     db = database.get_db()
     list_mode = str(projection or "list").strip().lower() == "list"
 
@@ -2048,7 +2023,7 @@ async def get_plan_features(request: Request):
     Returns feature availability for UI gating.
     Uses plan_registry (2/10/25 caps); response shape preserved for compatibility.
     """
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_PROFILE_VIEW", "read")
     try:
         from services.plan_registry import plan_registry, subscription_allows_feature_access
 
@@ -2099,73 +2074,60 @@ async def get_client_entitlements(request: Request):
     Returns detailed feature availability with metadata for UI rendering.
     Uses plan_registry plus ops_compliance module flags (maintenance_workflows, predictive_maintenance).
     """
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_PROFILE_VIEW", "read")
     try:
         from services.plan_registry import plan_registry
-        from services.ops_compliance_feature_flags import (
-            get_effective_flags,
-            MAINTENANCE_WORKFLOWS,
-            PREDICTIVE_MAINTENANCE,
-            CONTRACTOR_NETWORK,
-            INVOICING,
-            COMPLIANCE_ENGINE,
-            RENT_OPERATIONS,
-        )
+        from services.capability_compatibility import contract_feature_enabled
 
+        contract = user.get("runtime_contract")
         entitlements = await plan_registry.get_client_entitlements(user["client_id"])
-        flags = await get_effective_flags(user["client_id"])
         features = entitlements.get("features") or {}
-        # Plan-based defaults + admin overrides (single source of truth for client menu)
-        features["maintenance_workflows"] = {
-            "enabled": bool(flags.get(MAINTENANCE_WORKFLOWS)),
-            "name": "Maintenance Workflows",
-            "description": "Report and track work orders; tenants can report repairs.",
-            "category": "ops",
-            "minimum_plan": None,
+        ops_feature_meta = {
+            "maintenance_workflows": {
+                "name": "Maintenance Workflows",
+                "description": "Report and track work orders; tenants can report repairs.",
+                "category": "ops",
+            },
+            "predictive_maintenance": {
+                "name": "Predictive Maintenance",
+                "description": "View predictive insights for property assets and maintenance.",
+                "category": "ops",
+            },
+            "contractor_network": {
+                "name": "Contractor Network",
+                "description": "View vetted contractors and preferred trades for your account.",
+                "category": "ops",
+            },
+            "invoicing": {
+                "name": "Billing & Invoicing",
+                "description": "View billing history and invoices.",
+                "category": "ops",
+            },
+            "compliance_engine": {
+                "name": "Compliance execution",
+                "description": (
+                    "Create compliance work orders for inspections, renewals, and certifications; "
+                    "request contractor confirmation and track status. You arrange inspections with your "
+                    "contractors — Pleerity does not book third-party appointments or run a marketplace "
+                    "scheduling service."
+                ),
+                "category": "compliance",
+            },
+            "rent_operations": {
+                "name": "Rent Operations",
+                "description": (
+                    "Track expected rent, record payments, monitor arrears, and log property expenses. "
+                    "Operational visibility only — not accounting, tax, or bookkeeping software."
+                ),
+                "category": "ops",
+            },
         }
-        features["predictive_maintenance"] = {
-            "enabled": bool(flags.get(PREDICTIVE_MAINTENANCE)),
-            "name": "Predictive Maintenance",
-            "description": "View predictive insights for property assets and maintenance.",
-            "category": "ops",
-            "minimum_plan": None,
-        }
-        features["contractor_network"] = {
-            "enabled": bool(flags.get(CONTRACTOR_NETWORK)),
-            "name": "Contractor Network",
-            "description": "View vetted contractors and preferred trades for your account.",
-            "category": "ops",
-            "minimum_plan": None,
-        }
-        features["invoicing"] = {
-            "enabled": bool(flags.get(INVOICING)),
-            "name": "Billing & Invoicing",
-            "description": "View billing history and invoices.",
-            "category": "ops",
-            "minimum_plan": None,
-        }
-        features["compliance_engine"] = {
-            "enabled": bool(flags.get(COMPLIANCE_ENGINE)),
-            "name": "Compliance execution",
-            "description": (
-                "Create compliance work orders for inspections, renewals, and certifications; "
-                "request contractor confirmation and track status. You arrange inspections with your "
-                "contractors — Pleerity does not book third-party appointments or run a marketplace "
-                "scheduling service."
-            ),
-            "category": "compliance",
-            "minimum_plan": None,
-        }
-        features["rent_operations"] = {
-            "enabled": bool(flags.get(RENT_OPERATIONS)),
-            "name": "Rent Operations",
-            "description": (
-                "Track expected rent, record payments, monitor arrears, and log property expenses. "
-                "Operational visibility only — not accounting, tax, or bookkeeping software."
-            ),
-            "category": "ops",
-            "minimum_plan": None,
-        }
+        for feature_key, meta in ops_feature_meta.items():
+            features[feature_key] = {
+                **meta,
+                "enabled": contract_feature_enabled(contract, feature_key, "read"),
+                "minimum_plan": None,
+            }
         entitlements["features"] = features
         enabled_count = sum(1 for f in features.values() if f.get("enabled"))
         entitlements["feature_summary"] = {
@@ -2188,7 +2150,7 @@ async def get_client_entitlements_context(request: Request):
     Lightweight usage context for upsell and dashboard copy (property count vs plan cap, read API path).
     Does not replace GET /entitlements; safe to call when building contextual upgrade messaging.
     """
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_DASHBOARD_VIEW", "read")
     try:
         from services.plan_registry import plan_registry
 
@@ -2222,18 +2184,11 @@ async def get_client_contractors(
     skip: int = 0,
     limit: int = 100,
     source_type: Optional[str] = None,
+    user: dict = client_require_capability("CAP_OPS_CONTRACTORS", "read"),
 ):
     """List contractors available to this client (assigned or system-wide). Requires CONTRACTOR_NETWORK flag."""
-    user = await client_route_guard(request)
-    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
     from services import contractor_service
 
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Contractor network is not enabled for your account. Contact your administrator.",
-        )
     result = await contractor_service.list_contractors_for_client(
         client_id=user["client_id"],
         vetted_only=vetted_only,
@@ -2258,16 +2213,15 @@ class CreateContractorBody(BaseModel):
 
 
 @router.get("/contractors/{contractor_id}/explanation")
-async def get_contractor_explanation(request: Request, contractor_id: str):
+async def get_contractor_explanation(
+    request: Request,
+    contractor_id: str,
+    user: dict = client_require_capability("CAP_OPS_CONTRACTORS", "read"),
+):
     """Get explanation for contractor reliability/performance score (why it matters, usage guidance). Requires CONTRACTOR_NETWORK."""
-    user = await client_route_guard(request)
-    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
     from services import contractor_service
     from services.explanation_engine import explain_contractor_score
 
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network not enabled")
     result = await contractor_service.list_contractors_for_client(
         client_id=user["client_id"], skip=0, limit=500,
     )
@@ -2281,18 +2235,14 @@ async def get_contractor_explanation(request: Request, contractor_id: str):
 
 
 @router.post("/contractors/{contractor_id}/submit-to-network")
-async def submit_contractor_to_network(request: Request, contractor_id: str):
+async def submit_contractor_to_network(
+    request: Request,
+    contractor_id: str,
+    user: dict = client_require_capability("CAP_OPS_CONTRACTORS", "write"),
+):
     """Submit a private contractor for network review. Contractor remains private until admin approves. Requires CONTRACTOR_NETWORK."""
-    user = await client_route_guard(request)
-    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
     from services import contractor_service
 
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Contractor network is not enabled for your account.",
-        )
     doc = await contractor_service.submit_contractor_to_network(contractor_id, user["client_id"])
     if not doc:
         raise HTTPException(
@@ -2312,18 +2262,14 @@ async def submit_contractor_to_network(request: Request, contractor_id: str):
 
 
 @router.post("/contractors")
-async def create_client_contractor(request: Request, body: CreateContractorBody):
+async def create_client_contractor(
+    request: Request,
+    body: CreateContractorBody,
+    user: dict = client_require_capability("CAP_OPS_CONTRACTORS", "write"),
+):
     """Landlord adds a contractor. Requires CONTRACTOR_NETWORK. Contractor is visible only to this organisation."""
-    user = await client_route_guard(request)
-    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
     from services import contractor_service
 
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Contractor network is not enabled for your account.",
-        )
     if not body.phone and not body.email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="phone or email is required")
     doc = await contractor_service.create_contractor_landlord(
@@ -2361,15 +2307,15 @@ class RateContractorBody(BaseModel):
 
 
 @router.post("/contractors/{contractor_id}/rate")
-async def rate_contractor(request: Request, contractor_id: str, body: RateContractorBody):
+async def rate_contractor(
+    request: Request,
+    contractor_id: str,
+    body: RateContractorBody,
+    user: dict = client_require_capability("CAP_OPS_CONTRACTORS", "write"),
+):
     """Submit a rating for a contractor (e.g. after work order). Requires CONTRACTOR_NETWORK."""
-    user = await client_route_guard(request)
-    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
     from services import contractor_service
 
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor network is not enabled.")
     if not (1 <= body.rating <= 5):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="rating must be between 1 and 5")
     try:
@@ -2391,7 +2337,7 @@ async def rate_contractor(request: Request, contractor_id: str, body: RateContra
 @router.get("/documents")
 async def get_documents(request: Request):
     """Get client documents."""
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_DOC_VIEW", "read")
     db = database.get_db()
     
     try:
@@ -2411,13 +2357,15 @@ async def get_documents(request: Request):
 
 
 @router.get("/compliance-pack/{property_id}/preview")
-async def get_compliance_pack_preview(request: Request, property_id: str):
+async def get_compliance_pack_preview(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_REPORT_DOWNLOAD", "read"),
+):
     """Get a preview of what the compliance pack will contain."""
-    user = await client_route_guard(request)
-    
     try:
         from services.compliance_pack import compliance_pack_service
-        
+
         preview = await compliance_pack_service.get_pack_preview(
             property_id=property_id,
             client_id=user["client_id"]
@@ -2439,35 +2387,18 @@ async def get_compliance_pack_preview(request: Request, property_id: str):
 
 @router.get("/compliance-pack/{property_id}/download")
 async def download_compliance_pack(
-    request: Request, 
+    request: Request,
     property_id: str,
-    include_expired: bool = False
+    include_expired: bool = False,
+    user: dict = client_require_capability("CAP_REPORT_DOWNLOAD", "read"),
 ):
     """Download a compliance pack PDF for a property.
-    
-    Requires Portfolio plan or higher. TEMP: gated by reports_pdf until Step 5 canonical key.
+
+    Requires Portfolio plan or higher (CAP_REPORT_DOWNLOAD / reports_pdf plan gate).
     """
-    user = await client_route_guard(request)
     try:
-        # TEMP Step 2: compliance_packs has no plan_registry key; gate by reports_pdf (Portfolio+)
-        from services.plan_registry import plan_registry
-
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            user["client_id"],
-            "reports_pdf"
-        )
-        if not allowed:
-            detail = {
-                "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                "message": error_msg,
-                "upgrade_required": True,
-                **(error_details or {}),
-            }
-            detail["feature"] = "compliance_packs"  # preserve response shape
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
-
         from services.compliance_pack import compliance_pack_service
-        
+
         pdf_bytes = await compliance_pack_service.generate_compliance_pack(
             property_id=property_id,
             client_id=user["client_id"],
@@ -2511,21 +2442,16 @@ async def download_compliance_pack(
 
 
 @router.post("/tenants/invite")
-async def invite_tenant(request: Request):
+async def invite_tenant(
+    request: Request,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
+):
     """
     Invite a tenant to view property compliance status.
     
     Creates a ROLE_TENANT user with read-only access.
     Gated: Portfolio and Professional only (tenant_portal).
     """
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     
     # Only CLIENT_ADMIN can invite tenants
@@ -2710,16 +2636,11 @@ async def invite_tenant(request: Request):
 
 
 @router.get("/tenants")
-async def list_tenants(request: Request):
+async def list_tenants(
+    request: Request,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "read"),
+):
     """List all tenants invited by this client. Gated: Portfolio+ (tenant_portal)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     
     try:
@@ -2769,16 +2690,11 @@ async def list_tenants(request: Request):
 
 
 @router.get("/tenant-messages")
-async def list_tenant_messages(request: Request):
+async def list_tenant_messages(
+    request: Request,
+    user: dict = client_require_capability("CAP_TENANT_MESSAGES", "read"),
+):
     """List messages from tenants to this client (landlord). Gated: tenant_portal."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     cursor = db.tenant_messages.find(
         {"client_id": user["client_id"]},
@@ -2792,16 +2708,11 @@ async def list_tenant_messages(request: Request):
 
 
 @router.get("/tenant-requests")
-async def list_tenant_requests(request: Request):
+async def list_tenant_requests(
+    request: Request,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "read"),
+):
     """List certificate requests from tenants for this client. Gated: tenant_portal."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     cursor = db.tenant_requests.find(
         {"client_id": user["client_id"]},
@@ -2837,17 +2748,9 @@ async def start_tenant_request_compliance_job(
     request: Request,
     request_id: str,
     body: Optional[TenantRequestStartComplianceJobBody] = None,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
 ):
     """Create a COMPLIANCE work order directly from a tenant request (real execution, audited)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True},
-        )
     if user.get("role") not in ["ROLE_CLIENT", "ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
@@ -2871,16 +2774,12 @@ async def start_tenant_request_compliance_job(
 
 
 @router.patch("/tenant-requests/{request_id}")
-async def update_tenant_request_status(request: Request, request_id: str):
+async def update_tenant_request_status(
+    request: Request,
+    request_id: str,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
+):
     """Update a certificate request status (IN_PROGRESS, DONE, DECLINED). Gated: tenant_portal."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     if user.get("role") not in ["ROLE_CLIENT", "ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     try:
@@ -2987,16 +2886,12 @@ async def update_tenant_request_status(request: Request, request_id: str):
 
 
 @router.post("/tenants/{tenant_id}/assign-property")
-async def assign_tenant_to_property(request: Request, tenant_id: str):
+async def assign_tenant_to_property(
+    request: Request,
+    tenant_id: str,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
+):
     """Assign a tenant to a property. Gated: Portfolio+ (tenant_portal)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     
     if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
@@ -3077,16 +2972,13 @@ async def assign_tenant_to_property(request: Request, tenant_id: str):
 
 
 @router.delete("/tenants/{tenant_id}/unassign-property/{property_id}")
-async def unassign_tenant_from_property(request: Request, tenant_id: str, property_id: str):
+async def unassign_tenant_from_property(
+    request: Request,
+    tenant_id: str,
+    property_id: str,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
+):
     """Remove a tenant's assignment to a property. Gated: Portfolio+ (tenant_portal)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     
     if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
@@ -3136,16 +3028,12 @@ async def unassign_tenant_from_property(request: Request, tenant_id: str, proper
 
 
 @router.delete("/tenants/{tenant_id}")
-async def revoke_tenant_access(request: Request, tenant_id: str):
+async def revoke_tenant_access(
+    request: Request,
+    tenant_id: str,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
+):
     """Revoke a tenant's access entirely (disable account). Gated: Portfolio+ (tenant_portal)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     
     if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
@@ -3192,16 +3080,12 @@ async def revoke_tenant_access(request: Request, tenant_id: str):
 
 
 @router.post("/tenants/{tenant_id}/resend-invite")
-async def resend_tenant_invite(request: Request, tenant_id: str):
+async def resend_tenant_invite(
+    request: Request,
+    tenant_id: str,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
+):
     """Resend invitation email to a tenant. Gated: Portfolio+ (tenant_portal)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     
     if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
@@ -3307,25 +3191,27 @@ def _branding_logo_path(client_id: str, ext: str) -> Path:
     return BRANDING_LOGOS_PATH / f"{client_id}{ext}"
 
 @router.get("/branding")
-async def get_branding_settings(request: Request):
+async def get_branding_settings(
+    request: Request,
+    user: dict = client_require_capability("CAP_BRANDING_VIEW", "read"),
+):
     """Get the client's branding settings.
     
     Returns current branding configuration for white-label customization.
     Plan gating: Requires Portfolio plan (PLAN_6_15) for full customization.
     """
-    from services.plan_registry import plan_registry
+    from services.account_capability_enforcement import CapabilityEnforcementService
     from datetime import datetime, timezone
 
-    user = await client_route_guard(request)
     try:
         db = database.get_db()
         client_id = user["client_id"]
 
-        # Canonical: white_label -> white_label_reports (plan_registry)
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            client_id,
-            "white_label_reports"
+        wl_decision = await CapabilityEnforcementService(db).evaluate(
+            client_id, "CAP_BRANDING_WHITE_LABEL", "read", contract=user.get("runtime_contract")
         )
+        allowed = wl_decision.allowed
+        error_msg = None if allowed else wl_decision.reason
         
         # Get existing branding settings
         branding = await db.branding_settings.find_one(
@@ -3388,38 +3274,22 @@ async def get_branding_settings(request: Request):
 
 
 @router.put("/branding")
-async def update_branding_settings(request: Request):
+async def update_branding_settings(
+    request: Request,
+    user: dict = client_require_capability("CAP_BRANDING_EDIT", "write"),
+):
     """Update the client's branding settings.
     
     Plan gating: Requires Professional plan (white_label_reports).
     """
-    from services.plan_registry import plan_registry
     from models import AuditAction
     from utils.audit import create_audit_log
     from datetime import datetime, timezone
 
-    user = await client_route_guard(request)
     body = await request.json()
     try:
         db = database.get_db()
         client_id = user["client_id"]
-
-        # Canonical: white_label -> white_label_reports (plan_registry)
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            client_id,
-            "white_label_reports"
-        )
-        if not allowed:
-            detail = {
-                "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                "message": error_msg,
-                "upgrade_required": True,
-                **(error_details or {}),
-            }
-            detail["feature"] = "white_label"  # preserve response shape
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
-
-        # Allowed fields to update
         allowed_fields = [
             "company_name", "logo_url", "favicon_url",
             "primary_color", "secondary_color", "accent_color", "text_color",
@@ -3518,34 +3388,20 @@ async def update_branding_settings(request: Request):
 
 
 @router.post("/branding/reset")
-async def reset_branding_settings(request: Request):
+async def reset_branding_settings(
+    request: Request,
+    user: dict = client_require_capability("CAP_BRANDING_EDIT", "write"),
+):
     """Reset branding settings to defaults.
     
     Plan gating: Requires Professional plan (white_label_reports).
     """
-    from services.plan_registry import plan_registry
     from models import AuditAction
     from utils.audit import create_audit_log
 
-    user = await client_route_guard(request)
     try:
         db = database.get_db()
         client_id = user["client_id"]
-
-        # Canonical: white_label -> white_label_reports (plan_registry)
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            client_id,
-            "white_label_reports"
-        )
-        if not allowed:
-            detail = {
-                "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                "message": error_msg,
-                "upgrade_required": True,
-                **(error_details or {}),
-            }
-            detail["feature"] = "white_label"  # preserve response shape
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
         # Remove uploaded logo file if any
         for ext in [".png", ".jpg", ".webp"]:
@@ -3582,9 +3438,11 @@ async def reset_branding_settings(request: Request):
 
 
 @router.get("/branding/logo")
-async def get_branding_logo(request: Request):
+async def get_branding_logo(
+    request: Request,
+    user: dict = client_require_capability("CAP_BRANDING_VIEW", "read"),
+):
     """Serve the client's uploaded branding logo (for use in reports and preview)."""
-    user = await client_route_guard(request)
     db = database.get_db()
     client_id = user["client_id"]
     branding = await db.branding_settings.find_one(
@@ -3603,23 +3461,14 @@ async def get_branding_logo(request: Request):
 
 
 @router.post("/branding/logo")
-async def upload_branding_logo(request: Request, file: UploadFile = File(...)):
+async def upload_branding_logo(
+    request: Request,
+    file: UploadFile = File(...),
+    user: dict = client_require_capability("CAP_BRANDING_EDIT", "write"),
+):
     """Upload a logo file for branding. Replaces existing. Returns logo_url to use in settings."""
-    from services.plan_registry import plan_registry
-
-    user = await client_route_guard(request)
     db = database.get_db()
     client_id = user["client_id"]
-
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(
-        client_id,
-        "white_label_reports"
-    )
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_msg or "Upgrade required for white-label branding"
-        )
 
     if not file.content_type or file.content_type.lower() not in BRANDING_LOGO_ALLOWED_TYPES:
         raise HTTPException(
@@ -3664,23 +3513,14 @@ async def upload_branding_logo(request: Request, file: UploadFile = File(...)):
 
 
 @router.get("/branding/preview")
-async def get_branding_preview(request: Request):
+async def get_branding_preview(
+    request: Request,
+    user: dict = client_require_capability("CAP_BRANDING_EDIT", "read"),
+):
     """Generate a sample PDF using current branding (for preview before saving)."""
-    from services.plan_registry import plan_registry
     from services.professional_reports import professional_report_generator
 
-    user = await client_route_guard(request)
     client_id = user["client_id"]
-
-    allowed, error_msg, _ = await plan_registry.enforce_feature(
-        client_id,
-        "white_label_reports"
-    )
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_msg or "Upgrade required for white-label branding"
-        )
 
     db = database.get_db()
     branding_row = await db.branding_settings.find_one(

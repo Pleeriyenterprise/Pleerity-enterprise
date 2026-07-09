@@ -1,0 +1,555 @@
+{
+  "programme": "P0-REAL-CUSTOMER-RECOVERY-E2E-VALIDATION-01",
+  "generated_at": "2026-07-08T20:13:24Z",
+  "recovery_account": "lere@yopmail.com",
+  "post_payment_validation_after_user_done": true,
+  "deployment_authority": {
+    "checked_at": "2026-07-08T19:31:43Z",
+    "expected_commit": "aac35cbd54b5d29aa8402b852ca78135566e248e",
+    "backend": {
+      "status": 200,
+      "body": {
+        "commit_sha": "aac35cbd54b5d29aa8402b852ca78135566e248e",
+        "environment": "staging"
+      },
+      "match": true,
+      "deployed_sha": "aac35cbd54b5d29aa8402b852ca78135566e248e"
+    },
+    "frontend": {
+      "homepage_status": 200,
+      "main_scripts": [
+        "main.ca6af175.js"
+      ],
+      "bundle": "main.ca6af175.js",
+      "bundle_sha256": "951baf0c37a88feb85debc2f47813d30d6c0aeb942e1fcce55e106d9b19cce8d",
+      "has_expected_commit": true,
+      "billing_recovery_markers": {
+        "checkout_url": true,
+        "recovery_guidance": true,
+        "fallback_checkout": true
+      }
+    },
+    "aligned": true,
+    "pass": true
+  },
+  "runtime_contract_before": {
+    "status": 200,
+    "lifecycle_state": "SUSPENDED",
+    "portal_mode": "SUSPENDED",
+    "runtime_version": 1727723729,
+    "entitlements_version": null,
+    "capabilities_sample": {
+      "CAP_BILLING_CHECKOUT": "ALLOW",
+      "CAP_SUB_MANAGE": "ALLOW",
+      "CAP_PROP_VIEW": "DENY",
+      "CAP_DASHBOARD_VIEW": "DENY",
+      "CAP_REQ_VIEW": "DENY"
+    },
+    "navigation_policy": {
+      "landing_route": "/settings/billing",
+      "locked_routes": [
+        "/today",
+        "/dashboard",
+        "/command-center",
+        "/properties"
+      ],
+      "read_only_routes": [],
+      "hidden_routes": [
+        "/operations",
+        "/reports"
+      ]
+    },
+    "customer_experience": {
+      "heading": "Account suspended",
+      "explanation": "Your account access has been restricted.",
+      "reason": "Outstanding payment after grace period.",
+      "current_state_label": "Suspended",
+      "available_features": [
+        "support",
+        "billing"
+      ],
+      "unavailable_features": [
+        "dashboard",
+        "properties",
+        "requirements",
+        "reports",
+        "today"
+      ],
+      "primary_cta": {
+        "label": "Resolve payment",
+        "route": "/settings/billing"
+      },
+      "secondary_cta": {
+        "label": "Contact support",
+        "route": "/support"
+      },
+      "recovery_guidance": "Resolve payment in Billing to restore full access.",
+      "support_guidance": "",
+      "expected_next_step": "Reinstatement \u2014 full access"
+    },
+    "reactivation_policy": {
+      "eligible": true,
+      "paths": [
+        "R-008_suspension_lifted"
+      ],
+      "restoration_scope": "SELECTIVE"
+    }
+  },
+  "runtime_contract_after": {
+    "status": 200,
+    "lifecycle_state": "SUSPENDED",
+    "portal_mode": "SUSPENDED",
+    "runtime_version": 1727723729,
+    "entitlements_version": null,
+    "capabilities_sample": {
+      "CAP_BILLING_CHECKOUT": "ALLOW",
+      "CAP_SUB_MANAGE": "ALLOW",
+      "CAP_PROP_VIEW": "DENY",
+      "CAP_DASHBOARD_VIEW": "DENY",
+      "CAP_REQ_VIEW": "DENY"
+    },
+    "navigation_policy": {
+      "landing_route": "/settings/billing",
+      "locked_routes": [
+        "/today",
+        "/dashboard",
+        "/command-center",
+        "/properties"
+      ],
+      "read_only_routes": [],
+      "hidden_routes": [
+        "/operations",
+        "/reports"
+      ]
+    },
+    "customer_experience": {
+      "heading": "Account suspended",
+      "explanation": "Your account access has been restricted.",
+      "reason": "Outstanding payment after grace period.",
+      "current_state_label": "Suspended",
+      "available_features": [
+        "support",
+        "billing"
+      ],
+      "unavailable_features": [
+        "dashboard",
+        "properties",
+        "requirements",
+        "reports",
+        "today"
+      ],
+      "primary_cta": {
+        "label": "Resolve payment",
+        "route": "/settings/billing"
+      },
+      "secondary_cta": {
+        "label": "Contact support",
+        "route": "/support"
+      },
+      "recovery_guidance": "Resolve payment in Billing to restore full access.",
+      "support_guidance": "",
+      "expected_next_step": "Reinstatement \u2014 full access"
+    },
+    "reactivation_policy": {
+      "eligible": true,
+      "paths": [
+        "R-008_suspension_lifted"
+      ],
+      "restoration_scope": "SELECTIVE"
+    }
+  },
+  "billing_before": {
+    "status": 200,
+    "subscription_status": "CANCELED",
+    "billing_status_display": "Cancelled",
+    "plan_status_display": "Cancelled",
+    "last_payment_at": null,
+    "last_payment_display": null,
+    "billing_last_synced_at": "2026-07-08T19:31:54.507893+00:00",
+    "has_subscription": true,
+    "canonical_entitlement_state": "CANCELLED"
+  },
+  "billing_after": {
+    "status": 200,
+    "subscription_status": "CANCELED",
+    "billing_status_display": "Cancelled",
+    "plan_status_display": "Cancelled",
+    "last_payment_at": null,
+    "last_payment_display": null,
+    "billing_last_synced_at": "2026-07-08T20:13:14.322739+00:00",
+    "has_subscription": true,
+    "canonical_entitlement_state": "CANCELLED"
+  },
+  "stripe_webhook_poll": {
+    "attempts": [
+      {
+        "attempt": 0,
+        "at": "2026-07-08T20:09:06Z",
+        "status": 200,
+        "subscription_status": "CANCELED",
+        "billing_status_display": "Cancelled",
+        "plan_status_display": "Cancelled",
+        "last_payment_at": null,
+        "last_payment_display": null,
+        "billing_last_synced_at": "2026-07-08T20:09:05.788156+00:00",
+        "has_subscription": true,
+        "canonical_entitlement_state": "CANCELLED"
+      },
+      {
+        "attempt": 1,
+        "at": "2026-07-08T20:09:19Z",
+        "status": 200,
+        "subscription_status": "CANCELED",
+        "billing_status_display": "Cancelled",
+        "plan_status_display": "Cancelled",
+        "last_payment_at": null,
+        "last_payment_display": null,
+        "billing_last_synced_at": "2026-07-08T20:09:18.444673+00:00",
+        "has_subscription": true,
+        "canonical_entitlement_state": "CANCELLED"
+      },
+      {
+        "attempt": 2,
+        "at": "2026-07-08T20:09:32Z",
+        "status": 200,
+        "subscription_status": "CANCELED",
+        "billing_status_display": "Cancelled",
+        "plan_status_display": "Cancelled",
+        "last_payment_at": null,
+        "last_payment_display": null,
+        "billing_last_synced_at": "2026-07-08T20:09:31.619136+00:00",
+        "has_subscription": true,
+        "canonical_entitlement_state": "CANCELLED"
+      },
+      {
+        "attempt": 3,
+        "at": "2026-07-08T20:09:45Z",
+        "status": 200,
+        "subscription_status": "CANCELED",
+        "billing_status_display": "Cancelled",
+        "plan_status_display": "Cancelled",
+        "last_payment_at": null,
+        "last_payment_display": null,
+        "billing_last_synced_at": "2026-07-08T20:09:44.528921+00:00",
+        "has_subscription": true,
+        "canonical_entitlement_state": "CANCELLED"
+      },
+      {
+        "attempt": 4,
+        "at": "2026-07-08T20:09:58Z",
+        "status": 200,
+        "subscription_status": "CANCELED",
+        "billing_status_display": "Cancelled",
+        "plan_status_display": "Cancelled",
+        "last_payment_at": null,
+        "last_payment_display": null,
+        "billing_last_synced_at": "2026-07-08T20:09:57.862588+00:00",
+        "has_subscription": true,
+        "canonical_entitlement_state": "CANCELLED"
+      },
+      {
+        "attempt": 5,
+        "at": "2026-07-08T20:10:11Z",
+        "status": 200,
+        "subscription_status": "CANCELED",
+        "billing_status_display": "Cancelled",
+        "plan_status_display": "Cancelled",
+        "last_payment_at": null,
+        "last_payment_display": null,
+        "billing_last_synced_at": "2026-07-08T20:10:10.719396+00:00",
+        "has_subscription": true,
+        "canonical_entitlement_state": "CANCELLED"
+      }
+    ],
+    "pass": false,
+    "final": {
+      "attempt": 5,
+      "at": "2026-07-08T20:10:11Z",
+      "status": 200,
+      "subscription_status": "CANCELED",
+      "billing_status_display": "Cancelled",
+      "plan_status_display": "Cancelled",
+      "last_payment_at": null,
+      "last_payment_display": null,
+      "billing_last_synced_at": "2026-07-08T20:10:10.719396+00:00",
+      "has_subscription": true,
+      "canonical_entitlement_state": "CANCELLED"
+    }
+  },
+  "lifecycle_poll": {
+    "attempts": [
+      {
+        "attempt": 0,
+        "at": "2026-07-08T20:10:25Z",
+        "lifecycle_state": "SUSPENDED",
+        "portal_mode": "SUSPENDED",
+        "runtime_version": 1727723729,
+        "capabilities_sample": {
+          "CAP_BILLING_CHECKOUT": "ALLOW",
+          "CAP_SUB_MANAGE": "ALLOW",
+          "CAP_PROP_VIEW": "DENY",
+          "CAP_DASHBOARD_VIEW": "DENY",
+          "CAP_REQ_VIEW": "DENY"
+        }
+      },
+      {
+        "attempt": 1,
+        "at": "2026-07-08T20:10:38Z",
+        "lifecycle_state": "SUSPENDED",
+        "portal_mode": "SUSPENDED",
+        "runtime_version": 1727723729,
+        "capabilities_sample": {
+          "CAP_BILLING_CHECKOUT": "ALLOW",
+          "CAP_SUB_MANAGE": "ALLOW",
+          "CAP_PROP_VIEW": "DENY",
+          "CAP_DASHBOARD_VIEW": "DENY",
+          "CAP_REQ_VIEW": "DENY"
+        }
+      },
+      {
+        "attempt": 2,
+        "at": "2026-07-08T20:10:52Z",
+        "lifecycle_state": "SUSPENDED",
+        "portal_mode": "SUSPENDED",
+        "runtime_version": 1727723729,
+        "capabilities_sample": {
+          "CAP_BILLING_CHECKOUT": "ALLOW",
+          "CAP_SUB_MANAGE": "ALLOW",
+          "CAP_PROP_VIEW": "DENY",
+          "CAP_DASHBOARD_VIEW": "DENY",
+          "CAP_REQ_VIEW": "DENY"
+        }
+      },
+      {
+        "attempt": 3,
+        "at": "2026-07-08T20:11:05Z",
+        "lifecycle_state": "SUSPENDED",
+        "portal_mode": "SUSPENDED",
+        "runtime_version": 1727723729,
+        "capabilities_sample": {
+          "CAP_BILLING_CHECKOUT": "ALLOW",
+          "CAP_SUB_MANAGE": "ALLOW",
+          "CAP_PROP_VIEW": "DENY",
+          "CAP_DASHBOARD_VIEW": "DENY",
+          "CAP_REQ_VIEW": "DENY"
+        }
+      },
+      {
+        "attempt": 4,
+        "at": "2026-07-08T20:11:18Z",
+        "lifecycle_state": "SUSPENDED",
+        "portal_mode": "SUSPENDED",
+        "runtime_version": 1727723729,
+        "capabilities_sample": {
+          "CAP_BILLING_CHECKOUT": "ALLOW",
+          "CAP_SUB_MANAGE": "ALLOW",
+          "CAP_PROP_VIEW": "DENY",
+          "CAP_DASHBOARD_VIEW": "DENY",
+          "CAP_REQ_VIEW": "DENY"
+        }
+      },
+      {
+        "attempt": 5,
+        "at": "2026-07-08T20:11:32Z",
+        "lifecycle_state": "SUSPENDED",
+        "portal_mode": "SUSPENDED",
+        "runtime_version": 1727723729,
+        "capabilities_sample": {
+          "CAP_BILLING_CHECKOUT": "ALLOW",
+          "CAP_SUB_MANAGE": "ALLOW",
+          "CAP_PROP_VIEW": "DENY",
+          "CAP_DASHBOARD_VIEW": "DENY",
+          "CAP_REQ_VIEW": "DENY"
+        }
+      },
+      {
+        "attempt": 6,
+        "at": "2026-07-08T20:11:45Z",
+        "lifecycle_state": "SUSPENDED",
+        "portal_mode": "SUSPENDED",
+        "runtime_version": 1727723729,
+        "capabilities_sample": {
+          "CAP_BILLING_CHECKOUT": "ALLOW",
+          "CAP_SUB_MANAGE": "ALLOW",
+          "CAP_PROP_VIEW": "DENY",
+          "CAP_DASHBOARD_VIEW": "DENY",
+          "CAP_REQ_VIEW": "DENY"
+        }
+      },
+      {
+        "attempt": 7,
+        "at": "2026-07-08T20:11:59Z",
+        "lifecycle_state": "SUSPENDED",
+        "portal_mode": "SUSPENDED",
+        "runtime_version": 1727723729,
+        "capabilities_sample": {
+          "CAP_BILLING_CHECKOUT": "ALLOW",
+          "CAP_SUB_MANAGE": "ALLOW",
+          "CAP_PROP_VIEW": "DENY",
+          "CAP_DASHBOARD_VIEW": "DENY",
+          "CAP_REQ_VIEW": "DENY"
+        }
+      },
+      {
+        "attempt": 8,
+        "at": "2026-07-08T20:12:13Z",
+        "lifecycle_state": "SUSPENDED",
+        "portal_mode": "SUSPENDED",
+        "runtime_version": 1727723729,
+        "capabilities_sample": {
+          "CAP_BILLING_CHECKOUT": "ALLOW",
+          "CAP_SUB_MANAGE": "ALLOW",
+          "CAP_PROP_VIEW": "DENY",
+          "CAP_DASHBOARD_VIEW": "DENY",
+          "CAP_REQ_VIEW": "DENY"
+        }
+      },
+      {
+        "attempt": 9,
+        "at": "2026-07-08T20:12:27Z",
+        "lifecycle_state": "SUSPENDED",
+        "portal_mode": "SUSPENDED",
+        "runtime_version": 1727723729,
+        "capabilities_sample": {
+          "CAP_BILLING_CHECKOUT": "ALLOW",
+          "CAP_SUB_MANAGE": "ALLOW",
+          "CAP_PROP_VIEW": "DENY",
+          "CAP_DASHBOARD_VIEW": "DENY",
+          "CAP_REQ_VIEW": "DENY"
+        }
+      },
+      {
+        "attempt": 10,
+        "at": "2026-07-08T20:12:40Z",
+        "lifecycle_state": "SUSPENDED",
+        "portal_mode": "SUSPENDED",
+        "runtime_version": 1727723729,
+        "capabilities_sample": {
+          "CAP_BILLING_CHECKOUT": "ALLOW",
+          "CAP_SUB_MANAGE": "ALLOW",
+          "CAP_PROP_VIEW": "DENY",
+          "CAP_DASHBOARD_VIEW": "DENY",
+          "CAP_REQ_VIEW": "DENY"
+        }
+      },
+      {
+        "attempt": 11,
+        "at": "2026-07-08T20:12:54Z",
+        "lifecycle_state": "SUSPENDED",
+        "portal_mode": "SUSPENDED",
+        "runtime_version": 1727723729,
+        "capabilities_sample": {
+          "CAP_BILLING_CHECKOUT": "ALLOW",
+          "CAP_SUB_MANAGE": "ALLOW",
+          "CAP_PROP_VIEW": "DENY",
+          "CAP_DASHBOARD_VIEW": "DENY",
+          "CAP_REQ_VIEW": "DENY"
+        }
+      }
+    ],
+    "pass": false,
+    "final": {
+      "status": 200,
+      "lifecycle_state": "SUSPENDED",
+      "portal_mode": "SUSPENDED",
+      "runtime_version": 1727723729,
+      "entitlements_version": null,
+      "capabilities_sample": {
+        "CAP_BILLING_CHECKOUT": "ALLOW",
+        "CAP_SUB_MANAGE": "ALLOW",
+        "CAP_PROP_VIEW": "DENY",
+        "CAP_DASHBOARD_VIEW": "DENY",
+        "CAP_REQ_VIEW": "DENY"
+      },
+      "navigation_policy": {
+        "landing_route": "/settings/billing",
+        "locked_routes": [
+          "/today",
+          "/dashboard",
+          "/command-center",
+          "/properties"
+        ],
+        "read_only_routes": [],
+        "hidden_routes": [
+          "/operations",
+          "/reports"
+        ]
+      },
+      "customer_experience": {
+        "heading": "Account suspended",
+        "explanation": "Your account access has been restricted.",
+        "reason": "Outstanding payment after grace period.",
+        "current_state_label": "Suspended",
+        "available_features": [
+          "support",
+          "billing"
+        ],
+        "unavailable_features": [
+          "dashboard",
+          "properties",
+          "requirements",
+          "reports",
+          "today"
+        ],
+        "primary_cta": {
+          "label": "Resolve payment",
+          "route": "/settings/billing"
+        },
+        "secondary_cta": {
+          "label": "Contact support",
+          "route": "/support"
+        },
+        "recovery_guidance": "Resolve payment in Billing to restore full access.",
+        "support_guidance": "",
+        "expected_next_step": "Reinstatement \u2014 full access"
+      },
+      "reactivation_policy": {
+        "eligible": true,
+        "paths": [
+          "R-008_suspension_lifted"
+        ],
+        "restoration_scope": "SELECTIVE"
+      }
+    }
+  },
+  "data_preservation": {
+    "checks": {
+      "properties": {
+        "pass": true,
+        "before_status": 403,
+        "after_status": 403
+      },
+      "requirements": {
+        "pass": true,
+        "before_status": 403,
+        "after_status": 403
+      },
+      "billing_status": {
+        "pass": true,
+        "note": "both readable with stable status"
+      }
+    },
+    "pass": true
+  },
+  "no_manual_database_edits": {
+    "method": "API-only post-payment probe; no Mongo client",
+    "pass": true
+  },
+  "release_gate": {
+    "deployment": "PASS",
+    "stripe_checkout_reached": "PASS",
+    "stripe_return_to_app": "UNKNOWN",
+    "stripe_webhook": "FAIL",
+    "runtime_contract": "FAIL",
+    "billing_recovery": "FAIL",
+    "lifecycle": "FAIL",
+    "customer_recovery": "FAIL",
+    "data_preservation": "PASS",
+    "navigation": "NOT_RUN",
+    "no_manual_database_edits": "PASS",
+    "background_services": "NOT_VALIDATED",
+    "browser_validation": "FAIL"
+  },
+  "verdict": "REAL_CUSTOMER_RECOVERY_E2E_BLOCKED",
+  "first_authoritative_failure": "lifecycle_convergence"
+}

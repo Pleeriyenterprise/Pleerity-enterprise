@@ -8,18 +8,17 @@ import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { AlertCircle, Plus, Loader2, FileText, X, Wrench, Building2, Lock } from 'lucide-react';
-import { useEntitlements } from '../contexts/EntitlementsContext';
-import { ContractorNetworkLockedModal } from '../components/client/ContractorNetworkLockedModal';
-import { isIssueAssignContractorLocked } from '../utils/contractorNetworkEntitlement';
-import { toast } from '@/utils/portalNotifications';
-import { reinforcementToastOptions } from '../utils/confidenceUxCopy';
-import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
+import { OperationalCapabilityProtectedRoute } from '../utils/CapabilityProtectedRoute';
+import { useOperationalExecutionCapabilities } from '../utils/operationalCapabilityAccess';
 import { issueStatusLabel, issueSeverityLabel } from '../domain/presentDomain';
 import { PortalFilterStack, portalDrawerPanelClass } from '../components/client/ClientPortalPatterns';
 import { resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPortalNavigation';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
+import { ContractorNetworkLockedModal } from '../components/client/ContractorNetworkLockedModal';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { operationalLabelForToken } from '../utils/presentationLanguage';
+import { toast } from '@/utils/portalNotifications';
+import { reinforcementToastOptions } from '../utils/confidenceUxCopy';
 import ListCognitionChip from '../components/operational/ListCognitionChip';
 import NextActionHero from '../components/operational/NextActionHero';
 import { resolveIssuePrimaryAction, normalizeOperationalPrimaryKey } from '../utils/primaryActionResolver';
@@ -27,7 +26,7 @@ import { isOpenIssueStatus } from '../utils/issueLifecycleAuthority';
 
 function ClientIssuesPageInner() {
   const navigate = useNavigate();
-  const { hasFeature } = useEntitlements();
+  const { canUseOpsContractors, canWriteOpsMaintenance } = useOperationalExecutionCapabilities();
   const [contractorNetworkLockedOpen, setContractorNetworkLockedOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [issues, setIssues] = useState([]);
@@ -176,6 +175,7 @@ function ClientIssuesPageInner() {
 
   const handleCreateSubmit = (e) => {
     e.preventDefault();
+    if (!canWriteOpsMaintenance) return;
     if (!createForm.property_id || !createForm.description?.trim()) {
       toast.error('Select a property and enter a description');
       return;
@@ -203,6 +203,7 @@ function ClientIssuesPageInner() {
 
   const handleCreateIssueSubmit = (e) => {
     e.preventDefault();
+    if (!canWriteOpsMaintenance) return;
     if (createIssueInFlightRef.current || createIssueSaving) {
       return;
     }
@@ -269,7 +270,7 @@ function ClientIssuesPageInner() {
     if (!issue?.issue_id) return;
     const primary = resolveIssuePrimaryAction(issue);
     if (!primary) return;
-    if (isIssueAssignContractorLocked(primary, hasFeature('contractor_network'))) {
+    if (isIssueAssignContractorLocked(primary, canUseOpsContractors)) {
       setContractorNetworkLockedOpen(true);
       return;
     }
@@ -328,11 +329,11 @@ function ClientIssuesPageInner() {
           <Button variant="outline" className="w-full sm:w-auto min-h-11 justify-center" onClick={() => navigate('/operations/work-orders')}>
             View jobs
           </Button>
-          <Button variant="outline" className="w-full sm:w-auto min-h-11 justify-center" onClick={() => setCreateIssueOpen(true)}>
+          <Button variant="outline" disabled={!canWriteOpsMaintenance} className="w-full sm:w-auto min-h-11 justify-center" onClick={() => setCreateIssueOpen(true)}>
             <FileText className="w-4 h-4 mr-2 shrink-0" />
             Add issue
           </Button>
-          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90 font-semibold">
+          <Button disabled={!canWriteOpsMaintenance} onClick={() => setCreateOpen(true)} className="w-full sm:w-auto min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90 font-semibold">
             <Plus className="w-4 h-4 mr-2 shrink-0" />
             Start maintenance job (from report)
           </Button>
@@ -458,7 +459,7 @@ function ClientIssuesPageInner() {
             <div className="py-8 text-center text-gray-500">
               <p className="font-medium">No maintenance issues have been recorded across your portfolio.</p>
               <div className="flex flex-wrap gap-2 justify-center mt-3">
-                <Button size="sm" variant="outline" onClick={() => setCreateIssueOpen(true)}>Add issue</Button>
+                <Button size="sm" variant="outline" disabled={!canWriteOpsMaintenance} onClick={() => setCreateIssueOpen(true)}>Add issue</Button>
                 <Button size="sm" variant="outline" onClick={() => navigate('/properties')}>View properties</Button>
               </div>
             </div>
@@ -492,7 +493,7 @@ function ClientIssuesPageInner() {
                     </div>
                     <div className="flex flex-col gap-2 pt-1">
                       {primary && iss.status !== 'closed' && (
-                        isIssueAssignContractorLocked(primary, hasFeature('contractor_network')) ? (
+                        isIssueAssignContractorLocked(primary, canUseOpsContractors) ? (
                           <Button
                             variant="outline"
                             className="w-full min-h-11 justify-center border-slate-300"
@@ -562,7 +563,7 @@ function ClientIssuesPageInner() {
                       <td className="p-2 text-gray-600">{iss.triage?.sla_hours != null ? `${iss.triage.sla_hours}h` : '—'}</td>
                       <td className="p-2 text-right">
                         {primary && iss.status !== 'closed' && (
-                          isIssueAssignContractorLocked(primary, hasFeature('contractor_network')) ? (
+                          isIssueAssignContractorLocked(primary, canUseOpsContractors) ? (
                             <Button
                               size="sm"
                               variant="outline"
@@ -633,7 +634,7 @@ function ClientIssuesPageInner() {
                     entity={issueDetailData}
                     primaryLocked={isIssueAssignContractorLocked(
                       resolveIssuePrimaryAction(issueDetailData),
-                      hasFeature('contractor_network'),
+                      canUseOpsContractors,
                     )}
                     onPrimaryClick={() => runIssuePrimaryAction(issueDetailData)}
                     primaryBusy={issuePrimaryBusy || creatingWoFromIssue === issueDetailData.issue_id}
@@ -706,7 +707,7 @@ function ClientIssuesPageInner() {
                 <textarea value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} className="border border-gray-300 rounded-md px-3 py-2 w-full" rows={3} placeholder="Describe the issue..." required />
               </div>
               <div className="flex gap-2 pt-2">
-                <Button type="submit" disabled={createSaving} className="bg-electric-teal hover:bg-electric-teal/90">{createSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : PORTAL_COPY.submitMaintenanceReport}</Button>
+                <Button type="submit" disabled={!canWriteOpsMaintenance || createSaving} className="bg-electric-teal hover:bg-electric-teal/90">{createSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : PORTAL_COPY.submitMaintenanceReport}</Button>
                 <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
               </div>
             </form>
@@ -741,7 +742,7 @@ function ClientIssuesPageInner() {
                 </select>
               </div>
               <div className="flex gap-2 pt-2">
-                <Button type="submit" disabled={createIssueSaving} className="bg-electric-teal hover:bg-electric-teal/90">{createIssueSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create issue'}</Button>
+                <Button type="submit" disabled={!canWriteOpsMaintenance || createIssueSaving} className="bg-electric-teal hover:bg-electric-teal/90">{createIssueSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create issue'}</Button>
                 <Button type="button" variant="outline" onClick={() => setCreateIssueOpen(false)}>Cancel</Button>
               </div>
             </form>
@@ -757,8 +758,8 @@ function ClientIssuesPageInner() {
 
 export default function ClientIssuesPage() {
   return (
-    <EntitlementProtectedRoute requiredFeature="maintenance_workflows">
+    <OperationalCapabilityProtectedRoute requiredFeature="maintenance_workflows">
       <ClientIssuesPageInner />
-    </EntitlementProtectedRoute>
+    </OperationalCapabilityProtectedRoute>
   );
 }
