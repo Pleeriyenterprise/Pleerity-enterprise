@@ -12,9 +12,17 @@ from services.integrations.zoho.config import (
     zoho_credentials_configured,
     zoho_integration_enabled,
     zoho_kill_switch_active,
+    zoho_refresh_token,
+    zoho_shared_oauth_client_configured,
+)
+from services.integrations.zoho.credential_resolver import resolve_oauth_credentials
+from services.integrations.zoho.oauth import zoho_oauth_manager
+from services.integrations.zoho.oauth_credential_registry import (
+    NON_OAUTH_INTEGRATIONS,
+    OAUTH_INTEGRATION_REGISTRY,
+    registry_snapshot,
 )
 from services.integrations.zoho.types import (
-    ZOHO_OAUTH_TOKENS_COLLECTION,
     ZOHO_SYNC_DEAD_LETTER_COLLECTION,
     ZOHO_SYNC_QUEUE_COLLECTION,
     ZOHO_SYNC_RUNS_COLLECTION,
@@ -42,43 +50,127 @@ def _parse_iso(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
-async def _oauth_health() -> Dict[str, Any]:
-    configured = zoho_credentials_configured()
-    if not configured:
+def _oauth_status_label(
+    *,
+    credentials_configured: bool,
+    token_cached: bool,
+    token_valid: bool,
+    auth_failure_count: int,
+) -> str:
+    if not credentials_configured:
+        return "not_configured"
+    if auth_failure_count > 0 and not token_valid:
+        return "authentication_failed"
+    if token_cached and token_valid:
+        return "healthy"
+    if token_cached:
+        return "cached_expired"
+    return "awaiting_refresh"
+
+
+async def _oauth_health_for_integration(integration: str) -> Dict[str, Any]:
+    if integration in NON_OAUTH_INTEGRATIONS:
         return {
-            "configured": False,
-            "token_cached": False,
-            "token_valid": False,
+            "integration": integration,
+            "credentials_configured": False,
+            "refresh_token_configured": False,
+            "refresh_token_source": "not_applicable",
+            "access_token_cached": False,
+            "last_successful_refresh": None,
+            "token_expiry": None,
             "expires_in_seconds": None,
+            "expected_scope": None,
+            "oauth_status": "not_applicable",
+            "authentication_failures": 0,
+            "last_validation_time": None,
+            "using_legacy_fallback": False,
+            "requires_oauth": False,
         }
 
-    db = database.get_db()
-    from services.integrations.zoho.config import zoho_environment
-
-    doc = await db[ZOHO_OAUTH_TOKENS_COLLECTION].find_one(
-        {"token_id": "zoho_oauth_access_token", "environment": zoho_environment()},
-        {"_id": 0, "expires_at": 1, "updated_at": 1},
-    )
-    if not doc:
+    resolved = resolve_oauth_credentials(integration)
+    if not resolved:
         return {
-            "configured": True,
-            "token_cached": False,
-            "token_valid": False,
+            "integration": integration,
+            "credentials_configured": False,
+            "refresh_token_configured": False,
+            "refresh_token_source": "none",
+            "access_token_cached": False,
+            "last_successful_refresh": None,
+            "token_expiry": None,
             "expires_in_seconds": None,
-            "last_updated_at": None,
+            "expected_scope": None,
+            "oauth_status": "unknown_integration",
+            "authentication_failures": 0,
+            "last_validation_time": None,
+            "using_legacy_fallback": False,
+            "requires_oauth": True,
         }
 
-    expires_at = float(doc.get("expires_at") or 0)
+    metadata = await zoho_oauth_manager.get_token_metadata(integration)
+    expires_at = float(metadata.get("expires_at") or 0)
     now = time.time()
-    expires_in = max(0, int(expires_at - now)) if expires_at else 0
+    expires_in = max(0, int(expires_at - now)) if expires_at else None
+    token_cached = bool(metadata.get("expires_at"))
     token_valid = expires_at > (now + ACCESS_TOKEN_BUFFER_SECONDS) if expires_at else False
+    auth_failures = int(metadata.get("auth_failure_count") or 0)
+    token_expiry_iso = (
+        datetime.fromtimestamp(expires_at, tz=timezone.utc).isoformat() if expires_at else None
+    )
+
     return {
-        "configured": True,
-        "token_cached": True,
-        "token_valid": token_valid,
+        "integration": integration,
+        "credentials_configured": resolved.credentials_configured,
+        "refresh_token_configured": resolved.refresh_token_configured,
+        "refresh_token_source": resolved.refresh_token_source.value,
+        "access_token_cached": token_cached,
+        "last_successful_refresh": metadata.get("last_successful_refresh_at"),
+        "token_expiry": token_expiry_iso,
         "expires_in_seconds": expires_in,
-        "last_updated_at": doc.get("updated_at"),
+        "expected_scope": resolved.expected_scope,
+        "oauth_status": _oauth_status_label(
+            credentials_configured=resolved.credentials_configured,
+            token_cached=token_cached,
+            token_valid=token_valid,
+            auth_failure_count=auth_failures,
+        ),
+        "authentication_failures": auth_failures,
+        "last_validation_time": metadata.get("last_validation_at"),
+        "using_legacy_fallback": resolved.using_legacy_fallback,
+        "requires_oauth": True,
     }
+
+
+async def _oauth_health() -> Dict[str, Any]:
+    by_integration = {
+        name: await _oauth_health_for_integration(name)
+        for name in list(OAUTH_INTEGRATION_REGISTRY.keys()) + list(NON_OAUTH_INTEGRATIONS)
+    }
+
+    any_valid = any(
+        row.get("oauth_status") == "healthy" for row in by_integration.values()
+    )
+    any_cached = any(row.get("access_token_cached") for row in by_integration.values())
+
+    # Aggregate fields preserved for existing observability consumers.
+    return {
+        "configured": zoho_credentials_configured(),
+        "shared_client_configured": zoho_shared_oauth_client_configured(),
+        "legacy_refresh_token_configured": bool(zoho_refresh_token()),
+        "token_cached": any_cached,
+        "token_valid": any_valid,
+        "expires_in_seconds": _min_expires_in(by_integration),
+        "by_integration": by_integration,
+        "credential_registry": registry_snapshot(),
+    }
+
+
+def _min_expires_in(by_integration: Dict[str, Dict[str, Any]]) -> Optional[int]:
+    values = [
+        int(row["expires_in_seconds"])
+        for row in by_integration.values()
+        if row.get("expires_in_seconds") is not None
+    ]
+    return min(values) if values else None
 
 
 async def _integration_sync_summary(integration: str, since_iso: str) -> Dict[str, Any]:
@@ -198,8 +290,18 @@ def _derive_overall_status(
     if kill_switch:
         return "disabled"
     degraded = False
+    oauth_by_integration = oauth.get("by_integration") or {}
+    for name, row in integrations.items():
+        if not row.get("enabled"):
+            continue
+        oauth_row = oauth_by_integration.get(name) or {}
+        if oauth_row.get("requires_oauth") and oauth_row.get("credentials_configured"):
+            if oauth_row.get("oauth_status") in ("authentication_failed", "cached_expired"):
+                degraded = True
+            if oauth_row.get("oauth_status") == "not_configured":
+                degraded = True
     if master_enabled and oauth.get("configured") and not oauth.get("token_valid") and oauth.get("token_cached") is False:
-        degraded = True
+        pass
     if dead_letter.get("unresolved", 0) > DEAD_LETTER_DEGRADED_THRESHOLD:
         degraded = True
     if queue.get("pending", 0) > QUEUE_LAG_DEGRADED_THRESHOLD:
@@ -269,14 +371,28 @@ def build_zoho_operational_health_summary(snapshot: Dict[str, Any]) -> Dict[str,
     queue = snapshot.get("queue") or {}
     dead_letter = snapshot.get("dead_letter") or {}
     oauth = snapshot.get("oauth") or {}
+    oauth_by_integration = oauth.get("by_integration") or {}
     circuit_breakers = snapshot.get("circuit_breakers") or {}
     open_breakers = [k for k, v in circuit_breakers.items() if v.get("open")]
+    oauth_integrations_healthy = [
+        name
+        for name, row in oauth_by_integration.items()
+        if row.get("requires_oauth") and row.get("oauth_status") == "healthy"
+    ]
+    oauth_integrations_configured = [
+        name
+        for name, row in oauth_by_integration.items()
+        if row.get("requires_oauth") and row.get("credentials_configured")
+    ]
     return {
         "overall_status": snapshot.get("overall_status") or "dormant",
         "zoho_integration_enabled": bool(snapshot.get("zoho_integration_enabled")),
         "kill_switch_active": bool(snapshot.get("kill_switch_active")),
         "oauth_configured": bool(oauth.get("configured")),
+        "oauth_shared_client_configured": bool(oauth.get("shared_client_configured")),
         "oauth_token_valid": bool(oauth.get("token_valid")),
+        "oauth_integrations_configured": oauth_integrations_configured,
+        "oauth_integrations_healthy": oauth_integrations_healthy,
         "queue_depth_pending": int(queue.get("pending") or 0),
         "queue_depth_processing": int(queue.get("processing") or 0),
         "dead_letter_unresolved": int(dead_letter.get("unresolved") or 0),

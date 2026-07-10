@@ -225,7 +225,7 @@ async def test_sync_creates_audit_and_dead_letter_on_failure(monkeypatch):
     monkeypatch.setenv("ZOHO_ANALYTICS_SYNC_ENABLED", "true")
     monkeypatch.setenv("ZOHO_CLIENT_ID", "id")
     monkeypatch.setenv("ZOHO_CLIENT_SECRET", "sec")
-    monkeypatch.setenv("ZOHO_REFRESH_TOKEN", "ref")
+    monkeypatch.setenv("ZOHO_ANALYTICS_REFRESH_TOKEN", "ref")
 
     svc = ZohoIntegrationService()
 

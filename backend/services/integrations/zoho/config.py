@@ -99,7 +99,37 @@ def zoho_client_secret() -> str:
 
 
 def zoho_refresh_token() -> str:
+    """Deprecated legacy refresh token — see OAUTH_DEPRECATION_POLICY.md."""
     return (os.environ.get("ZOHO_REFRESH_TOKEN") or "").strip()
+
+
+def zoho_refresh_token_env_key(integration: str) -> str:
+    return f"ZOHO_{integration.upper()}_REFRESH_TOKEN"
+
+
+def zoho_refresh_token_for(integration: str) -> tuple[str, str]:
+    """
+    Return (refresh_token, source) for an integration.
+    source: per_integration | legacy | none
+    """
+    from services.integrations.zoho.credential_resolver import RefreshTokenSource, resolve_oauth_credentials
+
+    resolved = resolve_oauth_credentials(integration)
+    if not resolved:
+        return "", "none"
+    return resolved.refresh_token, resolved.refresh_token_source.value
+
+
+def zoho_shared_oauth_client_configured() -> bool:
+    return bool(zoho_client_id() and zoho_client_secret())
+
+
+def zoho_oauth_configured_for(integration: str) -> bool:
+    """True when shared OAuth client and integration refresh token are configured."""
+    from services.integrations.zoho.credential_resolver import resolve_oauth_credentials
+
+    resolved = resolve_oauth_credentials(integration)
+    return bool(resolved and resolved.credentials_configured)
 
 
 def zoho_webhook_secret(integration: str) -> str:
@@ -124,10 +154,56 @@ def zoho_workdrive_folder_id() -> str:
 
 
 def zoho_credentials_configured() -> bool:
-    return bool(zoho_client_id() and zoho_client_secret() and zoho_refresh_token())
+    """
+    Backward-compatible aggregate: shared OAuth client plus at least one refresh token.
+
+    Prefer zoho_oauth_configured_for(integration) for per-integration checks.
+    """
+    if not zoho_shared_oauth_client_configured():
+        return False
+    if zoho_refresh_token():
+        return True
+    from services.integrations.zoho.oauth_credential_registry import OAUTH_INTEGRATION_REGISTRY
+
+    for name in OAUTH_INTEGRATION_REGISTRY:
+        token, _ = zoho_refresh_token_for(name)
+        if token:
+            return True
+    return False
 
 
 from services.integrations.zoho.version import version_metadata_snapshot
+
+
+def _oauth_status_by_integration() -> dict:
+    from services.integrations.zoho.credential_resolver import resolve_oauth_credentials
+    from services.integrations.zoho.oauth_credential_registry import (
+        NON_OAUTH_INTEGRATIONS,
+        OAUTH_INTEGRATION_REGISTRY,
+    )
+
+    rows: dict = {}
+    for name in OAUTH_INTEGRATION_REGISTRY:
+        resolved = resolve_oauth_credentials(name)
+        rows[name] = {
+            "credentials_configured": bool(resolved and resolved.credentials_configured),
+            "refresh_token_configured": bool(resolved and resolved.refresh_token_configured),
+            "refresh_token_source": resolved.refresh_token_source.value if resolved else "none",
+            "expected_scope": resolved.expected_scope if resolved else None,
+            "cache_identifier": resolved.cache_identifier if resolved else None,
+            "using_legacy_fallback": bool(resolved and resolved.using_legacy_fallback),
+        }
+    for name in NON_OAUTH_INTEGRATIONS:
+        rows[name] = {
+            "credentials_configured": False,
+            "refresh_token_configured": False,
+            "refresh_token_source": "not_applicable",
+            "expected_scope": None,
+            "cache_identifier": None,
+            "using_legacy_fallback": False,
+            "requires_oauth": False,
+        }
+    return rows
 
 
 def integration_status_snapshot() -> dict:
@@ -137,6 +213,9 @@ def integration_status_snapshot() -> dict:
         "zoho_integration_enabled": zoho_integration_enabled(),
         "kill_switch_active": zoho_kill_switch_active(),
         "credentials_configured": zoho_credentials_configured(),
+        "shared_oauth_client_configured": zoho_shared_oauth_client_configured(),
+        "legacy_refresh_token_configured": bool(zoho_refresh_token()),
+        "oauth_by_integration": _oauth_status_by_integration(),
         "integrations": {
             name: checker()
             for name, checker in INTEGRATION_FLAG_CHECKERS.items()

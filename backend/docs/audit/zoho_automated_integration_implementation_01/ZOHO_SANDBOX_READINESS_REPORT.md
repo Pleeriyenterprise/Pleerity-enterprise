@@ -63,26 +63,24 @@ The backend uses a **server-side refresh-token flow only**. Runtime token refres
 | 4 | Associate with the **sandbox org only** |
 | 5 | Record **Client ID** and **Client Secret** — store in Render staging secrets only (§4) |
 
-### 3.2 Required OAuth scopes (minimum by pilot phase)
+### 3.2 Required OAuth scopes (per integration — Option B)
 
-Request **only** scopes needed for planned phases. The refresh token is generated once with the union of scopes required for the pilot horizon.
+Under **Option B** (implemented), each Zoho business application requires its **own refresh token** minted with **only** the scopes needed for that integration. Do **not** attempt to authorise CRM, Analytics, Books, Campaigns, and WorkDrive from a single refresh token.
 
-| Scope (Zoho EU) | Required for | API surface used by backend |
-|-----------------|--------------|----------------------------|
-| `ZohoCRM.modules.leads.CREATE` | Phase C | `POST /crm/v6/Leads` |
-| `ZohoCRM.modules.leads.UPDATE` | Phase C | `PUT /crm/v6/Leads/{id}` |
-| `ZohoCRM.modules.leads.READ` | Phase C | Upsert lookup via stored external key |
-| `ZohoAnalytics.data.CREATE` | Phase B | `POST /analytics/v2/workspaces/{id}/data` |
-| `ZohoAnalytics.workspace.READ` | Phase B | Workspace validation (recommended) |
-| `ZohoCampaigns.contact.CREATE` | Campaigns pilot | `POST /campaigns/v1.1/addlistsubscribersinbulk` |
-| `ZohoCampaigns.contact.UPDATE` | Campaigns pilot | `POST /campaigns/v1.1/suppresssubscribers` |
-| `ZohoBooks.accountants` | Books pilot | `POST /books/v3/journals` |
-| `WorkDrive.files.CREATE` | WorkDrive pilot | `POST /workdrive/api/v1/upload` |
-| `ZohoSign.documents.READ` | Sign pilot (optional outbound) | Sign completion is webhook-driven |
+| Integration | Refresh token env | Minimum scopes |
+|-------------|-------------------|----------------|
+| Analytics (Phase B) | `ZOHO_ANALYTICS_REFRESH_TOKEN` | `ZohoAnalytics.data.create` |
+| CRM (Phase C) | `ZOHO_CRM_REFRESH_TOKEN` | `ZohoCRM.modules.leads.CREATE`, `ZohoCRM.modules.leads.UPDATE` |
+| Campaigns | `ZOHO_CAMPAIGNS_REFRESH_TOKEN` | `ZohoCampaigns.contact.CREATE-UPDATE` |
+| Books | `ZOHO_BOOKS_REFRESH_TOKEN` | `ZohoBooks.accountants.CREATE` |
+| WorkDrive | `ZOHO_WORKDRIVE_REFRESH_TOKEN` | `WorkDrive.files.CREATE` |
+| Sign | *(none)* | Webhook-only — no OAuth refresh token |
 
-**Phase A minimum:** Generate refresh token with **no product scopes** initially, **or** include Analytics + CRM scopes if Phase B/C will follow immediately — scopes cannot be expanded without re-authorisation.
+**Phase A minimum:** Client ID + secret only; per-integration refresh tokens optional until API calls are needed.
 
 **Governance note:** Prefer module-scoped CRM scopes over `ZohoCRM.modules.ALL`. Do not request Desk, Mail, or unrelated Zoho scopes.
+
+**Reference:** `OAUTH_CREDENTIAL_REGISTRY.md`, `ZOHO_OAUTH_ARCHITECTURE.md`
 
 ### 3.3 Redirect URIs
 
@@ -93,18 +91,21 @@ Redirect URIs are required **only for the one-time refresh-token authorisation**
 | `https://www.zoho.eu/oauthredirect` | Zoho default — acceptable for Self Client / server app token generation |
 | `http://localhost:8080/oauth/callback` | Optional — local one-time token generation by engineering |
 
-**Do not** expose a public Pleerity OAuth callback unless a future authorised-code flow is explicitly designed. Current implementation expects `ZOHO_REFRESH_TOKEN` in environment; no callback handler exists.
+**Do not** expose a public Pleerity OAuth callback unless a future authorised-code flow is explicitly designed. Current implementation uses per-integration refresh tokens in environment; no callback handler exists.
 
-### 3.4 Generate the refresh token (one-time, out of band)
+### 3.4 Generate refresh tokens (one-time, out of band, per integration)
 
 | Step | Action |
 |------|--------|
-| 1 | In Zoho API Console, use **Generate Code** / Self Client flow with selected scopes |
+| 1 | In Zoho API Console, use **Generate Code** / Self Client flow with scopes for **one** integration only |
 | 2 | Exchange authorisation code for tokens via `POST https://accounts.zoho.eu/oauth/v2/token` |
-| 3 | Store the **refresh token** in Render staging secret `ZOHO_REFRESH_TOKEN` |
-| 4 | Verify access token refresh succeeds **before** enabling `ZOHO_INTEGRATION_ENABLED` |
+| 3 | Store the **refresh token** in the matching Render staging secret (e.g. `ZOHO_CRM_REFRESH_TOKEN`) |
+| 4 | Repeat for each integration at its phase gate |
+| 5 | Verify access token refresh succeeds **before** enabling the integration flag |
 
-**Token storage:** Refresh token in Render env (not MongoDB). Access token cached in MongoDB collection `zoho_oauth_tokens` per `ZOHO_ENVIRONMENT`.
+**Legacy migration:** `ZOHO_REFRESH_TOKEN` remains supported as a deprecated fallback during migration. See `OAUTH_DEPRECATION_POLICY.md`. Prefer per-integration tokens.
+
+**Token storage:** Refresh tokens in Render env (not MongoDB). Access tokens cached in MongoDB collection `zoho_oauth_tokens` per integration per `ZOHO_ENVIRONMENT` (e.g. `zoho_oauth_access_token_crm`).
 
 ---
 
@@ -114,9 +115,14 @@ Redirect URIs are required **only for the one-time refresh-token authorisation**
 
 | Variable | Phase needed | Purpose |
 |----------|--------------|---------|
-| `ZOHO_CLIENT_ID` | **Phase A** | OAuth app client ID |
-| `ZOHO_CLIENT_SECRET` | **Phase A** | OAuth app client secret |
-| `ZOHO_REFRESH_TOKEN` | **Phase A** | Long-lived refresh token |
+| `ZOHO_CLIENT_ID` | **Phase A** | Shared OAuth app client ID |
+| `ZOHO_CLIENT_SECRET` | **Phase A** | Shared OAuth app client secret |
+| `ZOHO_ANALYTICS_REFRESH_TOKEN` | Phase B | Analytics refresh token |
+| `ZOHO_CRM_REFRESH_TOKEN` | Phase C | CRM refresh token |
+| `ZOHO_CAMPAIGNS_REFRESH_TOKEN` | Campaigns pilot | Campaigns refresh token |
+| `ZOHO_BOOKS_REFRESH_TOKEN` | Books pilot | Books refresh token |
+| `ZOHO_WORKDRIVE_REFRESH_TOKEN` | WorkDrive pilot | WorkDrive refresh token |
+| `ZOHO_REFRESH_TOKEN` | **Deprecated** | Legacy migration fallback only |
 | `ZOHO_ANALYTICS_WORKSPACE_ID` | Phase B | Target Analytics workspace |
 | `ZOHO_ORG_ID` | Books pilot | Zoho Books organisation ID |
 | `ZOHO_WORKDRIVE_INTERNAL_FOLDER_ID` | WorkDrive pilot | Target internal archive folder |
@@ -374,11 +380,13 @@ Complete **all Phase A items** before setting `ZOHO_INTEGRATION_ENABLED=true`. D
 ### 13.3 OAuth (Phase A gate)
 
 - [ ] Server-based OAuth app created in Zoho API Console (EU)
-- [ ] Minimum scopes selected for planned pilot horizon
-- [ ] Refresh token generated and stored in Render staging secrets
-- [ ] `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN` set in Render **staging only**
-- [ ] Token refresh verified (manual `POST accounts.zoho.eu/oauth/v2/token` or post–Phase A admin status shows `credentials_configured: true`)
+- [ ] Per-integration scopes selected at each phase gate (see §3.2)
+- [ ] Per-integration refresh tokens generated and stored in Render staging secrets
+- [ ] `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET` set in Render **staging only**
+- [ ] Per-integration refresh tokens set before enabling each integration flag
+- [ ] Token refresh verified via admin status (`oauth.by_integration` shows `credentials_configured: true`)
 - [ ] No OAuth credentials committed to git
+- [ ] `ZOHO_REFRESH_TOKEN` not used as sole production credential (deprecated)
 
 ### 13.4 Render / staging posture (required)
 

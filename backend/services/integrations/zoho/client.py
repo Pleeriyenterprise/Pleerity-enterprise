@@ -35,7 +35,7 @@ class ZohoHttpClient:
         if zoho_circuit_breaker.is_open(integration):
             return False, None, "circuit_breaker_open"
 
-        token = await zoho_oauth_manager.get_access_token()
+        token = await zoho_oauth_manager.get_access_token(integration)
         if not token:
             return False, None, "no_access_token"
 

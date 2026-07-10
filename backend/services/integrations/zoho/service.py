@@ -8,9 +8,9 @@ from services.integrations.zoho.adapters.registry import get_adapter
 from services.integrations.zoho.audit_helper import log_zoho_sync_event
 from services.integrations.zoho.config import (
     is_integration_enabled,
-    zoho_credentials_configured,
     zoho_integration_enabled,
     zoho_kill_switch_active,
+    zoho_oauth_configured_for,
 )
 from services.integrations.zoho.sync_store import zoho_sync_store
 from services.integrations.zoho.types import (
@@ -99,7 +99,7 @@ class ZohoIntegrationService:
         )
         payload["sync_id"] = sync_id
 
-        if not zoho_credentials_configured() and integration not in ("sign",):
+        if not zoho_oauth_configured_for(integration) and integration not in ("sign",):
             await zoho_sync_store.complete_run(
                 sync_id,
                 status=SyncStatus.SKIPPED,
