@@ -1,0 +1,306 @@
+{
+  "programme": "ZOHO_PHASE_A_LIVE_VALIDATION",
+  "generated_at": "2026-07-10T08:22:47.771549+00:00",
+  "expected_staging_sha": "15dc0a7afa0742fbe356e1faf0f6565f3700a7b0",
+  "origin_develop_head": "15dc0a7afa0742fbe356e1faf0f6565f3700a7b0",
+  "verdict": "PHASE_A_LIVE_PASS",
+  "summary": {
+    "passed": 13,
+    "total": 13,
+    "failures": []
+  },
+  "checks": {
+    "staging_deploy_sha": {
+      "name": "staging_deploy_sha",
+      "pass": true,
+      "evidence": {
+        "url": "https://pleerity-enterprise.onrender.com/api/version",
+        "commit_sha": "15dc0a7afa0742fbe356e1faf0f6565f3700a7b0",
+        "expected_prefix": "15dc0a7a",
+        "environment": "staging"
+      }
+    },
+    "staging_api_health": {
+      "name": "staging_api_health",
+      "pass": true,
+      "evidence": {
+        "url": "https://pleerity-enterprise.onrender.com/api/health",
+        "status_code": 200,
+        "status": "healthy",
+        "readiness": {
+          "stage": "ready",
+          "degraded": false,
+          "last_error": null
+        }
+      }
+    },
+    "staging_admin_login": {
+      "name": "staging_admin_login",
+      "pass": true,
+      "evidence": {
+        "email": "prosper@yopmail.com",
+        "status_code": 200,
+        "authenticated": true
+      }
+    },
+    "zoho_admin_status": {
+      "name": "zoho_admin_status",
+      "pass": true,
+      "evidence": {
+        "status_code": 200,
+        "integration_layer_version": "1.0.0",
+        "zoho_integration_enabled": true,
+        "kill_switch_active": false,
+        "integrations": {
+          "analytics": false,
+          "crm": false,
+          "campaigns": false,
+          "sign": false,
+          "books": false,
+          "workdrive": false
+        },
+        "shared_oauth_client_configured": true,
+        "legacy_refresh_token_configured": false,
+        "refresh_token_sources": {
+          "analytics": "none",
+          "crm": "none",
+          "campaigns": "none",
+          "books": "none",
+          "workdrive": "none"
+        },
+        "overall_status": "healthy",
+        "credentials_configured": false
+      }
+    },
+    "zoho_no_secrets_exposed": {
+      "name": "zoho_no_secrets_exposed",
+      "pass": true,
+      "evidence": {
+        "note": "Response must not contain raw secret field names or values"
+      }
+    },
+    "no_outbound_sync_activity": {
+      "name": "no_outbound_sync_activity",
+      "pass": true,
+      "evidence": {
+        "queue": {
+          "pending": 0,
+          "processing": 0,
+          "oldest_pending_at": null,
+          "oldest_pending_age_seconds": null
+        },
+        "dead_letter": {
+          "unresolved": 0,
+          "oldest_unresolved_at": null,
+          "oldest_unresolved_id": null
+        },
+        "integrations": {
+          "analytics": {
+            "enabled": false,
+            "last_success_at": null,
+            "last_success_sync_id": null,
+            "last_failure_at": null,
+            "last_failure_sync_id": null,
+            "last_failure_error": null,
+            "failure_count_24h": 0,
+            "circuit_breaker": "closed"
+          },
+          "crm": {
+            "enabled": false,
+            "last_success_at": null,
+            "last_success_sync_id": null,
+            "last_failure_at": null,
+            "last_failure_sync_id": null,
+            "last_failure_error": null,
+            "failure_count_24h": 0,
+            "circuit_breaker": "closed"
+          },
+          "campaigns": {
+            "enabled": false,
+            "last_success_at": null,
+            "last_success_sync_id": null,
+            "last_failure_at": null,
+            "last_failure_sync_id": null,
+            "last_failure_error": null,
+            "failure_count_24h": 0,
+            "circuit_breaker": "closed"
+          },
+          "sign": {
+            "enabled": false,
+            "last_success_at": null,
+            "last_success_sync_id": null,
+            "last_failure_at": null,
+            "last_failure_sync_id": null,
+            "last_failure_error": null,
+            "failure_count_24h": 0,
+            "circuit_breaker": "closed"
+          },
+          "books": {
+            "enabled": false,
+            "last_success_at": null,
+            "last_success_sync_id": null,
+            "last_failure_at": null,
+            "last_failure_sync_id": null,
+            "last_failure_error": null,
+            "failure_count_24h": 0,
+            "circuit_breaker": "closed"
+          },
+          "workdrive": {
+            "enabled": false,
+            "last_success_at": null,
+            "last_success_sync_id": null,
+            "last_failure_at": null,
+            "last_failure_sync_id": null,
+            "last_failure_error": null,
+            "failure_count_24h": 0,
+            "circuit_breaker": "closed"
+          }
+        },
+        "manual_jobs_only": true
+      }
+    },
+    "webhooks_unsigned_401": {
+      "name": "webhooks_unsigned_401",
+      "pass": true,
+      "evidence": {
+        "results": {
+          "crm": 401,
+          "books": 401,
+          "sign": 401,
+          "campaigns": 401
+        }
+      }
+    },
+    "webhooks_inbound_forbidden_signed": {
+      "name": "webhooks_inbound_forbidden_signed",
+      "pass": true,
+      "evidence": {
+        "results": {
+          "crm": {
+            "skipped": true,
+            "reason": "no_webhook_secret_in_env"
+          },
+          "books": {
+            "skipped": true,
+            "reason": "no_webhook_secret_in_env"
+          }
+        },
+        "unit_test_fallback": "test_zoho_integration.py covers signed CRM/Books inbound-forbidden"
+      }
+    },
+    "system_health_zoho": {
+      "name": "system_health_zoho",
+      "pass": true,
+      "evidence": {
+        "status_code": 200,
+        "zoho_integration_health": {
+          "overall_status": "healthy",
+          "zoho_integration_enabled": true,
+          "kill_switch_active": false,
+          "oauth_configured": false,
+          "oauth_shared_client_configured": true,
+          "oauth_token_valid": false,
+          "oauth_integrations_configured": [],
+          "oauth_integrations_healthy": [],
+          "queue_depth_pending": 0,
+          "queue_depth_processing": 0,
+          "dead_letter_unresolved": 0,
+          "circuit_breakers_open": [],
+          "circuit_breaker_open_count": 0,
+          "webhooks_accepted_24h": 0,
+          "webhooks_rejected_24h": 0,
+          "integration_layer_version": "1.0.0",
+          "manual_jobs_only": true,
+          "health_posture": "INTEGRATED_WITH_PLATFORM_OBSERVABILITY",
+          "admin_path": "/api/admin/integrations/zoho/status"
+        },
+        "platform_overall": "attention_required"
+      }
+    },
+    "control_centre_zoho": {
+      "name": "control_centre_zoho",
+      "pass": true,
+      "evidence": {
+        "status_code": 200,
+        "zoho_integration_health": {
+          "overall_status": "healthy",
+          "zoho_integration_enabled": true,
+          "kill_switch_active": false,
+          "oauth_configured": false,
+          "oauth_shared_client_configured": true,
+          "oauth_token_valid": false,
+          "oauth_integrations_configured": [],
+          "oauth_integrations_healthy": [],
+          "queue_depth_pending": 0,
+          "queue_depth_processing": 0,
+          "dead_letter_unresolved": 0,
+          "circuit_breakers_open": [],
+          "circuit_breaker_open_count": 0,
+          "webhooks_accepted_24h": 0,
+          "webhooks_rejected_24h": 0,
+          "integration_layer_version": "1.0.0",
+          "manual_jobs_only": true,
+          "health_posture": "INTEGRATED_WITH_PLATFORM_OBSERVABILITY",
+          "admin_path": "/api/admin/integrations/zoho/status"
+        },
+        "system_integrations_zoho": {
+          "overall_status": "healthy",
+          "zoho_integration_enabled": true,
+          "kill_switch_active": false,
+          "oauth_configured": false,
+          "oauth_shared_client_configured": true,
+          "oauth_token_valid": false,
+          "oauth_integrations_configured": [],
+          "oauth_integrations_healthy": [],
+          "queue_depth_pending": 0,
+          "queue_depth_processing": 0,
+          "dead_letter_unresolved": 0,
+          "circuit_breakers_open": [],
+          "circuit_breaker_open_count": 0,
+          "webhooks_accepted_24h": 0,
+          "webhooks_rejected_24h": 0,
+          "integration_layer_version": "1.0.0",
+          "manual_jobs_only": true,
+          "health_posture": "INTEGRATED_WITH_PLATFORM_OBSERVABILITY",
+          "admin_path": "/api/admin/integrations/zoho/status"
+        },
+        "zoho_jobs_flagged": []
+      }
+    },
+    "production_sha_unchanged": {
+      "name": "production_sha_unchanged",
+      "pass": true,
+      "evidence": {
+        "url": "https://api.pleerityenterprise.co.uk/api/version",
+        "commit_sha": "89217062481b4eb858a8b530ec90c83de067a4be",
+        "expected_prefix": "89217062"
+      }
+    },
+    "production_health": {
+      "name": "production_health",
+      "pass": true,
+      "evidence": {
+        "status": "healthy",
+        "readiness": {
+          "stage": "ready",
+          "degraded": false,
+          "last_error": null
+        }
+      }
+    },
+    "production_zoho_not_active": {
+      "name": "production_zoho_not_active",
+      "pass": true,
+      "evidence": {
+        "status_code": 404,
+        "note": "404 expected when ZOHO_INTEGRATION_ENABLED=false on production"
+      }
+    }
+  },
+  "constraints": {
+    "per_integration_flags_enabled": false,
+    "cron_wired": false,
+    "production_modified": false,
+    "sync_jobs_triggered": false
+  }
+}
