@@ -149,6 +149,29 @@ def zoho_analytics_workspace_id() -> str:
     return (os.environ.get("ZOHO_ANALYTICS_WORKSPACE_ID") or "").strip()
 
 
+def zoho_analytics_view_id() -> str:
+    """Zoho Analytics table/view ID for existing-table import (required for Phase B append)."""
+    return (os.environ.get("ZOHO_ANALYTICS_VIEW_ID") or "").strip()
+
+
+def zoho_analytics_org_id() -> str:
+    """
+    Zoho Analytics organisation ID for ZANALYTICS-ORGID header.
+
+    Prefer ZOHO_ANALYTICS_ORG_ID; fall back to ZOHO_ORG_ID only when Analytics-specific
+    value is unset (Books and Analytics org IDs may differ — set Analytics explicitly).
+    """
+    return (
+        (os.environ.get("ZOHO_ANALYTICS_ORG_ID") or "").strip()
+        or (os.environ.get("ZOHO_ORG_ID") or "").strip()
+    )
+
+
+def zoho_analytics_api_base() -> str:
+    """Analytics API host (EU default) — distinct from ZOHO_API_BASE (zohoapis)."""
+    return (os.environ.get("ZOHO_ANALYTICS_API_BASE") or "https://analyticsapi.zoho.eu").rstrip("/")
+
+
 def zoho_workdrive_folder_id() -> str:
     return (os.environ.get("ZOHO_WORKDRIVE_INTERNAL_FOLDER_ID") or "").strip()
 

@@ -31,6 +31,9 @@ class ZohoHttpClient:
         integration: str = "global",
         json_body: Optional[Dict[str, Any]] = None,
         params: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
+        form_data: Optional[Dict[str, str]] = None,
+        api_base: Optional[str] = None,
     ) -> Tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
         if zoho_circuit_breaker.is_open(integration):
             return False, None, "circuit_breaker_open"
@@ -39,19 +42,37 @@ class ZohoHttpClient:
         if not token:
             return False, None, "no_access_token"
 
-        url = path if path.startswith("http") else f"{zoho_api_base()}{path}"
-        headers = {"Authorization": f"Zoho-oauthtoken {token}", "Content-Type": "application/json"}
+        base = (api_base or zoho_api_base()).rstrip("/")
+        url = path if path.startswith("http") else f"{base}{path}"
+        req_headers: Dict[str, str] = {
+            "Authorization": f"Zoho-oauthtoken {token}",
+        }
+        if headers:
+            req_headers.update(headers)
 
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.request(
-                    method,
-                    url,
-                    headers=headers,
-                    json=json_body,
-                    params=params,
-                    timeout=30.0,
-                )
+                if form_data is not None:
+                    # Zoho Analytics import expects multipart/form-data (FILE or DATA).
+                    files = {key: (None, value) for key, value in form_data.items()}
+                    response = await client.request(
+                        method,
+                        url,
+                        headers=req_headers,
+                        params=params,
+                        files=files,
+                        timeout=30.0,
+                    )
+                else:
+                    req_headers.setdefault("Content-Type", "application/json")
+                    response = await client.request(
+                        method,
+                        url,
+                        headers=req_headers,
+                        json=json_body,
+                        params=params,
+                        timeout=30.0,
+                    )
                 if response.status_code in (200, 201, 202):
                     zoho_circuit_breaker.record_success(integration)
                     try:

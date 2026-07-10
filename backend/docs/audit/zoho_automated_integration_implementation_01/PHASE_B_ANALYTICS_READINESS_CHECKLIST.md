@@ -6,7 +6,9 @@
 **Status:** Readiness only — **do not** enable `ZOHO_ANALYTICS_SYNC_ENABLED` until this checklist is complete and governance signs off
 
 **Code baseline:** `build_analytics_export()` → `ZohoAnalyticsAdapter.execute("export_aggregates")`  
-**API:** `POST {ZOHO_API_BASE}/analytics/v2/workspaces/{workspace_id}/data` with `{"data": <payload>, "import_type": "append"}`
+**API (corrected):** `POST {ZOHO_ANALYTICS_API_BASE}/restapi/v2/workspaces/{workspace_id}/views/{view_id}/data`  
+with query `CONFIG={"importType":"append","fileType":"json","autoIdentify":"true"}`, multipart `DATA` = JSON array of one aggregate row, header `ZANALYTICS-ORGID`.  
+See `PHASE_B_ANALYTICS_TARGET_TABLE_REVIEW.md`.
 
 ---
 
@@ -29,8 +31,11 @@
 |------|--------|------|
 | 1.1 | Log in to Zoho Analytics **EU** sandbox org (same org as Phase A OAuth client) | ☐ |
 | 1.2 | Create workspace named e.g. `Pleerity Staging Aggregates` | ☐ |
-| 1.3 | Record **Workspace ID** (numeric/string ID from workspace settings / URL) | ☐ |
-| 1.4 | Confirm workspace is **sandbox-only** — no production customer PII | ☐ |
+| 1.3 | Record **Workspace ID** → `ZOHO_ANALYTICS_WORKSPACE_ID` (staging: `272205000000016002`) | ☐ |
+| 1.4 | Create table `pleerity_daily_aggregates` with columns in §2 | ☐ |
+| 1.5 | Record table **View ID** → `ZOHO_ANALYTICS_VIEW_ID` | ☐ |
+| 1.6 | Record Analytics **Org ID** → `ZOHO_ANALYTICS_ORG_ID` (`ZANALYTICS-ORGID`) | ☐ |
+| 1.7 | Confirm workspace is **sandbox-only** — no production customer PII | ☐ |
 
 ---
 
@@ -57,7 +62,7 @@ Create a table that accepts **one row per daily aggregate export** (append impor
 
 **Registry note:** `ANALYTICS_EXPORT_METRICS` also lists `churn_count` and `new_subscriptions_count`. The **current builder does not emit these fields**. Do **not** require them for Phase B v1 unless the builder is extended in a separate change. Table may include optional empty columns for future use.
 
-**Import mode:** Append (`import_type: append` in adapter).
+**Import mode:** Append via existing-table API (`importType: append`). First export does **not** auto-create the table — View ID is required.
 
 ---
 
@@ -120,7 +125,7 @@ Optional recommended (not required by current code): `ZohoAnalytics.workspace.RE
 
 Store as Render staging env/secret: `ZOHO_ANALYTICS_WORKSPACE_ID=<id>`
 
-Without this value, adapter returns `SKIPPED` / `analytics_workspace_not_configured_export_built_locally` — **not** a live pilot success.
+Without workspace ID, view ID, and Analytics org ID, adapter returns `SKIPPED` / `analytics_import_target_not_configured_export_built_locally` — **not** a live pilot success.
 
 ---
 
@@ -129,7 +134,10 @@ Without this value, adapter returns `SKIPPED` / `analytics_workspace_not_configu
 | Variable | Type | Value | When |
 |----------|------|-------|------|
 | `ZOHO_ANALYTICS_REFRESH_TOKEN` | Secret | Analytics-only refresh token | Before enable |
-| `ZOHO_ANALYTICS_WORKSPACE_ID` | Env/Secret | Workspace ID | Before enable |
+| `ZOHO_ANALYTICS_WORKSPACE_ID` | Env/Secret | e.g. `272205000000016002` | Before enable |
+| `ZOHO_ANALYTICS_VIEW_ID` | Env/Secret | View ID of `pleerity_daily_aggregates` | Before enable |
+| `ZOHO_ANALYTICS_ORG_ID` | Env/Secret | Analytics org ID for `ZANALYTICS-ORGID` | Before enable |
+| `ZOHO_ANALYTICS_API_BASE` | Env | Optional; default `https://analyticsapi.zoho.eu` | Optional |
 | `ZOHO_ANALYTICS_SYNC_ENABLED` | Env | `true` | **Only after checklist + validation plan ready** |
 
 **Do not change:** production secrets, other integration flags, cron wiring.

@@ -19,9 +19,9 @@ Prove a single **manual**, **aggregate-only** Analytics export from Pleerity sta
 |---|-------|----------------|
 | P1 | Staging SHA known | `/api/version` recorded |
 | P2 | Phase A still healthy | Master on; other integrations false |
-| P3 | Secrets present | `ZOHO_ANALYTICS_REFRESH_TOKEN`, `ZOHO_ANALYTICS_WORKSPACE_ID` |
+| P3 | Secrets present | `ZOHO_ANALYTICS_REFRESH_TOKEN`, `ZOHO_ANALYTICS_WORKSPACE_ID`, `ZOHO_ANALYTICS_VIEW_ID`, `ZOHO_ANALYTICS_ORG_ID` |
 | P4 | Admin status (flag still false) | `oauth_by_integration.analytics.refresh_token_source: per_integration` |
-| P5 | Workspace table ready | Columns match sample payload |
+| P5 | Workspace table ready | Columns match sample payload; View ID recorded |
 | P6 | Production unchanged | Pin SHA; Zoho admin 404 |
 
 ---
