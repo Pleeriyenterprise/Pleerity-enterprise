@@ -2,23 +2,45 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 from database import database
 from services.integrations.zoho.version import DEFAULT_PAYLOAD_VERSION
 
 
+def resolve_daily_reporting_period(
+    now: datetime | None = None,
+) -> Tuple[datetime, datetime]:
+    """
+    Return the last completed UTC calendar day as [start, end).
+
+    period_start / period_end identify the aggregation window for
+    ``export_type=aggregated_daily``, not export execution time. Boundaries
+    are UTC midnights so repeated exports on the same calendar day emit the
+    same period identifiers.
+    """
+    clock = now if now is not None else datetime.now(timezone.utc)
+    if clock.tzinfo is None:
+        clock = clock.replace(tzinfo=timezone.utc)
+    else:
+        clock = clock.astimezone(timezone.utc)
+    period_end = clock.replace(hour=0, minute=0, second=0, microsecond=0)
+    period_start = period_end - timedelta(days=1)
+    return period_start, period_end
+
+
 async def build_analytics_export() -> Dict[str, Any]:
     db = database.get_db()
-    now = datetime.now(timezone.utc)
-    period_end = now.isoformat()
-    period_start = (now - timedelta(days=1)).isoformat()
+    period_start_dt, period_end_dt = resolve_daily_reporting_period()
+    period_start = period_start_dt.isoformat()
+    period_end = period_end_dt.isoformat()
 
+    # Period-scoped counts use inclusive start / exclusive end (UTC midnights).
     leads_created = await db.leads.count_documents(
-        {"created_at": {"$gte": period_start, "$lte": period_end}}
+        {"created_at": {"$gte": period_start, "$lt": period_end}}
     )
     leads_converted = await db.leads.count_documents(
-        {"converted_at": {"$gte": period_start, "$lte": period_end}}
+        {"converted_at": {"$gte": period_start, "$lt": period_end}}
     )
     total_leads = await db.leads.count_documents({})
     conversion_rate = round((leads_converted / leads_created * 100), 2) if leads_created else 0.0
@@ -38,7 +60,10 @@ async def build_analytics_export() -> Dict[str, Any]:
 
     open_tickets = await db.support_tickets.count_documents({"status": {"$in": ["open", "pending"]}})
     closed_tickets = await db.support_tickets.count_documents(
-        {"status": "closed", "updated_at": {"$gte": period_start}}
+        {
+            "status": "closed",
+            "updated_at": {"$gte": period_start, "$lt": period_end},
+        }
     )
 
     return {

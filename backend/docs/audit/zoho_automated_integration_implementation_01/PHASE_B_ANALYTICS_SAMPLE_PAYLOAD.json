@@ -1,7 +1,7 @@
 {
   "payload_version": 1,
-  "period_start": "2026-07-09T08:00:00+00:00",
-  "period_end": "2026-07-10T08:00:00+00:00",
+  "period_start": "2026-07-09T00:00:00+00:00",
+  "period_end": "2026-07-10T00:00:00+00:00",
   "leads_created_count": 3,
   "leads_converted_count": 1,
   "total_leads_count": 42,

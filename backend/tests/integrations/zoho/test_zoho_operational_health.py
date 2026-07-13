@@ -1,12 +1,16 @@
 """Tests for Zoho operational health, versioning, and platform observability hooks."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from services.integrations.zoho.config import integration_status_snapshot
-from services.integrations.zoho.metrics.analytics_export import build_analytics_export
+from services.integrations.zoho.metrics.analytics_export import (
+    build_analytics_export,
+    resolve_daily_reporting_period,
+)
 from services.integrations.zoho.operational_health import (
     build_zoho_operational_health_summary,
     build_zoho_operational_snapshot,
@@ -44,6 +48,22 @@ def test_analytics_export_metrics_include_total_leads_and_payload_version():
     assert "payload_version" in ANALYTICS_EXPORT_METRICS
 
 
+def test_resolve_daily_reporting_period_is_last_completed_utc_day_and_stable():
+    morning = datetime(2026, 7, 13, 9, 15, 30, tzinfo=timezone.utc)
+    evening = datetime(2026, 7, 13, 22, 45, 0, tzinfo=timezone.utc)
+    start_a, end_a = resolve_daily_reporting_period(morning)
+    start_b, end_b = resolve_daily_reporting_period(evening)
+    assert start_a == start_b == datetime(2026, 7, 12, 0, 0, 0, tzinfo=timezone.utc)
+    assert end_a == end_b == datetime(2026, 7, 13, 0, 0, 0, tzinfo=timezone.utc)
+    assert start_a.isoformat() == "2026-07-12T00:00:00+00:00"
+    assert end_a.isoformat() == "2026-07-13T00:00:00+00:00"
+
+    next_day = datetime(2026, 7, 14, 1, 0, 0, tzinfo=timezone.utc)
+    start_c, end_c = resolve_daily_reporting_period(next_day)
+    assert start_c == datetime(2026, 7, 13, 0, 0, 0, tzinfo=timezone.utc)
+    assert end_c == datetime(2026, 7, 14, 0, 0, 0, tzinfo=timezone.utc)
+
+
 @pytest.mark.asyncio
 async def test_build_analytics_export_includes_payload_version():
     mock_leads = AsyncMock()
@@ -61,11 +81,36 @@ async def test_build_analytics_export_includes_payload_version():
     mock_db.client_billing = mock_billing
     mock_db.support_tickets = mock_tickets
 
-    with patch("services.integrations.zoho.metrics.analytics_export.database.get_db", return_value=mock_db):
+    period = (
+        datetime(2026, 7, 12, 0, 0, 0, tzinfo=timezone.utc),
+        datetime(2026, 7, 13, 0, 0, 0, tzinfo=timezone.utc),
+    )
+    with (
+        patch("services.integrations.zoho.metrics.analytics_export.database.get_db", return_value=mock_db),
+        patch(
+            "services.integrations.zoho.metrics.analytics_export.resolve_daily_reporting_period",
+            return_value=period,
+        ),
+    ):
         export = await build_analytics_export()
     assert export["payload_version"] == 1
     assert export["total_leads_count"] == 5
     assert export["export_type"] == "aggregated_daily"
+    assert export["period_start"] == "2026-07-12T00:00:00+00:00"
+    assert export["period_end"] == "2026-07-13T00:00:00+00:00"
+    assert mock_leads.count_documents.await_args_list[0].args[0] == {
+        "created_at": {
+            "$gte": "2026-07-12T00:00:00+00:00",
+            "$lt": "2026-07-13T00:00:00+00:00",
+        }
+    }
+    assert mock_tickets.count_documents.await_args_list[1].args[0] == {
+        "status": "closed",
+        "updated_at": {
+            "$gte": "2026-07-12T00:00:00+00:00",
+            "$lt": "2026-07-13T00:00:00+00:00",
+        }
+    }
 
 
 def test_sync_run_versions_block():

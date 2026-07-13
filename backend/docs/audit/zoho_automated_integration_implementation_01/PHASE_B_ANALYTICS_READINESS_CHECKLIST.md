@@ -48,8 +48,8 @@ Create a table that accepts **one row per daily aggregate export** (append impor
 | Column | Data type (Zoho Analytics) | Nullable | Notes |
 |--------|----------------------------|----------|-------|
 | `payload_version` | Number / Integer | No | Currently `1` |
-| `period_start` | Date-Time / Plain Text | No | ISO-8601 UTC |
-| `period_end` | Date-Time / Plain Text | No | ISO-8601 UTC |
+| `period_start` | Date-Time / Plain Text | No | ISO-8601 UTC — inclusive start of last completed UTC day |
+| `period_end` | Date-Time / Plain Text | No | ISO-8601 UTC — exclusive end (next UTC midnight); not export execution time |
 | `leads_created_count` | Number / Integer | No | Period count |
 | `leads_converted_count` | Number / Integer | No | Period count |
 | `total_leads_count` | Number / Integer | No | Snapshot total |
@@ -155,8 +155,8 @@ Illustrative shape (counts are examples only):
 ```json
 {
   "payload_version": 1,
-  "period_start": "2026-07-09T08:00:00+00:00",
-  "period_end": "2026-07-10T08:00:00+00:00",
+  "period_start": "2026-07-09T00:00:00+00:00",
+  "period_end": "2026-07-10T00:00:00+00:00",
   "leads_created_count": 3,
   "leads_converted_count": 1,
   "total_leads_count": 42,
