@@ -146,12 +146,47 @@ class ZohoIntegrationService:
                 message=str(exc),
             )
 
+        result_summary = None
+        if isinstance(result.metadata, dict):
+            result_summary = result.metadata.get("result_summary")
+
+        # Analytics / CRM soft API failures: dead-letter for governed replay.
+        if (
+            integration in ("analytics", "crm")
+            and result.status == SyncStatus.FAILED
+            and not result.success
+        ):
+            await zoho_sync_store.add_dead_letter(
+                sync_id=sync_id,
+                integration=integration,
+                operation=operation,
+                payload={**payload, "result_summary": result_summary or {}},
+                error=result.message
+                or (
+                    "analytics_export_failed"
+                    if integration == "analytics"
+                    else "crm_sync_failed"
+                ),
+            )
+            result = SyncResult(
+                success=False,
+                sync_id=sync_id,
+                integration=integration,
+                operation=operation,
+                status=SyncStatus.DEAD_LETTER,
+                message=result.message,
+                metadata=result.metadata,
+            )
+            await self._audit(result, actor_id)
+            return result
+
         await zoho_sync_store.complete_run(
             sync_id,
             status=result.status,
             message=result.message,
             external_id=result.external_id,
             error=None if result.success else result.message,
+            result_summary=result_summary,
         )
         await self._audit(result, actor_id)
         return result
@@ -192,13 +227,18 @@ class ZohoIntegrationService:
                 status=SyncStatus.FAILED,
                 message="dead_letter_not_found",
             )
-        return await self.run_sync(
+        result = await self.run_sync(
             dl["integration"],
             dl["operation"],
             dl.get("payload") or {},
             actor_id=actor_id,
             correlation_id=dl.get("sync_id"),
         )
+        if result.success and result.status in (SyncStatus.SUCCESS, SyncStatus.SKIPPED):
+            await zoho_sync_store.mark_dead_letter_resolved(dead_letter_id)
+        else:
+            await zoho_sync_store.increment_dead_letter_replay(dead_letter_id)
+        return result
 
     def _skipped(self, integration: str, operation: str, reason: SyncSkipReason) -> SyncResult:
         return SyncResult(

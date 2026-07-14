@@ -72,20 +72,53 @@ class ZohoSyncStore:
         message: str = "",
         external_id: Optional[str] = None,
         error: Optional[str] = None,
+        result_summary: Optional[Dict[str, Any]] = None,
     ) -> None:
         db = database.get_db()
+        update: Dict[str, Any] = {
+            "status": status.value,
+            "message": message,
+            "external_id": external_id,
+            "error": error,
+            "updated_at": _now_iso(),
+            "completed_at": _now_iso(),
+        }
+        if result_summary is not None:
+            update["result_summary"] = result_summary
         await db[ZOHO_SYNC_RUNS_COLLECTION].update_one(
             {"sync_id": sync_id},
+            {"$set": update},
+        )
+
+    async def find_successful_analytics_period_export(
+        self, period_start: str, period_end: str
+    ) -> Optional[Dict[str, Any]]:
+        """Return prior successful analytics export for the same reporting window, if any."""
+        db = database.get_db()
+        return await db[ZOHO_SYNC_RUNS_COLLECTION].find_one(
             {
-                "$set": {
-                    "status": status.value,
-                    "message": message,
-                    "external_id": external_id,
-                    "error": error,
-                    "updated_at": _now_iso(),
-                    "completed_at": _now_iso(),
-                }
+                "integration": "analytics",
+                "operation": "export_aggregates",
+                "status": SyncStatus.SUCCESS.value,
+                "result_summary.period_start": period_start,
+                "result_summary.period_end": period_end,
             },
+            {"_id": 0, "sync_id": 1, "completed_at": 1, "result_summary": 1},
+            sort=[("completed_at", -1)],
+        )
+
+    async def mark_dead_letter_resolved(self, dead_letter_id: str) -> None:
+        db = database.get_db()
+        await db[ZOHO_SYNC_DEAD_LETTER_COLLECTION].update_one(
+            {"dead_letter_id": dead_letter_id},
+            {"$set": {"resolved": True, "updated_at": _now_iso()}},
+        )
+
+    async def increment_dead_letter_replay(self, dead_letter_id: str) -> None:
+        db = database.get_db()
+        await db[ZOHO_SYNC_DEAD_LETTER_COLLECTION].update_one(
+            {"dead_letter_id": dead_letter_id},
+            {"$inc": {"replay_count": 1}, "$set": {"updated_at": _now_iso()}},
         )
 
     async def add_dead_letter(

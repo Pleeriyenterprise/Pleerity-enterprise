@@ -1,7 +1,7 @@
 """Tests for Zoho operational health, versioning, and platform observability hooks."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -98,27 +98,109 @@ async def test_build_analytics_export_includes_payload_version():
     assert export["export_type"] == "aggregated_daily"
     assert export["period_start"] == "2026-07-12T00:00:00+00:00"
     assert export["period_end"] == "2026-07-13T00:00:00+00:00"
-    assert mock_leads.count_documents.await_args_list[0].args[0] == {
+    created_filter = mock_leads.count_documents.await_args_list[0].args[0]
+    assert "$or" in created_filter
+    assert created_filter["$or"][0] == {
         "created_at": {
             "$gte": "2026-07-12T00:00:00+00:00",
             "$lt": "2026-07-13T00:00:00+00:00",
         }
     }
-    assert mock_tickets.count_documents.await_args_list[1].args[0] == {
-        "status": "closed",
-        "updated_at": {
-            "$gte": "2026-07-12T00:00:00+00:00",
-            "$lt": "2026-07-13T00:00:00+00:00",
+    assert created_filter["$or"][1] == {
+        "created_at": {
+            "$gte": period[0],
+            "$lt": period[1],
         }
     }
+    closed_filter = mock_tickets.count_documents.await_args_list[1].args[0]
+    assert closed_filter["status"] == "closed"
+    assert "$or" in closed_filter
+
+
+def test_period_timestamp_filter_covers_iso_and_bson():
+    from services.integrations.zoho.metrics.analytics_export import period_timestamp_filter
+
+    start = datetime(2026, 7, 12, 0, 0, 0, tzinfo=timezone.utc)
+    end = datetime(2026, 7, 13, 0, 0, 0, tzinfo=timezone.utc)
+    filt = period_timestamp_filter("created_at", start, end)
+    assert len(filt["$or"]) == 2
+    assert filt["$or"][0]["created_at"]["$gte"].startswith("2026-07-12")
+    assert filt["$or"][1]["created_at"]["$gte"] is start
+
+
+def test_analytics_schedule_registration_staging_only(monkeypatch):
+    from services.integrations.zoho.config import zoho_analytics_schedule_registration_allowed
+
+    monkeypatch.setenv("ENVIRONMENT", "staging")
+    monkeypatch.delenv("ENV", raising=False)
+    assert zoho_analytics_schedule_registration_allowed() is True
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    assert zoho_analytics_schedule_registration_allowed() is False
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    assert zoho_analytics_schedule_registration_allowed() is False
+
+
+def test_analytics_incident_policy_levels():
+    from services.integrations.zoho.operational_health import _analytics_incident_policy
+
+    now = datetime(2026, 7, 14, 12, 0, 0, tzinfo=timezone.utc)
+    armed = {
+        "schedule_registration_allowed": True,
+        "schedule_armed": True,
+        "reason": "armed",
+    }
+    kill = _analytics_incident_policy(
+        kill_switch=True,
+        schedule_state={"reason": "kill_switch_active", "schedule_registration_allowed": True},
+        consecutive_failures=5,
+        last_success_at=None,
+        now=now,
+    )
+    assert kill["level"] == "disabled_expected"
+    warn = _analytics_incident_policy(
+        kill_switch=False,
+        schedule_state=armed,
+        consecutive_failures=1,
+        last_success_at=(now - timedelta(hours=1)).isoformat(),
+        now=now,
+    )
+    assert warn["level"] == "warning"
+    deg = _analytics_incident_policy(
+        kill_switch=False,
+        schedule_state=armed,
+        consecutive_failures=2,
+        last_success_at=(now - timedelta(hours=1)).isoformat(),
+        now=now,
+    )
+    assert deg["level"] == "degraded"
+    incident = _analytics_incident_policy(
+        kill_switch=False,
+        schedule_state=armed,
+        consecutive_failures=3,
+        last_success_at=(now - timedelta(hours=1)).isoformat(),
+        now=now,
+    )
+    assert incident["level"] == "incident"
+    stale = _analytics_incident_policy(
+        kill_switch=False,
+        schedule_state=armed,
+        consecutive_failures=0,
+        last_success_at=(now - timedelta(hours=49)).isoformat(),
+        now=now,
+    )
+    assert stale["level"] == "incident"
+    assert stale["reason"] == "no_successful_export_within_48h"
 
 
 def test_sync_run_versions_block():
     versions = sync_run_versions("crm")
     assert versions["layer"] == ZOHO_INTEGRATION_LAYER_VERSION
-    assert versions["adapter"] == "1.0.0"
+    assert versions["adapter"] == "1.1.0"
     assert versions["mapping"] == "1.0.0"
     assert versions["payload"] == 1
+
+    analytics_versions = sync_run_versions("analytics")
+    assert analytics_versions["adapter"] == "1.0.0"
 
 
 @pytest.mark.asyncio
@@ -172,7 +254,37 @@ async def test_operational_snapshot_dormant_when_disabled():
     mock_db = MagicMock()
     mock_db.__getitem__ = MagicMock(side_effect=_getitem)
 
-    with patch("services.integrations.zoho.operational_health.database.get_db", return_value=mock_db):
+    with (
+        patch("services.integrations.zoho.operational_health.database.get_db", return_value=mock_db),
+        patch(
+            "services.integrations.zoho.operational_health._build_analytics_ops",
+            new_callable=AsyncMock,
+            return_value={
+                "enabled": False,
+                "consecutive_failures": 0,
+                "incident_policy": {"level": "disabled_expected", "reason": "zoho_integration_disabled"},
+                "schedule_registration_allowed": False,
+            },
+        ),
+        patch(
+            "services.integrations.zoho.operational_health._build_crm_ops",
+            new_callable=AsyncMock,
+            return_value={
+                "enabled": False,
+                "manual_only": True,
+                "consecutive_failures": 0,
+                "incident_policy": {"level": "disabled_expected", "reason": "crm_sync_disabled"},
+            },
+        ),
+        patch(
+            "services.integrations.zoho.operational_health.schedule_enabled_state",
+            return_value={
+                "schedule_registration_allowed": False,
+                "schedule_armed": False,
+                "reason": "environment_not_staging",
+            },
+        ),
+    ):
         snap = await build_zoho_operational_snapshot()
     assert snap["overall_status"] == "dormant"
     assert snap["zoho_integration_enabled"] is False

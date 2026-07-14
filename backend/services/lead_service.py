@@ -921,6 +921,13 @@ class LeadService:
                 "competitor": competitor,
             },
         )
+
+        # Zoho CRM: status-only mirror (never delete/archive in Zoho).
+        try:
+            from services.integrations.zoho.events import maybe_enqueue_crm_sync
+            await maybe_enqueue_crm_sync(lead_id, "lead.lost")
+        except Exception as e:
+            logger.warning("Zoho CRM enqueue failed: %s", e)
         
         return await LeadService.get_lead(lead_id)
     

@@ -44,7 +44,11 @@ OAUTH_INTEGRATION_REGISTRY: Dict[str, OAuthIntegrationRecord] = {
         integration="crm",
         oauth_client="shared",
         refresh_token_env_key="ZOHO_CRM_REFRESH_TOKEN",
-        expected_scope="ZohoCRM.modules.leads.CREATE,ZohoCRM.modules.leads.UPDATE",
+        expected_scope=(
+            "ZohoCRM.modules.leads.CREATE,"
+            "ZohoCRM.modules.leads.UPDATE,"
+            "ZohoCRM.modules.leads.READ"
+        ),
         oauth_endpoint="ZOHO_ACCOUNTS_URL",
         api_endpoint="ZOHO_API_BASE",
         cache_identifier=_cache_id("crm"),

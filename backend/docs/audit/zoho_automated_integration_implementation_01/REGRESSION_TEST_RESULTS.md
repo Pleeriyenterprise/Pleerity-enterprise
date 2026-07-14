@@ -1,114 +1,28 @@
-# Zoho Integration Hardening — Regression Test Results
+# REGRESSION_TEST_RESULTS — Zoho CRM Phase C
 
-**Programme:** ZOHO INTEGRATION REFINEMENT  
-**Date:** 2026-07-09  
-**Verdict:** **PASS** (scoped regression + targeted observability suite)
+**Date:** 2026-07-14  
 
----
+## Command
 
-## Test execution
-
-### Zoho + governance (required)
-
-```bash
-cd backend && python -m pytest tests/integrations/zoho/ tests/test_control_centre_outcome_family_governance.py -q
+```text
+python -m pytest tests/integrations/zoho/test_zoho_crm.py \
+  tests/integrations/zoho/test_zoho_operational_health.py \
+  tests/integrations/zoho/test_zoho_integration.py \
+  tests/integrations/zoho/test_zoho_phase_a.py \
+  tests/integrations/zoho/test_zoho_oauth.py -q
 ```
 
-| Result | Count |
-|--------|-------|
-| **Passed** | 31 |
-| Failed | 0 |
+## Result
 
-**Evidence:** H-01 governance alignment verified — `REGISTRY_JOB_OUTCOME_FAMILY` includes all four Zoho jobs.
+**60 passed**
 
-### Observability + control centre (targeted regression)
+## Coverage highlights
 
-```bash
-cd backend && python -m pytest \
-  tests/integrations/zoho/ \
-  tests/test_control_centre_outcome_family_governance.py \
-  tests/test_control_centre_outcome_aggregation.py \
-  tests/test_control_centre_no_expected_outcome_flag.py \
-  tests/test_execution_jobs_outcome_metrics_control_centre.py \
-  tests/test_compliance_recalc_queue_stabilization_phase1.py \
-  -q
-```
-
-| Result | Count |
-|--------|-------|
-| **Passed** | 69 |
-| Failed | 0 |
-
----
-
-## New test coverage
-
-| Test | Validates |
-|------|-----------|
-| `test_integration_layer_version_on_status_snapshot` | H-02 |
-| `test_analytics_export_metrics_include_total_leads_and_payload_version` | H-03 |
-| `test_build_analytics_export_includes_payload_version` | H-03 runtime |
-| `test_sync_run_versions_block` | Version metadata |
-| `test_sync_store_create_run_includes_versions` | Sync run persistence |
-| `test_operational_snapshot_dormant_when_disabled` | Dormant posture |
-| `test_health_summary_includes_zoho_integration_health` | System Health integration |
-
----
-
-## Full suite notes
-
-Full `pytest tests/` was attempted. Pre-existing collection/run blockers **unrelated to this change**:
-
-| Issue | File |
-|-------|------|
-| Missing module | `tests/test_discovery_staging_e2e_validation.py` → `tests.discovery_staging_harness` |
-| Unrelated failure | `tests/test_account_capability_enforcement_backend_completion.py` (guard count assertion) |
-
-No regressions identified in Zoho, control centre governance, or observability test paths.
-
----
-
-## Manual verification checklist (post-deploy)
-
-| Check | Expected when flags off |
-|-------|-------------------------|
-| `GET /api/admin/observability/health-summary` | `integrations.zoho.overall_status` = `dormant` |
-| `GET /api/admin/control-centre/snapshot` | `system.integrations.zoho.overall_status` = `dormant` |
-| `GET /api/admin/integrations/zoho/status` | **404** (flag off) |
-| Platform `overall_health` | Unchanged vs pre-change when Zoho dormant |
-
----
-
-## Constraints confirmed
-
-- [x] No Zoho flags enabled
-- [x] No OAuth credentials configured
-- [x] No staging/production env changes
-- [x] No cron wiring
-- [x] No breaking API changes (additive JSON fields only)
-
----
-
-## Books webhook consistency hardening (2026-07-09)
-
-**Verdict:** **PASS**
-
-```bash
-cd backend
-python -m pytest tests/integrations/zoho/ -q
-```
-
-| Result | Count |
-|--------|-------|
-| **Passed** | 26 |
-| Failed | 0 |
-
-### New tests
-
-| Test | Validates |
-|------|-----------|
-| `test_books_webhook_requires_hmac_when_enabled` | Unsigned Books POST → **401** when integration enabled |
-| `test_books_webhook_verifies_and_rejects_inbound` | Valid HMAC → **200**, `books_inbound_forbidden` |
-| `test_webhook_routes_404_when_disabled` | Books route **404** when integration disabled |
-
-See `BOOKS_WEBHOOK_CONSISTENCY_REPORT.md` for decision record.
+- Payload required fields / unexpected columns  
+- Create persists external key  
+- Create without ID → failure (not success)  
+- Identity lookup before create (duplicate prevention)  
+- External key preferred over lookup  
+- Soft fail → dead letter  
+- Scope includes READ, not ALL  
+- Existing Zoho Phase A/OAuth/integration suites remain green  

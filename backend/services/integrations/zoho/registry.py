@@ -2,10 +2,11 @@
 Zoho field mapping registry — Pleerity fields to Zoho API fields.
 
 Pleerity lead_id is always the external key in Zoho CRM (custom field Pleerity_Lead_ID).
+Identity resolution uses Pleerity_Lead_ID only — never email, name, or heuristics.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # CRM: outbound only — fields Pleerity may push to Zoho Leads module
 CRM_LEAD_OUTBOUND_FIELDS: List[str] = [
@@ -102,7 +103,7 @@ WORKDRIVE_FORBIDDEN_CATEGORIES: frozenset = frozenset(
 
 
 def map_lead_to_zoho_crm(lead: Dict[str, Any]) -> Dict[str, Any]:
-    """Map Pleerity lead document to Zoho CRM API payload (PII-minimised)."""
+    """Map Pleerity lead document to Zoho CRM API payload (allowlisted fields only)."""
     payload: Dict[str, Any] = {}
     for pleerity_key, zoho_key in CRM_FIELD_MAP.items():
         val = lead.get(pleerity_key)
@@ -111,6 +112,48 @@ def map_lead_to_zoho_crm(lead: Dict[str, Any]) -> Dict[str, Any]:
     if lead.get("lead_id"):
         payload["Pleerity_Lead_ID"] = lead["lead_id"]
     return payload
+
+
+def validate_crm_outbound_payload(
+    mapped: Dict[str, Any],
+    *,
+    lead: Optional[Dict[str, Any]] = None,
+) -> List[str]:
+    """
+    Fail-closed preflight before any Zoho CRM write.
+
+    Identity is Pleerity_Lead_ID only — never email/name heuristics.
+    """
+    issues: List[str] = []
+    if not isinstance(mapped, dict) or not mapped:
+        return ["payload_empty_or_not_object"]
+
+    lead_id = mapped.get("Pleerity_Lead_ID") or ((lead or {}).get("lead_id"))
+    if not lead_id or not isinstance(lead_id, str):
+        issues.append("missing_required:Pleerity_Lead_ID")
+
+    email = mapped.get("Email")
+    if not email or not isinstance(email, str):
+        issues.append("missing_required:Email")
+
+    # Zoho Leads typically requires Last_Name for create.
+    last_name = mapped.get("Last_Name")
+    if not last_name or not isinstance(last_name, str):
+        issues.append("missing_required:Last_Name")
+
+    allowed = set(CRM_FIELD_MAP.values())
+    unexpected = sorted(k for k in mapped.keys() if k not in allowed)
+    if unexpected:
+        issues.append(f"unexpected_columns:{','.join(unexpected)}")
+
+    if lead is not None and lead.get("lead_id") and lead_id and str(lead["lead_id"]) != str(lead_id):
+        issues.append("pleerity_lead_id_mismatch")
+
+    score = mapped.get("Lead_Score")
+    if score is not None and not isinstance(score, (int, float)):
+        issues.append("column_not_numeric:Lead_Score")
+
+    return issues
 
 
 def validate_inbound_crm_fields(fields: Dict[str, Any]) -> List[str]:

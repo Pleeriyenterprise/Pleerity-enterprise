@@ -2,22 +2,31 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from services.integrations.zoho.adapters.base import BaseZohoAdapter
 from services.integrations.zoho.client import zoho_http_client
 from services.integrations.zoho.config import (
+    analytics_target_config_snapshot,
     zoho_analytics_api_base,
     zoho_analytics_org_id,
     zoho_analytics_view_id,
     zoho_analytics_workspace_id,
 )
-from services.integrations.zoho.metrics.analytics_export import build_analytics_export
+from services.integrations.zoho.metrics.analytics_export import (
+    ANALYTICS_DAILY_AGGREGATE_COLUMNS,
+    build_analytics_export,
+    validate_analytics_export_payload,
+)
 from services.integrations.zoho.pii import is_aggregate_export_safe
+from services.integrations.zoho.sync_store import zoho_sync_store
 from services.integrations.zoho.types import SyncResult, SyncStatus, SyncSkipReason
 
 # Stable table name for operator-created Phase B table (existing-table import uses view ID).
 ANALYTICS_AGGREGATE_TABLE_NAME = "pleerity_daily_aggregates"
+
+_ID_RE = re.compile(r"^\d{6,}$")
 
 
 def build_analytics_import_config() -> Dict[str, str]:
@@ -61,6 +70,44 @@ def resolve_analytics_import_target() -> Tuple[Optional[str], Optional[str], Lis
     return url, org_id, []
 
 
+def validate_analytics_import_config() -> List[str]:
+    """
+    Local configuration / schema-contract checks before any Zoho call.
+
+    Remote workspace/view existence requires Analytics metadata scopes not assumed
+    for Phase B (data.create only). Operators still receive actionable diagnostics
+    for missing/malformed IDs and the required column contract.
+    """
+    issues: List[str] = []
+    target = analytics_target_config_snapshot()
+    issues.extend(f"missing_config:{key}" for key in target.get("missing") or [])
+    workspace = zoho_analytics_workspace_id()
+    view = zoho_analytics_view_id()
+    org = zoho_analytics_org_id()
+    if workspace and not _ID_RE.match(workspace):
+        issues.append("workspace_id_malformed_expected_numeric")
+    if view and not _ID_RE.match(view):
+        issues.append("view_id_malformed_expected_numeric")
+    if org and not _ID_RE.match(org):
+        issues.append("org_id_malformed_expected_numeric")
+    if not zoho_analytics_api_base().startswith("https://"):
+        issues.append("analytics_api_base_must_be_https")
+    return issues
+
+
+def _period_result_summary(export_data: Dict[str, Any], **extra: Any) -> Dict[str, Any]:
+    return {
+        "period_start": export_data.get("period_start"),
+        "period_end": export_data.get("period_end"),
+        "payload_version": export_data.get("payload_version"),
+        "export_type": export_data.get("export_type"),
+        "table_name": ANALYTICS_AGGREGATE_TABLE_NAME,
+        "import_type": "append",
+        "column_count": len(ANALYTICS_DAILY_AGGREGATE_COLUMNS),
+        **extra,
+    }
+
+
 class ZohoAnalyticsAdapter(BaseZohoAdapter):
     integration = "analytics"
 
@@ -74,6 +121,19 @@ class ZohoAnalyticsAdapter(BaseZohoAdapter):
                 operation=operation,
                 status=SyncStatus.FAILED,
                 message=f"unknown_operation:{operation}",
+            )
+
+        config_issues = validate_analytics_import_config()
+        if config_issues:
+            return SyncResult(
+                success=True,
+                sync_id=sync_id,
+                integration=self.integration,
+                operation=operation,
+                status=SyncStatus.SKIPPED,
+                skip_reason=SyncSkipReason.CONFIG_INVALID,
+                message="analytics_config_invalid:" + ";".join(config_issues),
+                metadata={"config_issues": config_issues, "target": analytics_target_config_snapshot()},
             )
 
         export_data = payload.get("export_data")
@@ -90,6 +150,45 @@ class ZohoAnalyticsAdapter(BaseZohoAdapter):
                 skip_reason=SyncSkipReason.PII_BLOCKED,
                 message="aggregate_export_contains_pii",
             )
+
+        payload_issues = validate_analytics_export_payload(export_data)
+        if payload_issues:
+            return SyncResult(
+                success=False,
+                sync_id=sync_id,
+                integration=self.integration,
+                operation=operation,
+                status=SyncStatus.SKIPPED,
+                skip_reason=SyncSkipReason.PAYLOAD_INVALID,
+                message="analytics_payload_invalid:" + ";".join(payload_issues),
+                metadata={"payload_issues": payload_issues},
+            )
+
+        force_reexport = bool(payload.get("force_reexport"))
+        period_start = str(export_data.get("period_start") or "")
+        period_end = str(export_data.get("period_end") or "")
+        if not force_reexport and period_start and period_end:
+            prior = await zoho_sync_store.find_successful_analytics_period_export(
+                period_start, period_end
+            )
+            if prior:
+                return SyncResult(
+                    success=True,
+                    sync_id=sync_id,
+                    integration=self.integration,
+                    operation=operation,
+                    status=SyncStatus.SKIPPED,
+                    skip_reason=SyncSkipReason.DUPLICATE_PERIOD,
+                    message=(
+                        "period_already_exported:"
+                        f"{prior.get('sync_id')}:use_force_reexport_true_to_override"
+                    ),
+                    metadata={
+                        "prior_sync_id": prior.get("sync_id"),
+                        "prior_completed_at": prior.get("completed_at"),
+                        "result_summary": _period_result_summary(export_data),
+                    },
+                )
 
         url, org_id, missing = resolve_analytics_import_target()
         if missing:
@@ -121,6 +220,13 @@ class ZohoAnalyticsAdapter(BaseZohoAdapter):
             form_data={"DATA": data_string},
             headers={"ZANALYTICS-ORGID": org_id},
         )
+        summary = _period_result_summary(
+            export_data,
+            force_reexport=force_reexport,
+            workspace_configured=True,
+            view_configured=True,
+            org_configured=True,
+        )
         if ok:
             return SyncResult(
                 success=True,
@@ -131,9 +237,9 @@ class ZohoAnalyticsAdapter(BaseZohoAdapter):
                 message="analytics_export_delivered",
                 metadata={
                     "response": data or {},
-                    "import_url": url,
                     "table_name": ANALYTICS_AGGREGATE_TABLE_NAME,
                     "import_type": "append",
+                    "result_summary": summary,
                 },
             )
         return SyncResult(
@@ -143,5 +249,9 @@ class ZohoAnalyticsAdapter(BaseZohoAdapter):
             operation=operation,
             status=SyncStatus.FAILED,
             message=err or "analytics_export_failed",
-            metadata={"export": export_data, "import_url": url},
+            metadata={
+                "export_period_start": period_start,
+                "export_period_end": period_end,
+                "result_summary": summary,
+            },
         )

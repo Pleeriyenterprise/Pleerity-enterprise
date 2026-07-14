@@ -1841,16 +1841,117 @@ async def run_zoho_sync_queue(client_id: Optional[str] = None):
 
 
 async def run_zoho_analytics_export(client_id: Optional[str] = None):
-    """Scheduled read-only analytics export to Zoho."""
-    from services.integrations.zoho.service import zoho_integration_service
+    """
+    Staging daily / manual Analytics export — last completed UTC day, no force_reexport.
 
-    sync_result = await zoho_integration_service.run_sync("analytics", "export_aggregates", {})
-    return {
-        "message": "Zoho analytics export completed",
-        "count": 1 if sync_result.success else 0,
-        "sync_id": sync_result.sync_id,
-        "status": sync_result.status.value,
-    }
+    Respects ZOHO_INTEGRATION_ENABLED, ZOHO_ANALYTICS_SYNC_ENABLED, ZOHO_KILL_SWITCH.
+    Uses DB run-lock to prevent overlapping executions across processes.
+    """
+    from services.job_run_service import OUTCOME_FAILED, OUTCOME_SUCCESS
+    from services.integrations.zoho.analytics_schedule import (
+        acquire_analytics_export_lock,
+        new_lock_owner,
+        release_analytics_export_lock,
+    )
+    from services.integrations.zoho.config import (
+        zoho_analytics_sync_enabled,
+        zoho_integration_enabled,
+        zoho_kill_switch_active,
+    )
+    from services.integrations.zoho.service import zoho_integration_service
+    from services.integrations.zoho.types import SyncSkipReason, SyncStatus
+
+    if zoho_kill_switch_active():
+        return {
+            "message": "Zoho analytics export skipped: kill_switch_active",
+            "count": 0,
+            "status": SyncStatus.SKIPPED.value,
+            "skip_reason": SyncSkipReason.KILL_SWITCH.value,
+            "outcome_status": OUTCOME_SUCCESS,
+            "outcome_metrics": {"skipped": 1, "skip_reason": SyncSkipReason.KILL_SWITCH.value},
+        }
+    if not zoho_integration_enabled() or not zoho_analytics_sync_enabled():
+        reason = SyncSkipReason.DISABLED.value
+        return {
+            "message": f"Zoho analytics export skipped: {reason}",
+            "count": 0,
+            "status": SyncStatus.SKIPPED.value,
+            "skip_reason": reason,
+            "outcome_status": OUTCOME_SUCCESS,
+            "outcome_metrics": {"skipped": 1, "skip_reason": reason},
+        }
+
+    owner = new_lock_owner()
+    locked = await acquire_analytics_export_lock(owner)
+    if not locked:
+        return {
+            "message": "Zoho analytics export skipped: run_lock_held",
+            "count": 0,
+            "status": SyncStatus.SKIPPED.value,
+            "skip_reason": SyncSkipReason.RUN_LOCK_HELD.value,
+            "outcome_status": OUTCOME_SUCCESS,
+            "outcome_metrics": {
+                "skipped": 1,
+                "skip_reason": SyncSkipReason.RUN_LOCK_HELD.value,
+                "run_lock": "held",
+            },
+        }
+
+    try:
+        # Scheduled and manual runner paths: never force re-export (duplicate guard authoritative).
+        sync_result = await zoho_integration_service.run_sync(
+            "analytics",
+            "export_aggregates",
+            {"force_reexport": False},
+        )
+        skip_reason = (
+            sync_result.skip_reason.value
+            if sync_result.skip_reason is not None
+            else None
+        )
+        metrics: Dict[str, Any] = {
+            "sync_status": sync_result.status.value,
+            "force_reexport": False,
+        }
+        if skip_reason:
+            metrics["skip_reason"] = skip_reason
+            metrics["skipped"] = 1
+            if sync_result.skip_reason == SyncSkipReason.DUPLICATE_PERIOD:
+                metrics["duplicate_skip"] = 1
+
+        if sync_result.status in (SyncStatus.FAILED, SyncStatus.DEAD_LETTER) or (
+            not sync_result.success
+            and sync_result.status != SyncStatus.SKIPPED
+        ):
+            if sync_result.status == SyncStatus.DEAD_LETTER:
+                metrics["dead_letter"] = 1
+            return {
+                "message": sync_result.message or "Zoho analytics export failed",
+                "count": 0,
+                "sync_id": sync_result.sync_id,
+                "status": sync_result.status.value,
+                "skip_reason": skip_reason,
+                "outcome_status": OUTCOME_FAILED,
+                "error_code": "ZohoAnalyticsExportFailed",
+                "error_message": sync_result.message or "analytics_export_failed",
+                "outcome_metrics": metrics,
+            }
+
+        return {
+            "message": (
+                sync_result.message
+                if sync_result.status == SyncStatus.SKIPPED
+                else "Zoho analytics export completed"
+            ),
+            "count": 1 if sync_result.status == SyncStatus.SUCCESS else 0,
+            "sync_id": sync_result.sync_id,
+            "status": sync_result.status.value,
+            "skip_reason": skip_reason,
+            "outcome_status": OUTCOME_SUCCESS,
+            "outcome_metrics": metrics,
+        }
+    finally:
+        await release_analytics_export_lock(owner)
 
 
 async def run_zoho_books_export(client_id: Optional[str] = None):

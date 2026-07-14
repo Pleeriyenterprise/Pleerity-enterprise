@@ -22,6 +22,24 @@ def zoho_environment() -> str:
     return "staging"
 
 
+def deployment_environment() -> str:
+    """Host deployment ENVIRONMENT/ENV (staging|production|development|…)."""
+    return (os.environ.get("ENV") or os.environ.get("ENVIRONMENT") or "").strip().lower()
+
+
+def zoho_analytics_schedule_registration_allowed() -> bool:
+    """
+    APScheduler registration gate for zoho_analytics_export.
+
+    Staging only. Production must never receive the Analytics daily cron via this path.
+    Uses deployment ENVIRONMENT/ENV — not ZOHO_ENVIRONMENT (credential namespace).
+    """
+    env = deployment_environment()
+    if env in ("production", "prod"):
+        return False
+    return env == "staging"
+
+
 def zoho_integration_enabled() -> bool:
     return _flag("ZOHO_INTEGRATION_ENABLED")
 
@@ -145,6 +163,41 @@ def zoho_crm_module() -> str:
     return (os.environ.get("ZOHO_CRM_MODULE") or "Leads").strip()
 
 
+def crm_target_config_snapshot() -> dict:
+    """Non-secret CRM outbound target / identity configuration for observability."""
+    from services.integrations.zoho.oauth_credential_registry import OAUTH_INTEGRATION_REGISTRY
+
+    module = zoho_crm_module()
+    oauth = zoho_oauth_configured_for("crm")
+    shared = zoho_shared_oauth_client_configured()
+    record = OAUTH_INTEGRATION_REGISTRY.get("crm")
+    missing = []
+    if not shared:
+        missing.append("ZOHO_CLIENT_ID/ZOHO_CLIENT_SECRET")
+    if not oauth:
+        missing.append("ZOHO_CRM_REFRESH_TOKEN")
+    if not module:
+        missing.append("ZOHO_CRM_MODULE")
+    return {
+        "module": module,
+        "module_configured": bool(module),
+        "oauth_configured": oauth,
+        "shared_client_configured": shared,
+        "api_base": zoho_api_base(),
+        "identity_field": "Pleerity_Lead_ID",
+        "identity_resolution_order": [
+            "external_key",
+            "pleerity_lead_id_lookup",
+            "create",
+            "persist_external_key",
+        ],
+        "forbidden_identity_matchers": ["email", "name", "heuristic"],
+        "expected_scope": record.expected_scope if record else None,
+        "target_complete": bool(module) and oauth and shared,
+        "missing": missing,
+    }
+
+
 def zoho_analytics_workspace_id() -> str:
     return (os.environ.get("ZOHO_ANALYTICS_WORKSPACE_ID") or "").strip()
 
@@ -170,6 +223,31 @@ def zoho_analytics_org_id() -> str:
 def zoho_analytics_api_base() -> str:
     """Analytics API host (EU default) — distinct from ZOHO_API_BASE (zohoapis)."""
     return (os.environ.get("ZOHO_ANALYTICS_API_BASE") or "https://analyticsapi.zoho.eu").rstrip("/")
+
+
+def analytics_target_config_snapshot() -> dict:
+    """Non-secret presence flags for Analytics import target (admin/observability)."""
+    workspace = bool(zoho_analytics_workspace_id())
+    view = bool(zoho_analytics_view_id())
+    org = bool(zoho_analytics_org_id())
+    return {
+        "workspace_id_configured": workspace,
+        "view_id_configured": view,
+        "org_id_configured": org,
+        "api_base": zoho_analytics_api_base(),
+        "import_path_template": "/restapi/v2/workspaces/{workspace_id}/views/{view_id}/data",
+        "table_name": "pleerity_daily_aggregates",
+        "target_complete": workspace and view and org,
+        "missing": [
+            key
+            for key, ok in (
+                ("ZOHO_ANALYTICS_WORKSPACE_ID", workspace),
+                ("ZOHO_ANALYTICS_VIEW_ID", view),
+                ("ZOHO_ANALYTICS_ORG_ID", org),
+            )
+            if not ok
+        ],
+    }
 
 
 def zoho_workdrive_folder_id() -> str:
@@ -239,6 +317,8 @@ def integration_status_snapshot() -> dict:
         "shared_oauth_client_configured": zoho_shared_oauth_client_configured(),
         "legacy_refresh_token_configured": bool(zoho_refresh_token()),
         "oauth_by_integration": _oauth_status_by_integration(),
+        "analytics_target": analytics_target_config_snapshot(),
+        "crm_target": crm_target_config_snapshot(),
         "integrations": {
             name: checker()
             for name, checker in INTEGRATION_FLAG_CHECKERS.items()

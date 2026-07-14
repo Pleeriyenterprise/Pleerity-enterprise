@@ -36,7 +36,7 @@ Admin visibility: `registry_snapshot()` exposed via operational health (`oauth.c
 | Integration | Refresh token env | Cache identifier | Expected scope |
 |-------------|-------------------|------------------|----------------|
 | analytics | `ZOHO_ANALYTICS_REFRESH_TOKEN` | `zoho_oauth_access_token_analytics` | `ZohoAnalytics.data.create` |
-| crm | `ZOHO_CRM_REFRESH_TOKEN` | `zoho_oauth_access_token_crm` | `ZohoCRM.modules.leads.CREATE,ZohoCRM.modules.leads.UPDATE` |
+| crm | `ZOHO_CRM_REFRESH_TOKEN` | `zoho_oauth_access_token_crm` | `ZohoCRM.modules.leads.CREATE,ZohoCRM.modules.leads.UPDATE,ZohoCRM.modules.leads.READ` |
 | campaigns | `ZOHO_CAMPAIGNS_REFRESH_TOKEN` | `zoho_oauth_access_token_campaigns` | `ZohoCampaigns.contact.CREATE-UPDATE` |
 | books | `ZOHO_BOOKS_REFRESH_TOKEN` | `zoho_oauth_access_token_books` | `ZohoBooks.accountants.CREATE` |
 | workdrive | `ZOHO_WORKDRIVE_REFRESH_TOKEN` | `zoho_oauth_access_token_workdrive` | `WorkDrive.files.CREATE` |

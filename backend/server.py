@@ -1180,7 +1180,46 @@ async def lifespan(app: FastAPI):
             args=["operational_recovery_processing"],
             kwargs={"run_type": "schedule"},
         )
-        
+
+        # Zoho Analytics daily export — staging only (never register on production).
+        try:
+            from services.integrations.zoho.config import (
+                zoho_analytics_schedule_registration_allowed,
+            )
+            from services.integrations.zoho.types import ANALYTICS_EXPORT_JOB_ID
+
+            if zoho_analytics_schedule_registration_allowed():
+                scheduler.add_job(
+                    "job_runner:run_scheduled_job",
+                    CronTrigger(hour=2, minute=15, timezone=SCHEDULER_TIMEZONE),
+                    id=ANALYTICS_EXPORT_JOB_ID,
+                    name="Zoho Analytics Daily Export (staging)",
+                    replace_existing=True,
+                    max_instances=1,
+                    coalesce=True,
+                    misfire_grace_time=600,
+                    args=[ANALYTICS_EXPORT_JOB_ID],
+                    kwargs={"run_type": "schedule"},
+                )
+                logger.info(
+                    "Scheduler: registered %s at Daily 02:15 UTC (staging-only)",
+                    ANALYTICS_EXPORT_JOB_ID,
+                )
+            else:
+                _dep_env = (
+                    os.environ.get("ENV") or os.environ.get("ENVIRONMENT") or ""
+                ).strip().lower()
+                logger.info(
+                    "Scheduler: %s not registered (deployment ENVIRONMENT=%r; staging-only)",
+                    ANALYTICS_EXPORT_JOB_ID,
+                    _dep_env or "(unset)",
+                )
+        except Exception as zoho_sched_err:
+            logger.warning(
+                "Scheduler: failed to evaluate Zoho Analytics schedule registration: %s",
+                zoho_sched_err,
+            )
+
         _sched_flag[0] = False
         try:
             scheduler.start(paused=True)

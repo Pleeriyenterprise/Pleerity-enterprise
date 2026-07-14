@@ -77,15 +77,15 @@ def test_resolve_target_builds_eu_analytics_url(monkeypatch):
 async def test_adapter_skips_when_view_id_missing(monkeypatch):
     monkeypatch.setenv("ZOHO_ANALYTICS_WORKSPACE_ID", "272205000000016002")
     monkeypatch.delenv("ZOHO_ANALYTICS_VIEW_ID", raising=False)
-    monkeypatch.setenv("ZOHO_ANALYTICS_ORG_ID", "555")
+    monkeypatch.setenv("ZOHO_ANALYTICS_ORG_ID", "555666")
     adapter = ZohoAnalyticsAdapter()
     result = await adapter.execute(
         "export_aggregates",
         {"sync_id": "ZSYNC-1", "export_data": {"payload_version": 1, "export_type": "aggregated_daily"}},
     )
     assert result.status == SyncStatus.SKIPPED
-    assert result.skip_reason == SyncSkipReason.NO_CREDENTIALS
-    assert "ZOHO_ANALYTICS_VIEW_ID" in (result.metadata or {}).get("missing_config", [])
+    assert result.skip_reason == SyncSkipReason.CONFIG_INVALID
+    assert any("ZOHO_ANALYTICS_VIEW_ID" in x for x in (result.metadata or {}).get("config_issues", []))
 
 
 @pytest.mark.asyncio
@@ -108,11 +108,18 @@ async def test_adapter_posts_existing_table_import(monkeypatch):
         "export_type": "aggregated_daily",
     }
     adapter = ZohoAnalyticsAdapter()
-    with patch(
-        "services.integrations.zoho.adapters.analytics.zoho_http_client.request",
-        new_callable=AsyncMock,
-        return_value=(True, {"status": "success"}, None),
-    ) as req:
+    with (
+        patch(
+            "services.integrations.zoho.adapters.analytics.zoho_sync_store.find_successful_analytics_period_export",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
+            "services.integrations.zoho.adapters.analytics.zoho_http_client.request",
+            new_callable=AsyncMock,
+            return_value=(True, {"status": "success"}, None),
+        ) as req,
+    ):
         result = await adapter.execute(
             "export_aggregates",
             {"sync_id": "ZSYNC-2", "export_data": export_row},
@@ -130,3 +137,80 @@ async def test_adapter_posts_existing_table_import(monkeypatch):
     assert json.loads(kwargs["form_data"]["DATA"]) == [export_row]
     assert (result.metadata or {}).get("table_name") == ANALYTICS_AGGREGATE_TABLE_NAME
     assert (result.metadata or {}).get("import_type") == "append"
+    assert (result.metadata or {}).get("result_summary", {}).get("period_start") == (
+        "2026-07-09T00:00:00+00:00"
+    )
+
+
+@pytest.mark.asyncio
+async def test_adapter_skips_duplicate_period_unless_forced(monkeypatch):
+    monkeypatch.setenv("ZOHO_ANALYTICS_WORKSPACE_ID", "272205000000016002")
+    monkeypatch.setenv("ZOHO_ANALYTICS_VIEW_ID", "111222333")
+    monkeypatch.setenv("ZOHO_ANALYTICS_ORG_ID", "555666")
+    export_row = {
+        "payload_version": 1,
+        "period_start": "2026-07-09T00:00:00+00:00",
+        "period_end": "2026-07-10T00:00:00+00:00",
+        "leads_created_count": 1,
+        "leads_converted_count": 0,
+        "total_leads_count": 1,
+        "conversion_rate_pct": 0.0,
+        "active_subscriptions_count": 0,
+        "mrr_summary_gbp": 0.0,
+        "support_tickets_open_count": 0,
+        "support_tickets_closed_count": 0,
+        "export_type": "aggregated_daily",
+    }
+    adapter = ZohoAnalyticsAdapter()
+    prior = {"sync_id": "ZSYNC-PRIOR", "completed_at": "2026-07-10T01:00:00+00:00"}
+    with patch(
+        "services.integrations.zoho.adapters.analytics.zoho_sync_store.find_successful_analytics_period_export",
+        new_callable=AsyncMock,
+        return_value=prior,
+    ):
+        skipped = await adapter.execute(
+            "export_aggregates",
+            {"sync_id": "ZSYNC-3", "export_data": export_row},
+        )
+    assert skipped.status == SyncStatus.SKIPPED
+    assert skipped.skip_reason == SyncSkipReason.DUPLICATE_PERIOD
+
+    with (
+        patch(
+            "services.integrations.zoho.adapters.analytics.zoho_sync_store.find_successful_analytics_period_export",
+            new_callable=AsyncMock,
+            return_value=prior,
+        ),
+        patch(
+            "services.integrations.zoho.adapters.analytics.zoho_http_client.request",
+            new_callable=AsyncMock,
+            return_value=(True, {"status": "success"}, None),
+        ) as req,
+    ):
+        forced = await adapter.execute(
+            "export_aggregates",
+            {"sync_id": "ZSYNC-4", "export_data": export_row, "force_reexport": True},
+        )
+    assert forced.status == SyncStatus.SUCCESS
+    assert req.await_count == 1
+
+
+def test_validate_analytics_export_payload_rejects_sliding_window():
+    from services.integrations.zoho.metrics.analytics_export import validate_analytics_export_payload
+
+    bad = {
+        "payload_version": 1,
+        "period_start": "2026-07-12T20:59:10.417566+00:00",
+        "period_end": "2026-07-13T20:59:10.417566+00:00",
+        "leads_created_count": 0,
+        "leads_converted_count": 0,
+        "total_leads_count": 0,
+        "conversion_rate_pct": 0.0,
+        "active_subscriptions_count": 0,
+        "mrr_summary_gbp": 0.0,
+        "support_tickets_open_count": 0,
+        "support_tickets_closed_count": 0,
+        "export_type": "aggregated_daily",
+    }
+    issues = validate_analytics_export_payload(bad)
+    assert any("period_boundaries_must_be_utc_midnight" in i for i in issues)

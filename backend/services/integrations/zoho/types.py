@@ -28,6 +28,10 @@ class SyncSkipReason(str, Enum):
     PII_BLOCKED = "pii_minimisation_blocked"
     AUTHORITY_DENIED = "authority_boundary_denied"
     NOT_CONFIRMED = "business_confirmation_missing"
+    DUPLICATE_PERIOD = "period_already_exported"
+    PAYLOAD_INVALID = "payload_validation_failed"
+    CONFIG_INVALID = "config_validation_failed"
+    RUN_LOCK_HELD = "run_lock_held"
 
 
 ZOHO_SYNC_RUNS_COLLECTION = "zoho_sync_runs"
@@ -35,11 +39,17 @@ ZOHO_SYNC_DEAD_LETTER_COLLECTION = "zoho_sync_dead_letter"
 ZOHO_SYNC_QUEUE_COLLECTION = "zoho_sync_queue"
 ZOHO_OAUTH_TOKENS_COLLECTION = "zoho_oauth_tokens"
 ZOHO_EXTERNAL_KEYS_COLLECTION = "zoho_external_keys"
+ZOHO_ANALYTICS_EXPORT_LOCKS_COLLECTION = "zoho_analytics_export_locks"
+ANALYTICS_EXPORT_JOB_ID = "zoho_analytics_export"
+ANALYTICS_EXPORT_SCHEDULE_CADENCE = "Daily 02:15 UTC"
+ANALYTICS_EXPORT_LOCK_ID = "zoho_analytics_export_active"
 
 CRM_EVENT_CREATED = "lead.created"
 CRM_EVENT_UPDATED = "lead.updated"
 CRM_EVENT_STAGE_CHANGED = "lead.stage_changed"
 CRM_EVENT_CONVERTED = "lead.converted"
+CRM_EVENT_LOST = "lead.lost"
+CRM_OPERATION_UPSERT = "upsert_lead"
 
 AUTHORITY_DENIED_RESOURCE_PREFIXES = (
     "compliance_evidence",

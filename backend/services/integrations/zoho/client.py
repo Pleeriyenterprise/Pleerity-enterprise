@@ -73,8 +73,10 @@ class ZohoHttpClient:
                         params=params,
                         timeout=30.0,
                     )
-                if response.status_code in (200, 201, 202):
+                if response.status_code in (200, 201, 202, 204):
                     zoho_circuit_breaker.record_success(integration)
+                    if response.status_code == 204 or not (response.content or b"").strip():
+                        return True, {"data": []}, None
                     try:
                         return True, response.json(), None
                     except Exception:
