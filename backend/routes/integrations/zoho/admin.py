@@ -88,6 +88,8 @@ async def manual_sync(
         "status": result.status.value,
         "message": result.message,
         "skip_reason": result.skip_reason.value if result.skip_reason else None,
+        "external_id": result.external_id,
+        "metadata": result.metadata or {},
     }
 
 

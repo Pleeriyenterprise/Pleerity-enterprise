@@ -111,6 +111,12 @@ def map_lead_to_zoho_crm(lead: Dict[str, Any]) -> Dict[str, Any]:
             payload[zoho_key] = val
     if lead.get("lead_id"):
         payload["Pleerity_Lead_ID"] = lead["lead_id"]
+    # Zoho Leads requires Last_Name. Many Pleerity leads store a single display ``name``.
+    # Derive Last_Name from Pleerity-owned name fields only — never from email and never for identity.
+    if not payload.get("Last_Name"):
+        display = (lead.get("name") or lead.get("full_name") or "").strip()
+        if display:
+            payload["Last_Name"] = display
     return payload
 
 

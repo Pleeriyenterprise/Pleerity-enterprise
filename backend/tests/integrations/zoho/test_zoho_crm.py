@@ -32,6 +32,20 @@ def test_search_criteria_uses_pleerity_lead_id_only():
     assert "Email" not in build_pleerity_lead_id_search_criteria("LEAD-1")
 
 
+def test_map_lead_derives_last_name_from_display_name():
+    mapped = map_lead_to_zoho_crm(
+        {
+            "lead_id": "LEAD-NAME",
+            "email": "n@example.com",
+            "name": "Staging Display Name",
+            "last_name": None,
+        }
+    )
+    assert mapped["Last_Name"] == "Staging Display Name"
+    assert mapped["Pleerity_Lead_ID"] == "LEAD-NAME"
+    assert validate_crm_outbound_payload(mapped) == []
+
+
 def test_validate_crm_payload_requires_identity_email_lastname():
     issues = validate_crm_outbound_payload({})
     assert "payload_empty_or_not_object" in issues

@@ -1,0 +1,49 @@
+{
+  "phase": "PHASE_C_CRM_LIVE_STAGING_ACTIVATION_01",
+  "generated_at": "2026-07-14T08:35:00+00:00",
+  "baseline_commit": "5613812db8d9042a8d4e107190a47212c84e25e8",
+  "c11": {
+    "verdict": "C11_PASS",
+    "report": "CRM_C11_CONFIGURATION_VALIDATION.md",
+    "crm_enabled": false,
+    "staging_health": "healthy",
+    "production_sha_prefix": "89217062",
+    "sync_while_disabled": {
+      "status": "skipped",
+      "skip_reason": "integration_disabled"
+    },
+    "crm_ops": {
+      "enabled": false,
+      "configuration_complete": true,
+      "incident_policy": {
+        "level": "disabled_expected",
+        "reason": "crm_sync_disabled"
+      },
+      "queue_depth_pending": 0,
+      "dead_letter_count": 0
+    }
+  },
+  "c12": {
+    "status": "BLOCKED",
+    "blocked_reason": "ZOHO_CRM_SYNC_ENABLED remains false; RENDER_API_KEY unavailable to enable from this environment",
+    "required_ops_action": "Set ZOHO_CRM_SYNC_ENABLED=true on staging Render service and redeploy, then run tmp_crm_c12_live_staging_activation.py",
+    "create_sync": null,
+    "update_sync": null,
+    "lost_sync": null,
+    "test_lead_id": null
+  },
+  "checks": [
+    {"name": "staging_commit_5613812d", "pass": true},
+    {"name": "platform_health_healthy", "pass": true},
+    {"name": "crm_dormant_flag_false", "pass": true},
+    {"name": "crm_config_complete", "pass": true},
+    {"name": "no_legacy_refresh_fallback", "pass": true},
+    {"name": "no_outbound_while_disabled", "pass": true},
+    {"name": "queue_and_dl_clear", "pass": true},
+    {"name": "production_unchanged", "pass": true},
+    {"name": "c12_live_create", "pass": false, "reason": "blocked_on_flag"},
+    {"name": "c12_live_update", "pass": false, "reason": "blocked_on_flag"},
+    {"name": "c12_mark_lost_status_only", "pass": false, "reason": "blocked_on_flag"}
+  ],
+  "verdict": "CRM_STAGING_PASS_WITH_CONDITIONS"
+}
