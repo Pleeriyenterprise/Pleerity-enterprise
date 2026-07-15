@@ -1,49 +1,406 @@
 {
   "phase": "PHASE_C_CRM_LIVE_STAGING_ACTIVATION_01",
-  "generated_at": "2026-07-14T08:35:00+00:00",
-  "baseline_commit": "5613812db8d9042a8d4e107190a47212c84e25e8",
-  "c11": {
-    "verdict": "C11_PASS",
-    "report": "CRM_C11_CONFIGURATION_VALIDATION.md",
-    "crm_enabled": false,
-    "staging_health": "healthy",
-    "production_sha_prefix": "89217062",
-    "sync_while_disabled": {
-      "status": "skipped",
-      "skip_reason": "integration_disabled"
+  "generated_at": "2026-07-14T19:54:14.987237+00:00",
+  "checks": [
+    {
+      "name": "staging_commit_healthy_prod_pin",
+      "pass": true,
+      "evidence": {
+        "sha": "476b6c970c1a7deecfbcd3963cf3fe5da50f0b5b",
+        "prod": "89217062481b4eb858a8b530ec90c83de067a4be"
+      }
     },
-    "crm_ops": {
-      "enabled": false,
-      "configuration_complete": true,
-      "incident_policy": {
-        "level": "disabled_expected",
-        "reason": "crm_sync_disabled"
+    {
+      "name": "crm_oauth_per_integration_no_legacy",
+      "pass": true,
+      "evidence": {
+        "credentials_configured": true,
+        "refresh_token_configured": true,
+        "refresh_token_source": "per_integration",
+        "expected_scope": "ZohoCRM.modules.leads.CREATE,ZohoCRM.modules.leads.UPDATE,ZohoCRM.modules.leads.READ",
+        "cache_identifier": "zoho_oauth_access_token_crm",
+        "using_legacy_fallback": false
+      }
+    },
+    {
+      "name": "queue_dl_clear_before_c12",
+      "pass": true
+    },
+    {
+      "name": "create_dedicated_test_lead",
+      "pass": true,
+      "evidence": {
+        "lead_id": "LEAD-20260714195426-198E68",
+        "phone": "+447714195426"
+      }
+    },
+    {
+      "name": "first_upsert_create_or_bind_with_external_id",
+      "pass": true,
+      "evidence": {
+        "external_id": "625014000001948001",
+        "identity_source": "external_key",
+        "http_method": "PUT",
+        "pre_existing_key_from_queue": true
+      }
+    },
+    {
+      "name": "pleerity_update",
+      "pass": true
+    },
+    {
+      "name": "second_upsert_update_same_external_id",
+      "pass": true,
+      "evidence": {
+        "external_id": "625014000001948001",
+        "identity_source": "external_key"
+      }
+    },
+    {
+      "name": "pleerity_mark_lost",
+      "pass": true
+    },
+    {
+      "name": "lost_status_update_only_same_key",
+      "pass": true,
+      "evidence": {
+        "external_id": "625014000001948001",
+        "http_method": "PUT"
+      }
+    },
+    {
+      "name": "idempotency_two_further_upserts_single_external_id",
+      "pass": true,
+      "evidence": {
+        "external_id": "625014000001948001"
+      }
+    },
+    {
+      "name": "inbound_crm_webhook_rejected",
+      "pass": true,
+      "evidence": {
+        "status": 401
+      }
+    },
+    {
+      "name": "queue_and_dl_clear_after",
+      "pass": true
+    },
+    {
+      "name": "other_integrations_off",
+      "pass": true,
+      "evidence": {
+        "integrations": {
+          "analytics": true,
+          "crm": true,
+          "campaigns": false,
+          "sign": false,
+          "books": false,
+          "workdrive": false
+        }
+      }
+    },
+    {
+      "name": "platform_health_healthy",
+      "pass": true
+    },
+    {
+      "name": "production_still_unchanged",
+      "pass": true,
+      "evidence": {
+        "sha": "89217062481b4eb858a8b530ec90c83de067a4be"
+      }
+    },
+    {
+      "name": "crm_oauth_after_live_call",
+      "pass": true,
+      "evidence": {
+        "oauth_status": "healthy",
+        "last_success_at": "2026-07-14T19:54:58.778207+00:00"
+      }
+    }
+  ],
+  "steps": {
+    "search_probe_inherited": {
+      "oauth_refresh_via": "upsert_lead_on_prior_failed_lead",
+      "probe_sync_status": "success",
+      "probe_sync_message": "crm_outbound_create_ok",
+      "probe_sync_external_id": "625014000001936001",
+      "probe_sync_id": "ZSYNC-BAAC8BDFB65D",
+      "token_expires_in_s": 3594.255357503891,
+      "refresh_token_source_cached": "per_integration",
+      "readonly_search": {
+        "metadata_http": 200,
+        "field": {
+          "api_name": "Pleerity_Lead_ID",
+          "display_label": "Pleerity Lead ID",
+          "data_type": "text",
+          "searchable": true,
+          "id": "625014000001931007",
+          "unique": {
+            "case_sensitive": false
+          }
+        },
+        "search_http": 204,
+        "criteria": "(Pleerity_Lead_ID:equals:PLEERITY_SEARCHABILITY_PROBE_NO_MATCH)",
+        "invalid_query": false,
+        "search_body_code": null,
+        "search_message": null,
+        "search_reason": null,
+        "supports_search": true
+      }
+    },
+    "recovery_external_id": "625014000001936001",
+    "recovery_lead_id": "LEAD-20260714090602-6D5752",
+    "create_lead_response": {
+      "http": 200,
+      "lead_id": "LEAD-20260714195426-198E68",
+      "email": "crm-c12-new-20260714195426@yopmail.com",
+      "phone": "+447714195426",
+      "keys": [
+        "success",
+        "lead_id",
+        "lead"
+      ]
+    },
+    "test_lead_id": "LEAD-20260714195426-198E68",
+    "test_lead_email": "crm-c12-new-20260714195426@yopmail.com",
+    "test_lead_phone": "+447714195426",
+    "post_create_queue_drain": {
+      "processed": 1,
+      "failed": 0,
+      "total": 1
+    },
+    "create_sync": {
+      "success": true,
+      "sync_id": "ZSYNC-CED2B90E0E60",
+      "status": "success",
+      "message": "crm_outbound_update_ok",
+      "skip_reason": null,
+      "external_id": "625014000001948001",
+      "metadata": {
+        "result_summary": {
+          "lead_id": "LEAD-20260714195426-198E68",
+          "external_id": "625014000001948001",
+          "http_method": "PUT",
+          "identity_source": "external_key",
+          "module": "Leads",
+          "payload_version": 1,
+          "mapping_version": "1.0.0",
+          "identity_field": "Pleerity_Lead_ID",
+          "duplicate_create_prevented": false,
+          "operation": "upsert_lead"
+        }
       },
+      "_http_status": 200
+    },
+    "create_sync_run": {
+      "sync_id": "ZSYNC-CED2B90E0E60",
+      "integration": "crm",
+      "operation": "upsert_lead",
+      "direction": "outbound",
+      "status": "success",
+      "attempt": 1,
+      "max_attempts": 3,
+      "correlation_id": null,
+      "payload_summary": {
+        "lead_id": "LEAD-20260714195426-198E68"
+      },
+      "versions": {
+        "layer": "1.0.0",
+        "adapter": "1.1.0",
+        "mapping": "1.0.0",
+        "payload": 1
+      },
+      "error": null,
+      "external_id": "625014000001948001",
+      "created_at": "2026-07-14T19:54:36.262145+00:00",
+      "updated_at": "2026-07-14T19:54:38.149497+00:00",
+      "completed_at": "2026-07-14T19:54:38.149514+00:00",
+      "message": "crm_outbound_update_ok",
+      "result_summary": {
+        "lead_id": "LEAD-20260714195426-198E68",
+        "external_id": "625014000001948001",
+        "http_method": "PUT",
+        "identity_source": "external_key",
+        "module": "Leads",
+        "payload_version": 1,
+        "mapping_version": "1.0.0",
+        "identity_field": "Pleerity_Lead_ID",
+        "duplicate_create_prevented": false,
+        "operation": "upsert_lead"
+      }
+    },
+    "first_path": "queue_created_then_explicit_update",
+    "create_via_queue": {
+      "sync_id": "ZSYNC-2327F1C59A60",
+      "operation": "lead.created",
+      "status": "success",
+      "message": "crm_outbound_create_ok",
+      "external_id": "625014000001948001",
+      "note": "Governed create on queue drain before explicit upsert; explicit create_sync was PUT update"
+    },
+    "external_ids_observed": [
+      "625014000001948001",
+      "625014000001948001",
+      "625014000001948001"
+    ],
+    "update_sync": {
+      "success": true,
+      "sync_id": "ZSYNC-A8C5247B6555",
+      "status": "success",
+      "message": "crm_outbound_update_ok",
+      "skip_reason": null,
+      "external_id": "625014000001948001",
+      "metadata": {
+        "result_summary": {
+          "lead_id": "LEAD-20260714195426-198E68",
+          "external_id": "625014000001948001",
+          "http_method": "PUT",
+          "identity_source": "external_key",
+          "module": "Leads",
+          "payload_version": 1,
+          "mapping_version": "1.0.0",
+          "identity_field": "Pleerity_Lead_ID",
+          "duplicate_create_prevented": false,
+          "operation": "upsert_lead"
+        }
+      },
+      "_http_status": 200
+    },
+    "lost_sync": {
+      "success": true,
+      "sync_id": "ZSYNC-9C29618FEC7F",
+      "status": "success",
+      "message": "crm_outbound_update_ok",
+      "skip_reason": null,
+      "external_id": "625014000001948001",
+      "metadata": {
+        "result_summary": {
+          "lead_id": "LEAD-20260714195426-198E68",
+          "external_id": "625014000001948001",
+          "http_method": "PUT",
+          "identity_source": "external_key",
+          "module": "Leads",
+          "payload_version": 1,
+          "mapping_version": "1.0.0",
+          "identity_field": "Pleerity_Lead_ID",
+          "duplicate_create_prevented": false,
+          "operation": "lead.lost"
+        }
+      },
+      "_http_status": 200
+    },
+    "idempotency_sync_a": {
+      "success": true,
+      "sync_id": "ZSYNC-7C5D44EEDFF3",
+      "status": "success",
+      "message": "crm_outbound_update_ok",
+      "skip_reason": null,
+      "external_id": "625014000001948001",
+      "metadata": {
+        "result_summary": {
+          "lead_id": "LEAD-20260714195426-198E68",
+          "external_id": "625014000001948001",
+          "http_method": "PUT",
+          "identity_source": "external_key",
+          "module": "Leads",
+          "payload_version": 1,
+          "mapping_version": "1.0.0",
+          "identity_field": "Pleerity_Lead_ID",
+          "duplicate_create_prevented": false,
+          "operation": "upsert_lead"
+        }
+      },
+      "_http_status": 200
+    },
+    "idempotency_sync_b": {
+      "success": true,
+      "sync_id": "ZSYNC-15AB7DBD7FC5",
+      "status": "success",
+      "message": "crm_outbound_update_ok",
+      "skip_reason": null,
+      "external_id": "625014000001948001",
+      "metadata": {
+        "result_summary": {
+          "lead_id": "LEAD-20260714195426-198E68",
+          "external_id": "625014000001948001",
+          "http_method": "PUT",
+          "identity_source": "external_key",
+          "module": "Leads",
+          "payload_version": 1,
+          "mapping_version": "1.0.0",
+          "identity_field": "Pleerity_Lead_ID",
+          "duplicate_create_prevented": false,
+          "operation": "upsert_lead"
+        }
+      },
+      "_http_status": 200
+    },
+    "crm_ops_after": {
+      "enabled": true,
+      "manual_only": true,
+      "healthy": true,
+      "configuration_complete": true,
+      "configuration_missing": [],
+      "crm_target": {
+        "module": "Leads",
+        "module_configured": true,
+        "oauth_configured": true,
+        "shared_client_configured": true,
+        "api_base": "https://www.zohoapis.eu",
+        "identity_field": "Pleerity_Lead_ID",
+        "identity_resolution_order": [
+          "external_key",
+          "pleerity_lead_id_lookup",
+          "create",
+          "persist_external_key"
+        ],
+        "forbidden_identity_matchers": [
+          "email",
+          "name",
+          "heuristic"
+        ],
+        "expected_scope": "ZohoCRM.modules.leads.CREATE,ZohoCRM.modules.leads.UPDATE,ZohoCRM.modules.leads.READ",
+        "target_complete": true,
+        "missing": []
+      },
+      "oauth_status": "healthy",
+      "last_success_at": "2026-07-14T19:54:58.778207+00:00",
+      "last_success_sync_id": "ZSYNC-15AB7DBD7FC5",
+      "last_failure_at": "2026-07-14T09:06:06.418924+00:00",
+      "last_failure_sync_id": "ZSYNC-361872C6B860",
+      "last_failure_error": "Zoho API 400: {\"code\":\"INVALID_QUERY\",\"details\":{\"reason\":\"the field is not available for search\",\"api_name\":\"Pleerity_Lead_ID\"},\"message\":\"Invalid query formed\",\"status\":\"error\"}\n",
+      "consecutive_failures": 0,
+      "failure_count_24h": 1,
       "queue_depth_pending": 0,
-      "dead_letter_count": 0
+      "queue_depth_failed": 0,
+      "duplicate_skips": 0,
+      "dead_letter_count": 0,
+      "replay_count": 0,
+      "next_expected_sync": "manual_only_no_cron",
+      "incident_policy": {
+        "level": "ok",
+        "reason": "healthy",
+        "actionable_incident": false,
+        "consecutive_failures": 0
+      },
+      "identity_resolution_order": [
+        "external_key",
+        "pleerity_lead_id_lookup",
+        "create",
+        "persist_external_key"
+      ]
     }
   },
-  "c12": {
-    "status": "BLOCKED",
-    "blocked_reason": "ZOHO_CRM_SYNC_ENABLED remains false; RENDER_API_KEY unavailable to enable from this environment",
-    "required_ops_action": "Set ZOHO_CRM_SYNC_ENABLED=true on staging Render service and redeploy, then run tmp_crm_c12_live_staging_activation.py",
-    "create_sync": null,
-    "update_sync": null,
-    "lost_sync": null,
-    "test_lead_id": null
-  },
-  "checks": [
-    {"name": "staging_commit_5613812d", "pass": true},
-    {"name": "platform_health_healthy", "pass": true},
-    {"name": "crm_dormant_flag_false", "pass": true},
-    {"name": "crm_config_complete", "pass": true},
-    {"name": "no_legacy_refresh_fallback", "pass": true},
-    {"name": "no_outbound_while_disabled", "pass": true},
-    {"name": "queue_and_dl_clear", "pass": true},
-    {"name": "production_unchanged", "pass": true},
-    {"name": "c12_live_create", "pass": false, "reason": "blocked_on_flag"},
-    {"name": "c12_live_update", "pass": false, "reason": "blocked_on_flag"},
-    {"name": "c12_mark_lost_status_only", "pass": false, "reason": "blocked_on_flag"}
-  ],
-  "verdict": "CRM_STAGING_PASS_WITH_CONDITIONS"
+  "verdict": "CRM_STAGING_PASS_WITH_CONDITIONS",
+  "recovery_verdict": "PASS",
+  "supersedes_invalid_c12_reuse": true,
+  "staging_sha": "476b6c970c1a7deecfbcd3963cf3fe5da50f0b5b",
+  "production_sha": "89217062481b4eb858a8b530ec90c83de067a4be",
+  "failed": [],
+  "conditions": [
+    "analytics_flag_still_enabled_not_executed",
+    "first_crm_create_occurred_via_queue_drain_before_explicit_sync"
+  ]
 }

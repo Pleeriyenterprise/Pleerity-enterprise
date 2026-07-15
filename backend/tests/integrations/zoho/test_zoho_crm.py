@@ -99,6 +99,7 @@ async def test_crm_create_persists_external_key(monkeypatch):
         patch(
             "services.integrations.zoho.adapters.crm.zoho_sync_store.store_external_key",
             new_callable=AsyncMock,
+            return_value="ZCRM-9",
         ) as store,
     ):
         result = await ZohoCrmAdapter().execute(
@@ -180,6 +181,7 @@ async def test_crm_identity_lookup_before_create():
         patch(
             "services.integrations.zoho.adapters.crm.zoho_sync_store.store_external_key",
             new_callable=AsyncMock,
+            return_value="ZCRM-EXIST",
         ) as store,
     ):
         result = await ZohoCrmAdapter().execute(
@@ -221,6 +223,7 @@ async def test_crm_update_uses_external_key_first():
         patch(
             "services.integrations.zoho.adapters.crm.zoho_sync_store.store_external_key",
             new_callable=AsyncMock,
+            return_value="ZCRM-LOCAL",
         ),
     ):
         result = await ZohoCrmAdapter().execute(
@@ -309,3 +312,133 @@ async def test_crm_payload_invalid_skips_without_http():
     assert result.status == SyncStatus.SKIPPED
     assert result.skip_reason == SyncSkipReason.PAYLOAD_INVALID
     http.assert_not_awaited()
+
+
+def test_extract_duplicate_crm_record_id_from_body():
+    from services.integrations.zoho.adapters.crm import extract_duplicate_crm_record_id
+
+    body = {
+        "data": [
+            {
+                "code": "DUPLICATE_DATA",
+                "details": {
+                    "api_name": "Pleerity_Lead_ID",
+                    "duplicate_record": {"id": "625014000001936001"},
+                },
+            }
+        ]
+    }
+    assert extract_duplicate_crm_record_id("Zoho API 400: truncated", body) == "625014000001936001"
+
+
+def test_extract_duplicate_crm_record_id_from_error_text():
+    from services.integrations.zoho.adapters.crm import extract_duplicate_crm_record_id
+
+    err = (
+        'Zoho API 400: {"data":[{"code":"DUPLICATE_DATA","details":'
+        '{"api_name":"Pleerity_Lead_ID","duplicate_record":{"id":"991"}}]}'
+    )
+    assert extract_duplicate_crm_record_id(err, None) == "991"
+
+
+@pytest.mark.asyncio
+async def test_crm_duplicate_data_binds_from_duplicate_record_id_without_search():
+    lead = {
+        "lead_id": "LEAD-DUP",
+        "email": "dup@example.com",
+        "last_name": "Dup",
+    }
+    mock_db = MagicMock()
+    mock_db.leads.find_one = AsyncMock(return_value=lead)
+    err_body = {
+        "data": [
+            {
+                "code": "DUPLICATE_DATA",
+                "details": {"duplicate_record": {"id": "ZCRM-DUP-1"}},
+            }
+        ]
+    }
+    http = AsyncMock(
+        side_effect=[
+            (False, err_body, 'Zoho API 400: {"data":[{"code":"DUPLICATE_DATA"}]}'),
+            (True, {"data": [{"details": {"id": "ZCRM-DUP-1"}}]}, None),
+        ]
+    )
+    with (
+        patch("services.integrations.zoho.adapters.crm.database.get_db", return_value=mock_db),
+        patch(
+            "services.integrations.zoho.adapters.crm.zoho_sync_store.get_external_key",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
+            "services.integrations.zoho.adapters.crm.lookup_zoho_id_by_pleerity_lead_id",
+            new_callable=AsyncMock,
+            return_value=(None, None),
+        ) as lookup,
+        patch(
+            "services.integrations.zoho.adapters.crm.zoho_http_client.request",
+            new=http,
+        ),
+        patch(
+            "services.integrations.zoho.adapters.crm.zoho_sync_store.store_external_key",
+            new_callable=AsyncMock,
+            return_value="ZCRM-DUP-1",
+        ) as store,
+    ):
+        result = await ZohoCrmAdapter().execute(
+            "upsert_lead", {"sync_id": "ZSYNC-DUP", "lead_id": "LEAD-DUP"}
+        )
+    assert result.status == SyncStatus.SUCCESS
+    assert result.external_id == "ZCRM-DUP-1"
+    assert result.message == "crm_outbound_bound_after_duplicate"
+    assert result.metadata["result_summary"]["identity_source"] == "duplicate_record_id"
+    store.assert_awaited_with("crm", "LEAD-DUP", "ZCRM-DUP-1")
+    # Pre-create identity lookup only — no Search fallback after duplicate_record.id bind
+    assert lookup.await_count == 1
+    assert http.await_args_list[0].args[0] == "POST"
+    assert http.await_args_list[1].args[0] == "PUT"
+
+@pytest.mark.asyncio
+async def test_crm_duplicate_data_falls_back_to_search_when_id_absent():
+    lead = {
+        "lead_id": "LEAD-DUP2",
+        "email": "dup2@example.com",
+        "last_name": "Dup2",
+    }
+    mock_db = MagicMock()
+    mock_db.leads.find_one = AsyncMock(return_value=lead)
+    http = AsyncMock(
+        side_effect=[
+            (False, {"data": [{"code": "DUPLICATE_DATA", "details": {}}]}, "Zoho API 400: DUPLICATE_DATA"),
+            (True, {"data": [{"details": {"id": "ZCRM-SEARCH"}}]}, None),
+        ]
+    )
+    with (
+        patch("services.integrations.zoho.adapters.crm.database.get_db", return_value=mock_db),
+        patch(
+            "services.integrations.zoho.adapters.crm.zoho_sync_store.get_external_key",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
+            "services.integrations.zoho.adapters.crm.lookup_zoho_id_by_pleerity_lead_id",
+            new_callable=AsyncMock,
+            side_effect=[(None, None), ("ZCRM-SEARCH", None)],
+        ),
+        patch(
+            "services.integrations.zoho.adapters.crm.zoho_http_client.request",
+            new=http,
+        ),
+        patch(
+            "services.integrations.zoho.adapters.crm.zoho_sync_store.store_external_key",
+            new_callable=AsyncMock,
+            return_value="ZCRM-SEARCH",
+        ),
+    ):
+        result = await ZohoCrmAdapter().execute(
+            "upsert_lead", {"sync_id": "ZSYNC-DUP2", "lead_id": "LEAD-DUP2"}
+        )
+    assert result.status == SyncStatus.SUCCESS
+    assert result.external_id == "ZCRM-SEARCH"
+    assert result.metadata["result_summary"]["identity_source"] == "duplicate_conflict_lookup"

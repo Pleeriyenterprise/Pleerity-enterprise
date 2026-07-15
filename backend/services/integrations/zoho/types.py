@@ -40,6 +40,8 @@ ZOHO_SYNC_QUEUE_COLLECTION = "zoho_sync_queue"
 ZOHO_OAUTH_TOKENS_COLLECTION = "zoho_oauth_tokens"
 ZOHO_EXTERNAL_KEYS_COLLECTION = "zoho_external_keys"
 ZOHO_ANALYTICS_EXPORT_LOCKS_COLLECTION = "zoho_analytics_export_locks"
+# CRM / shared queue claim lease (seconds). Abandoned processing rows become reclaimable.
+ZOHO_QUEUE_LEASE_SECONDS = 120
 ANALYTICS_EXPORT_JOB_ID = "zoho_analytics_export"
 ANALYTICS_EXPORT_SCHEDULE_CADENCE = "Daily 02:15 UTC"
 ANALYTICS_EXPORT_LOCK_ID = "zoho_analytics_export_active"

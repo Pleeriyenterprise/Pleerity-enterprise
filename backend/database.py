@@ -1178,10 +1178,9 @@ class Database:
                 await self.db.zoho_oauth_tokens.create_index(
                     [("token_id", 1), ("environment", 1)], unique=True
                 )
-                await self.db.zoho_external_keys.create_index(
-                    [("integration", 1), ("pleerity_id", 1), ("resource_type", 1)],
-                    unique=True,
-                )
+                from services.integrations.zoho.sync_store import zoho_sync_store
+
+                await zoho_sync_store.ensure_indexes()
             except Exception as zoho_idx_err:
                 logger.warning("Zoho integration index creation note: %s", zoho_idx_err)
 

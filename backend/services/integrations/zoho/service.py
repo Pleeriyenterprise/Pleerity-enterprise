@@ -199,7 +199,12 @@ class ZohoIntegrationService:
         return await zoho_sync_store.enqueue(integration, operation, payload)
 
     async def process_queue(self, integration: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
-        items = await zoho_sync_store.fetch_pending_queue(integration, limit)
+        from services.integrations.zoho.sync_store import generate_queue_worker_id
+
+        worker_id = generate_queue_worker_id()
+        items = await zoho_sync_store.claim_pending_queue(
+            integration, limit, worker_id=worker_id
+        )
         processed = 0
         failed = 0
         for item in items:
@@ -214,8 +219,13 @@ class ZohoIntegrationService:
             else:
                 await zoho_sync_store.mark_queue_failed(item["queue_id"], result.message)
                 failed += 1
-        return {"processed": processed, "failed": failed, "total": len(items)}
-
+        return {
+            "processed": processed,
+            "failed": failed,
+            "total": len(items),
+            "worker_id": worker_id,
+            "claimed": len(items),
+        }
     async def replay_dead_letter(self, dead_letter_id: str, *, actor_id: Optional[str] = None) -> SyncResult:
         dl = await zoho_sync_store.get_dead_letter(dead_letter_id)
         if not dl or dl.get("resolved"):

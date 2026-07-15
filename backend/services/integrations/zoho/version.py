@@ -10,7 +10,7 @@ DEFAULT_WEBHOOK_VERSION = 1
 
 ADAPTER_VERSIONS: Dict[str, str] = {
     "analytics": "1.0.0",
-    "crm": "1.1.0",
+    "crm": "1.2.0",
     "campaigns": "1.0.0",
     "sign": "1.0.0",
     "books": "1.0.0",

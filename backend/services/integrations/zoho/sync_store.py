@@ -1,13 +1,18 @@
-"""Sync run persistence, dead-letter queue, and replay."""
+"""Sync run persistence, dead-letter queue, external keys, and queue claims."""
 from __future__ import annotations
 
+import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
+
+from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from database import database
 from services.integrations.zoho.types import (
     ZOHO_EXTERNAL_KEYS_COLLECTION,
+    ZOHO_QUEUE_LEASE_SECONDS,
     ZOHO_SYNC_DEAD_LETTER_COLLECTION,
     ZOHO_SYNC_QUEUE_COLLECTION,
     ZOHO_SYNC_RUNS_COLLECTION,
@@ -16,13 +21,23 @@ from services.integrations.zoho.types import (
 )
 from services.integrations.zoho.version import sync_run_versions
 
+logger = logging.getLogger(__name__)
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return _now().isoformat()
 
 
 def generate_sync_id() -> str:
     return f"ZSYNC-{uuid.uuid4().hex[:12].upper()}"
+
+
+def generate_queue_worker_id() -> str:
+    return f"WQ-{uuid.uuid4().hex[:12].upper()}"
 
 
 class ZohoSyncStore:
@@ -160,6 +175,9 @@ class ZohoSyncStore:
                 "payload": payload,
                 "status": "pending",
                 "attempts": 0,
+                "claim_id": None,
+                "claimed_at": None,
+                "lease_expires_at": None,
                 "created_at": _now_iso(),
                 "updated_at": _now_iso(),
             }
@@ -167,24 +185,96 @@ class ZohoSyncStore:
         return queue_id
 
     async def fetch_pending_queue(self, integration: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """Read-only listing of pending rows (observability). Prefer claim_pending_queue for workers."""
         db = database.get_db()
         filt: Dict[str, Any] = {"status": "pending"}
         if integration:
             filt["integration"] = integration
         return await db[ZOHO_SYNC_QUEUE_COLLECTION].find(filt, {"_id": 0}).sort("created_at", 1).to_list(limit)
 
+    async def claim_pending_queue(
+        self,
+        integration: Optional[str] = None,
+        limit: int = 50,
+        *,
+        worker_id: Optional[str] = None,
+        lease_seconds: int = ZOHO_QUEUE_LEASE_SECONDS,
+    ) -> List[Dict[str, Any]]:
+        """
+        Atomically claim up to ``limit`` queue items: pending|expired-processing → processing.
+        Two workers cannot claim the same item.
+        """
+        db = database.get_db()
+        claimer = worker_id or generate_queue_worker_id()
+        now = _now()
+        now_iso = now.isoformat()
+        lease_iso = (now + timedelta(seconds=max(30, int(lease_seconds)))).isoformat()
+        claimed: List[Dict[str, Any]] = []
+
+        for _ in range(max(1, int(limit))):
+            status_clause: Dict[str, Any] = {
+                "$or": [
+                    {"status": "pending"},
+                    {
+                        "status": "processing",
+                        "lease_expires_at": {"$lte": now_iso},
+                    },
+                ]
+            }
+            filt: Dict[str, Any] = status_clause
+            if integration:
+                filt = {"$and": [{"integration": integration}, status_clause]}
+
+            doc = await db[ZOHO_SYNC_QUEUE_COLLECTION].find_one_and_update(
+                filt,
+                {
+                    "$set": {
+                        "status": "processing",
+                        "claim_id": claimer,
+                        "claimed_at": now_iso,
+                        "lease_expires_at": lease_iso,
+                        "updated_at": now_iso,
+                    }
+                },
+                sort=[("created_at", 1)],
+                return_document=ReturnDocument.AFTER,
+            )
+            if not doc:
+                break
+            doc.pop("_id", None)
+            claimed.append(doc)
+        return claimed
+
     async def mark_queue_done(self, queue_id: str) -> None:
         db = database.get_db()
         await db[ZOHO_SYNC_QUEUE_COLLECTION].update_one(
             {"queue_id": queue_id},
-            {"$set": {"status": "completed", "updated_at": _now_iso()}},
+            {
+                "$set": {
+                    "status": "completed",
+                    "claim_id": None,
+                    "claimed_at": None,
+                    "lease_expires_at": None,
+                    "updated_at": _now_iso(),
+                }
+            },
         )
 
     async def mark_queue_failed(self, queue_id: str, error: str) -> None:
         db = database.get_db()
         await db[ZOHO_SYNC_QUEUE_COLLECTION].update_one(
             {"queue_id": queue_id},
-            {"$set": {"status": "failed", "error": error, "updated_at": _now_iso()}, "$inc": {"attempts": 1}},
+            {
+                "$set": {
+                    "status": "failed",
+                    "error": error,
+                    "claim_id": None,
+                    "claimed_at": None,
+                    "lease_expires_at": None,
+                    "updated_at": _now_iso(),
+                },
+                "$inc": {"attempts": 1},
+            },
         )
 
     async def get_dead_letter(self, dead_letter_id: str) -> Optional[Dict[str, Any]]:
@@ -200,31 +290,107 @@ class ZohoSyncStore:
             filt["integration"] = integration
         return await db[ZOHO_SYNC_RUNS_COLLECTION].find(filt, {"_id": 0}).sort("created_at", -1).to_list(limit)
 
-    async def store_external_key(
-        self, integration: str, pleerity_id: str, zoho_id: str, resource_type: str = "lead"
-    ) -> None:
-        db = database.get_db()
-        await db[ZOHO_EXTERNAL_KEYS_COLLECTION].update_one(
-            {"integration": integration, "pleerity_id": pleerity_id, "resource_type": resource_type},
-            {
-                "$set": {
-                    "integration": integration,
-                    "pleerity_id": pleerity_id,
-                    "zoho_id": zoho_id,
-                    "resource_type": resource_type,
-                    "updated_at": _now_iso(),
-                }
-            },
-            upsert=True,
-        )
-
-    async def get_external_key(self, integration: str, pleerity_id: str, resource_type: str = "lead") -> Optional[str]:
+    async def get_external_key(
+        self, integration: str, pleerity_id: str, resource_type: str = "lead"
+    ) -> Optional[str]:
         db = database.get_db()
         doc = await db[ZOHO_EXTERNAL_KEYS_COLLECTION].find_one(
             {"integration": integration, "pleerity_id": pleerity_id, "resource_type": resource_type},
             {"_id": 0},
         )
         return doc.get("zoho_id") if doc else None
+
+    async def get_pleerity_id_for_zoho(
+        self, integration: str, zoho_id: str, resource_type: str = "lead"
+    ) -> Optional[str]:
+        db = database.get_db()
+        doc = await db[ZOHO_EXTERNAL_KEYS_COLLECTION].find_one(
+            {"integration": integration, "zoho_id": zoho_id, "resource_type": resource_type},
+            {"_id": 0, "pleerity_id": 1},
+        )
+        return doc.get("pleerity_id") if doc else None
+
+    async def store_external_key(
+        self, integration: str, pleerity_id: str, zoho_id: str, resource_type: str = "lead"
+    ) -> str:
+        """
+        Bind pleerity_id → zoho_id with first-writer-wins semantics.
+
+        Returns the authoritative Zoho ID after binding (may differ if a concurrent
+        writer already won). Re-reads on DuplicateKeyError.
+        """
+        db = database.get_db()
+        existing = await self.get_external_key(integration, pleerity_id, resource_type)
+        if existing:
+            # Immutable after first bind — keep the winner.
+            return str(existing)
+
+        other = await self.get_pleerity_id_for_zoho(integration, zoho_id, resource_type)
+        if other and other != pleerity_id:
+            # Zoho record already bound to a different Pleerity lead — do not steal.
+            raise ValueError(
+                f"external_key_zoho_id_conflict:zoho={zoho_id}:owner={other}:attempt={pleerity_id}"
+            )
+
+        doc = {
+            "integration": integration,
+            "pleerity_id": pleerity_id,
+            "zoho_id": zoho_id,
+            "resource_type": resource_type,
+            "updated_at": _now_iso(),
+            "created_at": _now_iso(),
+        }
+        try:
+            await db[ZOHO_EXTERNAL_KEYS_COLLECTION].insert_one(doc)
+            return str(zoho_id)
+        except DuplicateKeyError:
+            winner = await self.get_external_key(integration, pleerity_id, resource_type)
+            if winner:
+                return str(winner)
+            # Lost on zoho_id uniqueness — another lead owns this CRM id.
+            owner = await self.get_pleerity_id_for_zoho(integration, zoho_id, resource_type)
+            raise ValueError(
+                f"external_key_duplicate_race:zoho={zoho_id}:owner={owner}:attempt={pleerity_id}"
+            )
+
+    async def ensure_indexes(self) -> Dict[str, Any]:
+        """Create unique indexes for external keys and supporting queue indexes."""
+        db = database.get_db()
+        results: Dict[str, Any] = {}
+        try:
+            await db[ZOHO_EXTERNAL_KEYS_COLLECTION].create_index(
+                [("integration", 1), ("pleerity_id", 1), ("resource_type", 1)],
+                unique=True,
+                name="ux_zoho_ext_integration_pleerity_resource",
+            )
+            results["pleerity_binding"] = "ok"
+        except Exception as exc:
+            logger.warning("zoho_external_keys pleerity unique index: %s", exc)
+            results["pleerity_binding"] = f"error:{exc}"
+        try:
+            await db[ZOHO_EXTERNAL_KEYS_COLLECTION].create_index(
+                [("integration", 1), ("zoho_id", 1), ("resource_type", 1)],
+                unique=True,
+                name="ux_zoho_ext_integration_zoho_resource",
+            )
+            results["zoho_binding"] = "ok"
+        except Exception as exc:
+            logger.warning("zoho_external_keys zoho unique index: %s", exc)
+            results["zoho_binding"] = f"error:{exc}"
+        try:
+            await db[ZOHO_SYNC_QUEUE_COLLECTION].create_index(
+                [("status", 1), ("integration", 1), ("created_at", 1)],
+                name="ix_zoho_queue_status_integration_created",
+            )
+            await db[ZOHO_SYNC_QUEUE_COLLECTION].create_index(
+                [("status", 1), ("lease_expires_at", 1)],
+                name="ix_zoho_queue_status_lease",
+            )
+            results["queue"] = "ok"
+        except Exception as exc:
+            logger.warning("zoho_sync_queue indexes: %s", exc)
+            results["queue"] = f"error:{exc}"
+        return results
 
 
 zoho_sync_store = ZohoSyncStore()

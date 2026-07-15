@@ -1,6 +1,8 @@
 """Zoho CRM one-way outbound sync adapter — governed Pleerity → Zoho replica."""
 from __future__ import annotations
 
+import json
+import re
 from typing import Any, Dict, Optional, Tuple
 
 from database import database
@@ -48,8 +50,115 @@ def _extract_zoho_record_id(data: Optional[Dict[str, Any]]) -> Optional[str]:
         candidate = details.get("id") or first.get("id")
         if candidate:
             return str(candidate)
-    # Search responses also use data[].id
     return None
+
+
+def _parse_zoho_error_payload(
+    err: Optional[str], err_body: Optional[Dict[str, Any]] = None
+) -> Optional[Dict[str, Any]]:
+    if isinstance(err_body, dict):
+        return err_body
+    if not err:
+        return None
+    start = err.find("{")
+    if start < 0:
+        return None
+    try:
+        parsed = json.loads(err[start:])
+        return parsed if isinstance(parsed, dict) else None
+    except Exception:
+        return None
+
+
+def extract_duplicate_crm_record_id(
+    err: Optional[str], err_body: Optional[Dict[str, Any]] = None
+) -> Optional[str]:
+    """Prefer Zoho DUPLICATE_DATA details.duplicate_record.id (avoids Search lag)."""
+    payload = _parse_zoho_error_payload(err, err_body)
+    if not payload:
+        if err:
+            m = re.search(r'"duplicate_record"\s*:\s*\{[^}]*"id"\s*:\s*"([0-9]+)"', err)
+            if m:
+                return m.group(1)
+        return None
+
+    rows = payload.get("data")
+    candidates = rows if isinstance(rows, list) else [payload]
+    for row in candidates:
+        if not isinstance(row, dict):
+            continue
+        details = row.get("details") if isinstance(row.get("details"), dict) else {}
+        dup = details.get("duplicate_record") if isinstance(details.get("duplicate_record"), dict) else {}
+        rid = dup.get("id") or details.get("id")
+        if rid:
+            return str(rid)
+    details = payload.get("details") if isinstance(payload.get("details"), dict) else {}
+    dup = details.get("duplicate_record") if isinstance(details.get("duplicate_record"), dict) else {}
+    if dup.get("id"):
+        return str(dup["id"])
+    return None
+
+
+def is_zoho_duplicate_data_error(err: Optional[str], err_body: Optional[Dict[str, Any]] = None) -> bool:
+    blob = f"{err or ''} {json.dumps(err_body) if isinstance(err_body, dict) else ''}".upper()
+    return "DUPLICATE_DATA" in blob or ("DUPLICATE" in blob and "DATA" in blob) or "DUPLICATE" in blob
+
+
+async def _bind_and_update_after_duplicate(
+    *,
+    lead_id: str,
+    zoho_id: str,
+    module: str,
+    zoho_body: Dict[str, Any],
+    sync_id: str,
+    operation: str,
+    identity_source: str,
+) -> SyncResult:
+    try:
+        bound = await zoho_sync_store.store_external_key("crm", str(lead_id), str(zoho_id))
+    except ValueError as exc:
+        return SyncResult(
+            success=False,
+            sync_id=sync_id,
+            integration="crm",
+            operation=operation,
+            status=SyncStatus.FAILED,
+            message=str(exc),
+        )
+    put_ok, _, put_err = await zoho_http_client.request(
+        "PUT",
+        f"/crm/v6/{module}/{bound}",
+        integration="crm",
+        json_body=zoho_body,
+    )
+    if put_ok:
+        summary = _result_summary(
+            lead_id=str(lead_id),
+            zoho_id=str(bound),
+            method="PUT",
+            identity_source=identity_source,
+            duplicate_create_prevented=True,
+            operation=operation,
+            external_key_persisted=True,
+        )
+        return SyncResult(
+            success=True,
+            sync_id=sync_id,
+            integration="crm",
+            operation=operation,
+            status=SyncStatus.SUCCESS,
+            message="crm_outbound_bound_after_duplicate",
+            external_id=str(bound),
+            metadata={"result_summary": summary},
+        )
+    return SyncResult(
+        success=False,
+        sync_id=sync_id,
+        integration="crm",
+        operation=operation,
+        status=SyncStatus.FAILED,
+        message=put_err or "crm_duplicate_recovery_update_failed",
+    )
 
 
 def build_pleerity_lead_id_search_criteria(lead_id: str) -> str:
@@ -225,8 +334,19 @@ class ZohoCrmAdapter(BaseZohoAdapter):
                 existing_zoho_id = looked_up
                 identity_source = "pleerity_lead_id_lookup"
                 duplicate_create_prevented = True
-                await zoho_sync_store.store_external_key("crm", str(lead_id), str(looked_up))
-
+                try:
+                    existing_zoho_id = await zoho_sync_store.store_external_key(
+                        "crm", str(lead_id), str(looked_up)
+                    )
+                except ValueError as exc:
+                    return SyncResult(
+                        success=False,
+                        sync_id=sync_id,
+                        integration=self.integration,
+                        operation=operation,
+                        status=SyncStatus.FAILED,
+                        message=str(exc),
+                    )
         if existing_zoho_id:
             path = f"/crm/v6/{module}/{existing_zoho_id}"
             method = "PUT"
@@ -252,7 +372,10 @@ class ZohoCrmAdapter(BaseZohoAdapter):
                     },
                 )
             # Confirm key remains persisted (immutable after first bind).
-            await zoho_sync_store.store_external_key("crm", str(lead_id), str(existing_zoho_id))
+            try:
+                await zoho_sync_store.store_external_key("crm", str(lead_id), str(existing_zoho_id))
+            except ValueError:
+                pass
             summary = _result_summary(
                 lead_id=str(lead_id),
                 zoho_id=str(existing_zoho_id),
@@ -279,45 +402,50 @@ class ZohoCrmAdapter(BaseZohoAdapter):
             method, path, integration=self.integration, json_body=zoho_body
         )
         if not ok:
-            # Recoverable duplicate conflict: bind via Pleerity_Lead_ID lookup then update.
-            err_l = (err or "").lower()
-            if "duplicate" in err_l:
+            if is_zoho_duplicate_data_error(err, data if isinstance(data, dict) else None):
+                # 1) Prefer duplicate_record.id (deterministic; avoids Search lag)
+                dup_id = extract_duplicate_crm_record_id(
+                    err, data if isinstance(data, dict) else None
+                )
+                if dup_id:
+                    return await _bind_and_update_after_duplicate(
+                        lead_id=str(lead_id),
+                        zoho_id=str(dup_id),
+                        module=module,
+                        zoho_body=zoho_body,
+                        sync_id=sync_id,
+                        operation=operation,
+                        identity_source="duplicate_record_id",
+                    )
+                # 2) Fall back to Pleerity_Lead_ID Search only when id absent
                 looked_up, lookup_err = await lookup_zoho_id_by_pleerity_lead_id(str(lead_id))
                 if looked_up and not lookup_err:
-                    await zoho_sync_store.store_external_key("crm", str(lead_id), str(looked_up))
-                    put_ok, _, put_err = await zoho_http_client.request(
-                        "PUT",
-                        f"/crm/v6/{module}/{looked_up}",
-                        integration=self.integration,
-                        json_body=zoho_body,
-                    )
-                    if put_ok:
-                        summary = _result_summary(
-                            lead_id=str(lead_id),
-                            zoho_id=str(looked_up),
-                            method="PUT",
-                            identity_source="duplicate_conflict_lookup",
-                            duplicate_create_prevented=True,
-                            operation=operation,
-                        )
-                        return SyncResult(
-                            success=True,
-                            sync_id=sync_id,
-                            integration=self.integration,
-                            operation=operation,
-                            status=SyncStatus.SUCCESS,
-                            message="crm_outbound_bound_after_duplicate",
-                            external_id=str(looked_up),
-                            metadata={"result_summary": summary},
-                        )
-                    return SyncResult(
-                        success=False,
+                    return await _bind_and_update_after_duplicate(
+                        lead_id=str(lead_id),
+                        zoho_id=str(looked_up),
+                        module=module,
+                        zoho_body=zoho_body,
                         sync_id=sync_id,
-                        integration=self.integration,
                         operation=operation,
-                        status=SyncStatus.FAILED,
-                        message=put_err or "crm_duplicate_recovery_update_failed",
+                        identity_source="duplicate_conflict_lookup",
                     )
+                return SyncResult(
+                    success=False,
+                    sync_id=sync_id,
+                    integration=self.integration,
+                    operation=operation,
+                    status=SyncStatus.FAILED,
+                    message=lookup_err or err or "crm_duplicate_unresolved_no_record_id",
+                    metadata={
+                        "result_summary": _result_summary(
+                            lead_id=str(lead_id),
+                            zoho_id=None,
+                            method=method,
+                            identity_source="create",
+                            duplicate_unresolved=True,
+                        )
+                    },
+                )
             return SyncResult(
                 success=False,
                 sync_id=sync_id,
@@ -356,7 +484,17 @@ class ZohoCrmAdapter(BaseZohoAdapter):
                 },
             )
 
-        await zoho_sync_store.store_external_key("crm", str(lead_id), str(zoho_id))
+        try:
+            zoho_id = await zoho_sync_store.store_external_key("crm", str(lead_id), str(zoho_id))
+        except ValueError as exc:
+            return SyncResult(
+                success=False,
+                sync_id=sync_id,
+                integration=self.integration,
+                operation=operation,
+                status=SyncStatus.FAILED,
+                message=str(exc),
+            )
         summary = _result_summary(
             lead_id=str(lead_id),
             zoho_id=str(zoho_id),

@@ -87,7 +87,14 @@ class ZohoHttpClient:
                     zoho_circuit_breaker.record_failure(integration)
                 msg = f"Zoho API {response.status_code}: {response.text[:300]}"
                 logger.warning(msg)
-                return False, None, msg
+                err_body: Optional[Dict[str, Any]] = None
+                try:
+                    parsed = response.json()
+                    if isinstance(parsed, dict):
+                        err_body = parsed
+                except Exception:
+                    err_body = None
+                return False, err_body, msg
         except httpx.TimeoutException:
             zoho_circuit_breaker.record_failure(integration)
             return False, None, "timeout"
