@@ -73,6 +73,11 @@ def is_idle_success_result(result: Optional[Dict[str, Any]]) -> bool:
     return False
 
 
+def is_idle_skip_job(job_id: str) -> bool:
+    """Jobs that may omit job_runs on governed idle / always-skip ticks."""
+    return job_id in ALWAYS_SKIP_JOB_RUN_PERSIST or job_id in IDLE_SKIP_JOB_RUN_PERSIST
+
+
 def should_skip_full_persist(job_id: str, run_type: str, result: Dict[str, Any]) -> bool:
     if not idle_skip_enabled():
         return False
@@ -83,6 +88,26 @@ def should_skip_full_persist(job_id: str, run_type: str, result: Dict[str, Any])
     if job_id in IDLE_SKIP_JOB_RUN_PERSIST and is_idle_success_result(result):
         return True
     return False
+
+
+async def get_poll_heartbeat_tick(db: Any, job_id: str) -> Optional[str]:
+    """Return last_tick_at for an idle-skip / always-skip job, if present."""
+    if db is None or not job_id:
+        return None
+    try:
+        doc = await db[COLLECTION_POLL_HEARTBEATS].find_one(
+            {"_id": job_id},
+            {"_id": 0, "last_tick_at": 1},
+        )
+        if not doc:
+            doc = await db[COLLECTION_POLL_HEARTBEATS].find_one(
+                {"job_name": job_id},
+                {"_id": 0, "last_tick_at": 1},
+            )
+        tick = (doc or {}).get("last_tick_at")
+        return str(tick) if tick else None
+    except Exception:
+        return None
 
 
 async def touch_job_poll_heartbeat(

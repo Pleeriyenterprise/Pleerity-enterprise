@@ -90,6 +90,34 @@ def test_scheduler_heartbeat_freshness_authority():
     assert map_platform_status(missing) == "unhealthy"
 
 
+def test_idle_skip_poll_tick_keeps_job_healthy():
+    from routes.observability import _compute_job_state_and_reason
+    from services.job_schedule_registry import get_job_entry
+
+    now = datetime(2026, 8, 6, 18, 0, tzinfo=timezone.utc)
+    entry = get_job_entry("compliance_recalc_worker")
+    detail = {
+        "last_completed": (now - timedelta(seconds=20)).isoformat(),
+        "last_success": (now - timedelta(hours=3)).isoformat(),
+        "last_run_status": "success",
+        "poll_persist_skipped": True,
+        "outcome_metrics": {"outcome_kind": "CONTENTION_ONLY"},
+    }
+    state, _reason = _compute_job_state_and_reason(
+        "compliance_recalc_worker", detail, now, entry, heartbeat_stale=False
+    )
+    assert state == "healthy"
+
+    hb_state, _ = _compute_job_state_and_reason(
+        "scheduler_heartbeat",
+        {"last_completed": now.isoformat(), "poll_persist_skipped": True},
+        now,
+        get_job_entry("scheduler_heartbeat"),
+        heartbeat_stale=False,
+    )
+    assert hb_state == "healthy"
+
+
 def test_retention_disabled_by_default(monkeypatch):
     monkeypatch.delenv("MONGO_OPERATIONAL_RETENTION_PURGE_ENABLED", raising=False)
     from services.operational_retention_purge import retention_purge_enabled

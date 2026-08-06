@@ -455,13 +455,11 @@ def _compute_job_state_and_reason(
     last_status = (detail.get("last_outcome_status") or "").strip().lower()
     outcome_metrics = detail.get("outcome_metrics") or {}
 
-    # scheduler_heartbeat: state must reflect heartbeat collection staleness, not just last job run
+    # scheduler_heartbeat: scheduler_heartbeat collection is authoritative; job_runs are idle-skipped.
     if job_id == "scheduler_heartbeat":
         if heartbeat_stale:
             return (JOB_STATE_FAILED, "Scheduler heartbeat is stale; scheduler may be down.")
-        if last_success:
-            return (JOB_STATE_HEALTHY, JOB_STATE_REASONS[JOB_STATE_HEALTHY])
-        return (JOB_STATE_NEVER_RAN, JOB_STATE_REASONS[JOB_STATE_NEVER_RAN])
+        return (JOB_STATE_HEALTHY, JOB_STATE_REASONS[JOB_STATE_HEALTHY])
 
     if not last_completed:
         # Startup-aware: if next scheduled run is still in the future, not yet due; else overdue
@@ -476,8 +474,12 @@ def _compute_job_state_and_reason(
     if last_run_status == "degraded":
         return (JOB_STATE_DEGRADED, JOB_STATE_REASONS[JOB_STATE_DEGRADED])
 
-    # Success path: check missed (last success/degraded too old)
+    # Success path: check missed (last success/degraded too old).
+    # Idle-skip jobs update last_completed via job_poll_heartbeats without refreshing last_success.
     last_ok = last_success or last_degraded
+    if detail.get("poll_persist_skipped") and last_completed:
+        if last_ok is None or last_completed >= last_ok:
+            last_ok = last_completed
     if registry_entry and last_ok:
         delay_minutes = (now - last_ok).total_seconds() / 60
         if delay_minutes > registry_entry.max_delay_minutes:
