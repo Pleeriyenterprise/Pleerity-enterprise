@@ -1,0 +1,2205 @@
+{
+  "database": "pleerity_production",
+  "collection_count": 224,
+  "sum_top_all_size_plus_index": 1915228493,
+  "top20": [
+    {
+      "name": "operational_evidence_events",
+      "count": 495814,
+      "size_bytes": 886065070,
+      "storage_size_bytes": 156930048,
+      "total_index_size_bytes": 335982592,
+      "total_size_plus_index_bytes": 1222047662,
+      "nindexes": 21
+    },
+    {
+      "name": "job_runs",
+      "count": 611973,
+      "size_bytes": 382609412,
+      "storage_size_bytes": 55181312,
+      "total_index_size_bytes": 111136768,
+      "total_size_plus_index_bytes": 493746180,
+      "nindexes": 6
+    },
+    {
+      "name": "operational_evidence_executions",
+      "count": 245147,
+      "size_bytes": 122716676,
+      "storage_size_bytes": 49291264,
+      "total_index_size_bytes": 27017216,
+      "total_size_plus_index_bytes": 149733892,
+      "nindexes": 3
+    },
+    {
+      "name": "security_events",
+      "count": 16162,
+      "size_bytes": 5468444,
+      "storage_size_bytes": 2142208,
+      "total_index_size_bytes": 5230592,
+      "total_size_plus_index_bytes": 10699036,
+      "nindexes": 6
+    },
+    {
+      "name": "message_logs",
+      "count": 1370,
+      "size_bytes": 6403083,
+      "storage_size_bytes": 1142784,
+      "total_index_size_bytes": 688128,
+      "total_size_plus_index_bytes": 7091211,
+      "nindexes": 9
+    },
+    {
+      "name": "audit_logs",
+      "count": 5375,
+      "size_bytes": 3022481,
+      "storage_size_bytes": 925696,
+      "total_index_size_bytes": 1073152,
+      "total_size_plus_index_bytes": 4095633,
+      "nindexes": 5
+    },
+    {
+      "name": "reminder_evaluation_log",
+      "count": 1918,
+      "size_bytes": 1133520,
+      "storage_size_bytes": 262144,
+      "total_index_size_bytes": 458752,
+      "total_size_plus_index_bytes": 1592272,
+      "nindexes": 4
+    },
+    {
+      "name": "score_ledger_events",
+      "count": 1033,
+      "size_bytes": 872545,
+      "storage_size_bytes": 172032,
+      "total_index_size_bytes": 372736,
+      "total_size_plus_index_bytes": 1245281,
+      "nindexes": 4
+    },
+    {
+      "name": "lead_events",
+      "count": 1222,
+      "size_bytes": 544367,
+      "storage_size_bytes": 266240,
+      "total_index_size_bytes": 659456,
+      "total_size_plus_index_bytes": 1203823,
+      "nindexes": 6
+    },
+    {
+      "name": "compliance_recalc_queue",
+      "count": 1013,
+      "size_bytes": 656439,
+      "storage_size_bytes": 188416,
+      "total_index_size_bytes": 331776,
+      "total_size_plus_index_bytes": 988215,
+      "nindexes": 5
+    },
+    {
+      "name": "property_compliance_score_history",
+      "count": 1043,
+      "size_bytes": 519526,
+      "storage_size_bytes": 139264,
+      "total_index_size_bytes": 258048,
+      "total_size_plus_index_bytes": 777574,
+      "nindexes": 3
+    },
+    {
+      "name": "requirements",
+      "count": 110,
+      "size_bytes": 272291,
+      "storage_size_bytes": 131072,
+      "total_index_size_bytes": 503808,
+      "total_size_plus_index_bytes": 776099,
+      "nindexes": 13
+    },
+    {
+      "name": "incidents",
+      "count": 132,
+      "size_bytes": 432223,
+      "storage_size_bytes": 184320,
+      "total_index_size_bytes": 258048,
+      "total_size_plus_index_bytes": 690271,
+      "nindexes": 7
+    },
+    {
+      "name": "order_files.chunks",
+      "count": 6,
+      "size_bytes": 571309,
+      "storage_size_bytes": 688128,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 645037,
+      "nindexes": 2
+    },
+    {
+      "name": "score_events",
+      "count": 1047,
+      "size_bytes": 469834,
+      "storage_size_bytes": 114688,
+      "total_index_size_bytes": 167936,
+      "total_size_plus_index_bytes": 637770,
+      "nindexes": 3
+    },
+    {
+      "name": "clients",
+      "count": 6,
+      "size_bytes": 39924,
+      "storage_size_bytes": 53248,
+      "total_index_size_bytes": 552960,
+      "total_size_plus_index_bytes": 592884,
+      "nindexes": 15
+    },
+    {
+      "name": "consent_events",
+      "count": 342,
+      "size_bytes": 225077,
+      "storage_size_bytes": 98304,
+      "total_index_size_bytes": 327680,
+      "total_size_plus_index_bytes": 552757,
+      "nindexes": 8
+    },
+    {
+      "name": "score_change_log",
+      "count": 1043,
+      "size_bytes": 434955,
+      "storage_size_bytes": 131072,
+      "total_index_size_bytes": 61440,
+      "total_size_plus_index_bytes": 496395,
+      "nindexes": 1
+    },
+    {
+      "name": "consent_state",
+      "count": 314,
+      "size_bytes": 135569,
+      "storage_size_bytes": 77824,
+      "total_index_size_bytes": 335872,
+      "total_size_plus_index_bytes": 471441,
+      "nindexes": 8
+    },
+    {
+      "name": "work_orders",
+      "count": 1,
+      "size_bytes": 2403,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 430080,
+      "total_size_plus_index_bytes": 432483,
+      "nindexes": 13
+    }
+  ],
+  "all_ranked": [
+    {
+      "name": "operational_evidence_events",
+      "count": 495814,
+      "size_bytes": 886065070,
+      "storage_size_bytes": 156930048,
+      "total_index_size_bytes": 335982592,
+      "total_size_plus_index_bytes": 1222047662,
+      "nindexes": 21
+    },
+    {
+      "name": "job_runs",
+      "count": 611973,
+      "size_bytes": 382609412,
+      "storage_size_bytes": 55181312,
+      "total_index_size_bytes": 111136768,
+      "total_size_plus_index_bytes": 493746180,
+      "nindexes": 6
+    },
+    {
+      "name": "operational_evidence_executions",
+      "count": 245147,
+      "size_bytes": 122716676,
+      "storage_size_bytes": 49291264,
+      "total_index_size_bytes": 27017216,
+      "total_size_plus_index_bytes": 149733892,
+      "nindexes": 3
+    },
+    {
+      "name": "security_events",
+      "count": 16162,
+      "size_bytes": 5468444,
+      "storage_size_bytes": 2142208,
+      "total_index_size_bytes": 5230592,
+      "total_size_plus_index_bytes": 10699036,
+      "nindexes": 6
+    },
+    {
+      "name": "message_logs",
+      "count": 1370,
+      "size_bytes": 6403083,
+      "storage_size_bytes": 1142784,
+      "total_index_size_bytes": 688128,
+      "total_size_plus_index_bytes": 7091211,
+      "nindexes": 9
+    },
+    {
+      "name": "audit_logs",
+      "count": 5375,
+      "size_bytes": 3022481,
+      "storage_size_bytes": 925696,
+      "total_index_size_bytes": 1073152,
+      "total_size_plus_index_bytes": 4095633,
+      "nindexes": 5
+    },
+    {
+      "name": "reminder_evaluation_log",
+      "count": 1918,
+      "size_bytes": 1133520,
+      "storage_size_bytes": 262144,
+      "total_index_size_bytes": 458752,
+      "total_size_plus_index_bytes": 1592272,
+      "nindexes": 4
+    },
+    {
+      "name": "score_ledger_events",
+      "count": 1033,
+      "size_bytes": 872545,
+      "storage_size_bytes": 172032,
+      "total_index_size_bytes": 372736,
+      "total_size_plus_index_bytes": 1245281,
+      "nindexes": 4
+    },
+    {
+      "name": "lead_events",
+      "count": 1222,
+      "size_bytes": 544367,
+      "storage_size_bytes": 266240,
+      "total_index_size_bytes": 659456,
+      "total_size_plus_index_bytes": 1203823,
+      "nindexes": 6
+    },
+    {
+      "name": "compliance_recalc_queue",
+      "count": 1013,
+      "size_bytes": 656439,
+      "storage_size_bytes": 188416,
+      "total_index_size_bytes": 331776,
+      "total_size_plus_index_bytes": 988215,
+      "nindexes": 5
+    },
+    {
+      "name": "property_compliance_score_history",
+      "count": 1043,
+      "size_bytes": 519526,
+      "storage_size_bytes": 139264,
+      "total_index_size_bytes": 258048,
+      "total_size_plus_index_bytes": 777574,
+      "nindexes": 3
+    },
+    {
+      "name": "requirements",
+      "count": 110,
+      "size_bytes": 272291,
+      "storage_size_bytes": 131072,
+      "total_index_size_bytes": 503808,
+      "total_size_plus_index_bytes": 776099,
+      "nindexes": 13
+    },
+    {
+      "name": "incidents",
+      "count": 132,
+      "size_bytes": 432223,
+      "storage_size_bytes": 184320,
+      "total_index_size_bytes": 258048,
+      "total_size_plus_index_bytes": 690271,
+      "nindexes": 7
+    },
+    {
+      "name": "order_files.chunks",
+      "count": 6,
+      "size_bytes": 571309,
+      "storage_size_bytes": 688128,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 645037,
+      "nindexes": 2
+    },
+    {
+      "name": "score_events",
+      "count": 1047,
+      "size_bytes": 469834,
+      "storage_size_bytes": 114688,
+      "total_index_size_bytes": 167936,
+      "total_size_plus_index_bytes": 637770,
+      "nindexes": 3
+    },
+    {
+      "name": "clients",
+      "count": 6,
+      "size_bytes": 39924,
+      "storage_size_bytes": 53248,
+      "total_index_size_bytes": 552960,
+      "total_size_plus_index_bytes": 592884,
+      "nindexes": 15
+    },
+    {
+      "name": "consent_events",
+      "count": 342,
+      "size_bytes": 225077,
+      "storage_size_bytes": 98304,
+      "total_index_size_bytes": 327680,
+      "total_size_plus_index_bytes": 552757,
+      "nindexes": 8
+    },
+    {
+      "name": "score_change_log",
+      "count": 1043,
+      "size_bytes": 434955,
+      "storage_size_bytes": 131072,
+      "total_index_size_bytes": 61440,
+      "total_size_plus_index_bytes": 496395,
+      "nindexes": 1
+    },
+    {
+      "name": "consent_state",
+      "count": 314,
+      "size_bytes": 135569,
+      "storage_size_bytes": 77824,
+      "total_index_size_bytes": 335872,
+      "total_size_plus_index_bytes": 471441,
+      "nindexes": 8
+    },
+    {
+      "name": "work_orders",
+      "count": 1,
+      "size_bytes": 2403,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 430080,
+      "total_size_plus_index_bytes": 432483,
+      "nindexes": 13
+    },
+    {
+      "name": "compliance_gaps",
+      "count": 64,
+      "size_bytes": 123963,
+      "storage_size_bytes": 69632,
+      "total_index_size_bytes": 303104,
+      "total_size_plus_index_bytes": 427067,
+      "nindexes": 8
+    },
+    {
+      "name": "compliance_score_history",
+      "count": 193,
+      "size_bytes": 265391,
+      "storage_size_bytes": 81920,
+      "total_index_size_bytes": 110592,
+      "total_size_plus_index_bytes": 375983,
+      "nindexes": 3
+    },
+    {
+      "name": "leads",
+      "count": 4,
+      "size_bytes": 5621,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 368640,
+      "total_size_plus_index_bytes": 374261,
+      "nindexes": 10
+    },
+    {
+      "name": "workflow_nudge_metrics",
+      "count": 1064,
+      "size_bytes": 296856,
+      "storage_size_bytes": 155648,
+      "total_index_size_bytes": 61440,
+      "total_size_plus_index_bytes": 358296,
+      "nindexes": 1
+    },
+    {
+      "name": "properties",
+      "count": 11,
+      "size_bytes": 92097,
+      "storage_size_bytes": 61440,
+      "total_index_size_bytes": 258048,
+      "total_size_plus_index_bytes": 350145,
+      "nindexes": 7
+    },
+    {
+      "name": "compliance_audit_packs.chunks",
+      "count": 1,
+      "size_bytes": 251897,
+      "storage_size_bytes": 536576,
+      "total_index_size_bytes": 40960,
+      "total_size_plus_index_bytes": 292857,
+      "nindexes": 2
+    },
+    {
+      "name": "property_score_daily",
+      "count": 409,
+      "size_bytes": 105522,
+      "storage_size_bytes": 69632,
+      "total_index_size_bytes": 180224,
+      "total_size_plus_index_bytes": 285746,
+      "nindexes": 4
+    },
+    {
+      "name": "governed_report_pdf_artifacts.chunks",
+      "count": 2,
+      "size_bytes": 212002,
+      "storage_size_bytes": 352256,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 285730,
+      "nindexes": 2
+    },
+    {
+      "name": "documents",
+      "count": 30,
+      "size_bytes": 131338,
+      "storage_size_bytes": 86016,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 278794,
+      "nindexes": 4
+    },
+    {
+      "name": "enablement_actions",
+      "count": 66,
+      "size_bytes": 41882,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 221184,
+      "total_size_plus_index_bytes": 263066,
+      "nindexes": 6
+    },
+    {
+      "name": "product_analytics_events",
+      "count": 269,
+      "size_bytes": 108344,
+      "storage_size_bytes": 61440,
+      "total_index_size_bytes": 139264,
+      "total_size_plus_index_bytes": 247608,
+      "nindexes": 3
+    },
+    {
+      "name": "compliance_requirement_registry_published_history",
+      "count": 4,
+      "size_bytes": 132670,
+      "storage_size_bytes": 86016,
+      "total_index_size_bytes": 110592,
+      "total_size_plus_index_bytes": 243262,
+      "nindexes": 3
+    },
+    {
+      "name": "analytics_events",
+      "count": 81,
+      "size_bytes": 17600,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 221184,
+      "total_size_plus_index_bytes": 238784,
+      "nindexes": 6
+    },
+    {
+      "name": "maintenance_issues",
+      "count": 10,
+      "size_bytes": 11856,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 221184,
+      "total_size_plus_index_bytes": 233040,
+      "nindexes": 6
+    },
+    {
+      "name": "reminder_item_state",
+      "count": 83,
+      "size_bytes": 56217,
+      "storage_size_bytes": 61440,
+      "total_index_size_bytes": 172032,
+      "total_size_plus_index_bytes": 228249,
+      "nindexes": 4
+    },
+    {
+      "name": "lead_sequence_state",
+      "count": 12,
+      "size_bytes": 6901,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 221184,
+      "total_size_plus_index_bytes": 228085,
+      "nindexes": 6
+    },
+    {
+      "name": "risk_leads",
+      "count": 4,
+      "size_bytes": 6720,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 221184,
+      "total_size_plus_index_bytes": 227904,
+      "nindexes": 6
+    },
+    {
+      "name": "compliance_evidence_records",
+      "count": 67,
+      "size_bytes": 79430,
+      "storage_size_bytes": 77824,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 226886,
+      "nindexes": 4
+    },
+    {
+      "name": "pilot_invite_redemptions",
+      "count": 5,
+      "size_bytes": 3598,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 221184,
+      "total_size_plus_index_bytes": 224782,
+      "nindexes": 6
+    },
+    {
+      "name": "portal_users",
+      "count": 6,
+      "size_bytes": 3252,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 221184,
+      "total_size_plus_index_bytes": 224436,
+      "nindexes": 6
+    },
+    {
+      "name": "risk_signals",
+      "count": 3,
+      "size_bytes": 2266,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 221184,
+      "total_size_plus_index_bytes": 223450,
+      "nindexes": 6
+    },
+    {
+      "name": "issued_agreements",
+      "count": 5,
+      "size_bytes": 38892,
+      "storage_size_bytes": 53248,
+      "total_index_size_bytes": 184320,
+      "total_size_plus_index_bytes": 223212,
+      "nindexes": 5
+    },
+    {
+      "name": "compliance_activity_log",
+      "count": 71,
+      "size_bytes": 60974,
+      "storage_size_bytes": 53248,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 208430,
+      "nindexes": 4
+    },
+    {
+      "name": "agreement_acceptances",
+      "count": 6,
+      "size_bytes": 52587,
+      "storage_size_bytes": 53248,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 200043,
+      "nindexes": 4
+    },
+    {
+      "name": "lead_sequence_sends",
+      "count": 22,
+      "size_bytes": 13953,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 184320,
+      "total_size_plus_index_bytes": 198273,
+      "nindexes": 5
+    },
+    {
+      "name": "clearform_document_types",
+      "count": 8,
+      "size_bytes": 13400,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 184320,
+      "total_size_plus_index_bytes": 197720,
+      "nindexes": 5
+    },
+    {
+      "name": "service_catalogue_v2",
+      "count": 13,
+      "size_bytes": 78120,
+      "storage_size_bytes": 73728,
+      "total_index_size_bytes": 118784,
+      "total_size_plus_index_bytes": 196904,
+      "nindexes": 5
+    },
+    {
+      "name": "enablement_events",
+      "count": 30,
+      "size_bytes": 10498,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 184320,
+      "total_size_plus_index_bytes": 194818,
+      "nindexes": 5
+    },
+    {
+      "name": "subscription_operational_events",
+      "count": 9,
+      "size_bytes": 9241,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 184320,
+      "total_size_plus_index_bytes": 193561,
+      "nindexes": 5
+    },
+    {
+      "name": "provisioning_jobs",
+      "count": 6,
+      "size_bytes": 4218,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 184320,
+      "total_size_plus_index_bytes": 188538,
+      "nindexes": 5
+    },
+    {
+      "name": "security_incidents",
+      "count": 5,
+      "size_bytes": 2138,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 184320,
+      "total_size_plus_index_bytes": 186458,
+      "nindexes": 5
+    },
+    {
+      "name": "asset_events",
+      "count": 3,
+      "size_bytes": 1398,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 184320,
+      "total_size_plus_index_bytes": 185718,
+      "nindexes": 5
+    },
+    {
+      "name": "kb_article_feedback",
+      "count": 2,
+      "size_bytes": 1065,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 184320,
+      "total_size_plus_index_bytes": 185385,
+      "nindexes": 5
+    },
+    {
+      "name": "pilot_lifecycle_audit",
+      "count": 7,
+      "size_bytes": 24784,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 172240,
+      "nindexes": 4
+    },
+    {
+      "name": "digest_logs",
+      "count": 5,
+      "size_bytes": 57589,
+      "storage_size_bytes": 61440,
+      "total_index_size_bytes": 110592,
+      "total_size_plus_index_bytes": 168181,
+      "nindexes": 3
+    },
+    {
+      "name": "communication_messages",
+      "count": 1,
+      "size_bytes": 1188,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 159744,
+      "total_size_plus_index_bytes": 160932,
+      "nindexes": 7
+    },
+    {
+      "name": "client_notifications",
+      "count": 30,
+      "size_bytes": 11819,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 159275,
+      "nindexes": 4
+    },
+    {
+      "name": "enablement_assistant_context",
+      "count": 16,
+      "size_bytes": 6118,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 153574,
+      "nindexes": 4
+    },
+    {
+      "name": "subscription_payment_ledger",
+      "count": 6,
+      "size_bytes": 5646,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 153102,
+      "nindexes": 4
+    },
+    {
+      "name": "property_assets",
+      "count": 12,
+      "size_bytes": 5154,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 152610,
+      "nindexes": 4
+    },
+    {
+      "name": "pilot_redeemed_campaign_snapshots",
+      "count": 5,
+      "size_bytes": 4813,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 152269,
+      "nindexes": 4
+    },
+    {
+      "name": "onboarding_recovery_audit",
+      "count": 7,
+      "size_bytes": 4385,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 151841,
+      "nindexes": 4
+    },
+    {
+      "name": "pilot_invite_validation_attempts",
+      "count": 13,
+      "size_bytes": 3923,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 151379,
+      "nindexes": 4
+    },
+    {
+      "name": "enablement_templates",
+      "count": 16,
+      "size_bytes": 14232,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 135168,
+      "total_size_plus_index_bytes": 149400,
+      "nindexes": 5
+    },
+    {
+      "name": "compliance_sla_alerts",
+      "count": 4,
+      "size_bytes": 1796,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 149252,
+      "nindexes": 4
+    },
+    {
+      "name": "onboarding_continuation_tokens",
+      "count": 2,
+      "size_bytes": 1430,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 148886,
+      "nindexes": 4
+    },
+    {
+      "name": "failed_notifications",
+      "count": 2,
+      "size_bytes": 1002,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 147456,
+      "total_size_plus_index_bytes": 148458,
+      "nindexes": 4
+    },
+    {
+      "name": "scheduled_jobs",
+      "count": 52,
+      "size_bytes": 58167,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 131895,
+      "nindexes": 2
+    },
+    {
+      "name": "cms_pages",
+      "count": 16,
+      "size_bytes": 15498,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 114688,
+      "total_size_plus_index_bytes": 130186,
+      "nindexes": 4
+    },
+    {
+      "name": "prompt_templates",
+      "count": 1,
+      "size_bytes": 1006,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 122880,
+      "total_size_plus_index_bytes": 123886,
+      "nindexes": 6
+    },
+    {
+      "name": "requirements_catalog",
+      "count": 15,
+      "size_bytes": 6706,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 114688,
+      "total_size_plus_index_bytes": 121394,
+      "nindexes": 4
+    },
+    {
+      "name": "onboarding_email_queue",
+      "count": 40,
+      "size_bytes": 10050,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 110592,
+      "total_size_plus_index_bytes": 120642,
+      "nindexes": 3
+    },
+    {
+      "name": "in_app_notifications",
+      "count": 132,
+      "size_bytes": 81454,
+      "storage_size_bytes": 65536,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 118318,
+      "nindexes": 1
+    },
+    {
+      "name": "risk_signal_regen_queue",
+      "count": 3,
+      "size_bytes": 5947,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 110592,
+      "total_size_plus_index_bytes": 116539,
+      "nindexes": 3
+    },
+    {
+      "name": "admin_confirmation_tokens",
+      "count": 14,
+      "size_bytes": 4865,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 110592,
+      "total_size_plus_index_bytes": 115457,
+      "nindexes": 3
+    },
+    {
+      "name": "lead_audit_logs",
+      "count": 14,
+      "size_bytes": 4512,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 110592,
+      "total_size_plus_index_bytes": 115104,
+      "nindexes": 3
+    },
+    {
+      "name": "assistant_messages",
+      "count": 4,
+      "size_bytes": 4051,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 110592,
+      "total_size_plus_index_bytes": 114643,
+      "nindexes": 3
+    },
+    {
+      "name": "stripe_checkout_invoices",
+      "count": 6,
+      "size_bytes": 3080,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 110592,
+      "total_size_plus_index_bytes": 113672,
+      "nindexes": 3
+    },
+    {
+      "name": "predictive_insights_cache",
+      "count": 3,
+      "size_bytes": 2205,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 110592,
+      "total_size_plus_index_bytes": 112797,
+      "nindexes": 3
+    },
+    {
+      "name": "clearform_document_categories",
+      "count": 3,
+      "size_bytes": 1803,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 110592,
+      "total_size_plus_index_bytes": 112395,
+      "nindexes": 3
+    },
+    {
+      "name": "pilot_invite_codes",
+      "count": 1,
+      "size_bytes": 1328,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 110592,
+      "total_size_plus_index_bytes": 111920,
+      "nindexes": 3
+    },
+    {
+      "name": "provisioning_status",
+      "count": 4,
+      "size_bytes": 998,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 110592,
+      "total_size_plus_index_bytes": 111590,
+      "nindexes": 3
+    },
+    {
+      "name": "notification_templates",
+      "count": 90,
+      "size_bytes": 29214,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 102942,
+      "nindexes": 2
+    },
+    {
+      "name": "stripe_events",
+      "count": 51,
+      "size_bytes": 26721,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 100449,
+      "nindexes": 2
+    },
+    {
+      "name": "compliance_requirement_registry_drafts",
+      "count": 8,
+      "size_bytes": 17933,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 81920,
+      "total_size_plus_index_bytes": 99853,
+      "nindexes": 4
+    },
+    {
+      "name": "pilot_redemption_eligibility_overrides",
+      "count": 1,
+      "size_bytes": 502,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 98304,
+      "total_size_plus_index_bytes": 98806,
+      "nindexes": 4
+    },
+    {
+      "name": "compliance_requirement_registry_published",
+      "count": 1,
+      "size_bytes": 41459,
+      "storage_size_bytes": 53248,
+      "total_index_size_bytes": 57344,
+      "total_size_plus_index_bytes": 98803,
+      "nindexes": 2
+    },
+    {
+      "name": "agreement_files.chunks",
+      "count": 5,
+      "size_bytes": 24991,
+      "storage_size_bytes": 69632,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 98719,
+      "nindexes": 2
+    },
+    {
+      "name": "security_blocks",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 24576,
+      "total_index_size_bytes": 98304,
+      "total_size_plus_index_bytes": 98304,
+      "nindexes": 3
+    },
+    {
+      "name": "security_locks",
+      "count": 1,
+      "size_bytes": 271,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 94208,
+      "total_size_plus_index_bytes": 94479,
+      "nindexes": 3
+    },
+    {
+      "name": "monthly_compliance_snapshots",
+      "count": 5,
+      "size_bytes": 12641,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 86369,
+      "nindexes": 2
+    },
+    {
+      "name": "prompt_audit_log",
+      "count": 1,
+      "size_bytes": 1117,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 81920,
+      "total_size_plus_index_bytes": 83037,
+      "nindexes": 4
+    },
+    {
+      "name": "agreement_template_versions",
+      "count": 1,
+      "size_bytes": 5165,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 77824,
+      "total_size_plus_index_bytes": 82989,
+      "nindexes": 3
+    },
+    {
+      "name": "discovery_prospects",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 81920,
+      "total_size_plus_index_bytes": 81920,
+      "nindexes": 20
+    },
+    {
+      "name": "communication_templates",
+      "count": 5,
+      "size_bytes": 4930,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 78658,
+      "nindexes": 2
+    },
+    {
+      "name": "agreement_templates",
+      "count": 1,
+      "size_bytes": 525,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 77824,
+      "total_size_plus_index_bytes": 78349,
+      "nindexes": 3
+    },
+    {
+      "name": "assistant_conversations",
+      "count": 1,
+      "size_bytes": 292,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 77824,
+      "total_size_plus_index_bytes": 78116,
+      "nindexes": 3
+    },
+    {
+      "name": "password_tokens",
+      "count": 8,
+      "size_bytes": 3588,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 77316,
+      "nindexes": 2
+    },
+    {
+      "name": "order_files.files",
+      "count": 6,
+      "size_bytes": 2244,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 75972,
+      "nindexes": 2
+    },
+    {
+      "name": "enablement_preferences",
+      "count": 6,
+      "size_bytes": 2022,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 75750,
+      "nindexes": 2
+    },
+    {
+      "name": "agreement_files.files",
+      "count": 5,
+      "size_bytes": 1345,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 75073,
+      "nindexes": 2
+    },
+    {
+      "name": "automation_status",
+      "count": 6,
+      "size_bytes": 1269,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 74997,
+      "nindexes": 2
+    },
+    {
+      "name": "onboarding_recovery_metrics",
+      "count": 3,
+      "size_bytes": 958,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 74686,
+      "nindexes": 2
+    },
+    {
+      "name": "compliance_audit_packs",
+      "count": 1,
+      "size_bytes": 13168,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 61440,
+      "total_size_plus_index_bytes": 74608,
+      "nindexes": 3
+    },
+    {
+      "name": "governed_report_pdf_artifacts.files",
+      "count": 2,
+      "size_bytes": 819,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 74547,
+      "nindexes": 2
+    },
+    {
+      "name": "mrr_snapshots",
+      "count": 2,
+      "size_bytes": 156,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 73728,
+      "total_size_plus_index_bytes": 73884,
+      "nindexes": 2
+    },
+    {
+      "name": "service_catalogue",
+      "count": 16,
+      "size_bytes": 20963,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 40960,
+      "total_size_plus_index_bytes": 61923,
+      "nindexes": 2
+    },
+    {
+      "name": "system_document_settings",
+      "count": 1,
+      "size_bytes": 568,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 57344,
+      "total_size_plus_index_bytes": 57912,
+      "nindexes": 2
+    },
+    {
+      "name": "support_messages",
+      "count": 32,
+      "size_bytes": 18976,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 55840,
+      "nindexes": 1
+    },
+    {
+      "name": "workflow_nudge_audit",
+      "count": 30,
+      "size_bytes": 14670,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 51534,
+      "nindexes": 1
+    },
+    {
+      "name": "client_billing",
+      "count": 5,
+      "size_bytes": 12254,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 49118,
+      "nindexes": 1
+    },
+    {
+      "name": "checkout_sessions",
+      "count": 9,
+      "size_bytes": 11321,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 48185,
+      "nindexes": 1
+    },
+    {
+      "name": "email_templates",
+      "count": 4,
+      "size_bytes": 9529,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 46393,
+      "nindexes": 1
+    },
+    {
+      "name": "legal_content_versions",
+      "count": 7,
+      "size_bytes": 23244,
+      "storage_size_bytes": 57344,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 43724,
+      "nindexes": 1
+    },
+    {
+      "name": "legal_content",
+      "count": 7,
+      "size_bytes": 22439,
+      "storage_size_bytes": 53248,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 42919,
+      "nindexes": 1
+    },
+    {
+      "name": "governed_report_pdf_artifacts",
+      "count": 2,
+      "size_bytes": 5113,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 41977,
+      "nindexes": 1
+    },
+    {
+      "name": "support_audit_log",
+      "count": 16,
+      "size_bytes": 4992,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 41856,
+      "nindexes": 1
+    },
+    {
+      "name": "compliance_audit_packs.files",
+      "count": 1,
+      "size_bytes": 749,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 40960,
+      "total_size_plus_index_bytes": 41709,
+      "nindexes": 2
+    },
+    {
+      "name": "portal_session_runtime",
+      "count": 7,
+      "size_bytes": 4193,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 41057,
+      "nindexes": 1
+    },
+    {
+      "name": "compliance_decisions",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 40960,
+      "total_size_plus_index_bytes": 40960,
+      "nindexes": 10
+    },
+    {
+      "name": "compliance_evidence_nodes",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 40960,
+      "total_size_plus_index_bytes": 40960,
+      "nindexes": 10
+    },
+    {
+      "name": "kb_categories",
+      "count": 18,
+      "size_bytes": 3949,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 40813,
+      "nindexes": 1
+    },
+    {
+      "name": "support_conversations",
+      "count": 2,
+      "size_bytes": 1222,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 38086,
+      "nindexes": 1
+    },
+    {
+      "name": "notification_preferences",
+      "count": 1,
+      "size_bytes": 737,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 37601,
+      "nindexes": 1
+    },
+    {
+      "name": "scheduler_heartbeat",
+      "count": 2,
+      "size_bytes": 282,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 37146,
+      "nindexes": 1
+    },
+    {
+      "name": "counters",
+      "count": 2,
+      "size_bytes": 76,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 36940,
+      "nindexes": 1
+    },
+    {
+      "name": "contractors",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 36864,
+      "total_size_plus_index_bytes": 36864,
+      "nindexes": 9
+    },
+    {
+      "name": "kb_articles",
+      "count": 6,
+      "size_bytes": 14888,
+      "storage_size_bytes": 45056,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 35368,
+      "nindexes": 1
+    },
+    {
+      "name": "compliance_evidence_edges",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 32768,
+      "total_size_plus_index_bytes": 32768,
+      "nindexes": 8
+    },
+    {
+      "name": "invoices",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 28672,
+      "total_size_plus_index_bytes": 28672,
+      "nindexes": 7
+    },
+    {
+      "name": "discovery_runs",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 28672,
+      "total_size_plus_index_bytes": 28672,
+      "nindexes": 7
+    },
+    {
+      "name": "discovery_audit_logs",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 28672,
+      "total_size_plus_index_bytes": 28672,
+      "nindexes": 7
+    },
+    {
+      "name": "document_pack_items",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 28672,
+      "total_size_plus_index_bytes": 28672,
+      "nindexes": 7
+    },
+    {
+      "name": "rent_ledger_periods",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 28672,
+      "total_size_plus_index_bytes": 28672,
+      "nindexes": 7
+    },
+    {
+      "name": "rent_payments",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 28672,
+      "total_size_plus_index_bytes": 28672,
+      "nindexes": 7
+    },
+    {
+      "name": "partnership_enquiries",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 24576,
+      "total_size_plus_index_bytes": 24576,
+      "nindexes": 6
+    },
+    {
+      "name": "clearform_audit_logs",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 24576,
+      "total_size_plus_index_bytes": 24576,
+      "nindexes": 6
+    },
+    {
+      "name": "talent_pool",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 24576,
+      "total_size_plus_index_bytes": 24576,
+      "nindexes": 6
+    },
+    {
+      "name": "compliance_decision_snapshots",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 24576,
+      "total_size_plus_index_bytes": 24576,
+      "nindexes": 6
+    },
+    {
+      "name": "contact_submissions",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 24576,
+      "total_size_plus_index_bytes": 24576,
+      "nindexes": 6
+    },
+    {
+      "name": "compliance_intelligence_provenance",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 24576,
+      "total_size_plus_index_bytes": 24576,
+      "nindexes": 6
+    },
+    {
+      "name": "compliance_intelligence_artefacts",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 24576,
+      "total_size_plus_index_bytes": 24576,
+      "nindexes": 6
+    },
+    {
+      "name": "payments",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 24576,
+      "total_size_plus_index_bytes": 24576,
+      "nindexes": 6
+    },
+    {
+      "name": "reports",
+      "count": 1,
+      "size_bytes": 1066,
+      "storage_size_bytes": 36864,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 21546,
+      "nindexes": 1
+    },
+    {
+      "name": "discovery_twin_webhook_receipts",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 20480,
+      "nindexes": 5
+    },
+    {
+      "name": "rent_schedules",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 20480,
+      "nindexes": 5
+    },
+    {
+      "name": "contractor_job_tokens",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 20480,
+      "nindexes": 5
+    },
+    {
+      "name": "discovery_twin_run_event_captures",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 20480,
+      "nindexes": 5
+    },
+    {
+      "name": "orders",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 20480,
+      "nindexes": 5
+    },
+    {
+      "name": "clearform_documents",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 20480,
+      "nindexes": 5
+    },
+    {
+      "name": "discovery_campaigns",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 20480,
+      "nindexes": 5
+    },
+    {
+      "name": "compliance_ai_narrations",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 20480,
+      "nindexes": 5
+    },
+    {
+      "name": "tenant_delivery_proofs",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 20480,
+      "nindexes": 5
+    },
+    {
+      "name": "commercial_entitlement_governance",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 20480,
+      "nindexes": 5
+    },
+    {
+      "name": "property_expenses",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 20480,
+      "nindexes": 5
+    },
+    {
+      "name": "contractor_ratings",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 20480,
+      "total_size_plus_index_bytes": 20480,
+      "nindexes": 5
+    },
+    {
+      "name": "pilot_operational_anomalies",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "clearform_users",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "cms_media",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "contractor_assignments",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "contractor_portal_accounts",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "clearform_subscriptions",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "clearform_templates",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "maintenance_events",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "clearform_credit_expiry",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "compliance_intelligence_transitions",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "enablement_suppressions",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "commercial_entitlement_audit",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "prompt_execution_metrics",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "applicability_resolution_audit",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "discovery_jobs",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "operational_evidence_annotations",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "document_templates",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "clearform_org_members",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "tenant_requests",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "evidence_review_events",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "admin_login_challenges",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "clearform_organizations",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "account_lifecycle_events",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "clearform_credit_transactions",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "discovery_metrics",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "invoice_approvals",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 16384,
+      "total_size_plus_index_bytes": 16384,
+      "nindexes": 4
+    },
+    {
+      "name": "notification_retry_queue",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "cms_revisions",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "operational_issue_suggestions",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "client_task_activity_log",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "clearform_org_invitations",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "clearform_workspaces",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "client_feature_flags",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "clearform_profiles",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "provider_mapping_profiles",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "intake_uploads",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "communication_deliveries",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "contractor_performance",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "rent_unallocated_payments",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "system_banners",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "lead_automation_rules",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "compliance_registry_publish_queue",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "assistant_feedback",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "client_read_api_keys",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "compliance_policy_backfill_dead_letters",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "property_tenancies",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "clearform_credit_topups",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "compliance_policy_backfill_checkpoints",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "step_up_tokens",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "cvp_subscription_renewal_receipts",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "clearform_compliance_packs",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "otp_codes",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "compliance_intelligence_strategy_registry",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "pilot_invite_send_attempts",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "rent_reminder_events",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "tenant_messages",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "prompt_test_results",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "pilot_account_overrides",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 12288,
+      "total_size_plus_index_bytes": 12288,
+      "nindexes": 3
+    },
+    {
+      "name": "system_banner_dismissals",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 8192,
+      "total_size_plus_index_bytes": 8192,
+      "nindexes": 2
+    },
+    {
+      "name": "pilot_operational_notification_log",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 8192,
+      "total_size_plus_index_bytes": 8192,
+      "nindexes": 2
+    },
+    {
+      "name": "operational_automation_suppress_audit",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 8192,
+      "total_size_plus_index_bytes": 8192,
+      "nindexes": 2
+    },
+    {
+      "name": "compliance_intelligence_constraint_registry",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 8192,
+      "total_size_plus_index_bytes": 8192,
+      "nindexes": 2
+    },
+    {
+      "name": "commercial_entitlement_metrics",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 8192,
+      "total_size_plus_index_bytes": 8192,
+      "nindexes": 2
+    },
+    {
+      "name": "compliance_intelligence_weight_registry",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 8192,
+      "total_size_plus_index_bytes": 8192,
+      "nindexes": 2
+    },
+    {
+      "name": "client_task_overrides",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 8192,
+      "total_size_plus_index_bytes": 8192,
+      "nindexes": 2
+    },
+    {
+      "name": "portfolio_risk_override_latches",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 8192,
+      "total_size_plus_index_bytes": 8192,
+      "nindexes": 2
+    },
+    {
+      "name": "compliance_evidence_pack_jobs",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 8192,
+      "total_size_plus_index_bytes": 8192,
+      "nindexes": 2
+    },
+    {
+      "name": "bootstrap",
+      "count": 0,
+      "size_bytes": 0,
+      "storage_size_bytes": 4096,
+      "total_index_size_bytes": 4096,
+      "total_size_plus_index_bytes": 4096,
+      "nindexes": 1
+    }
+  ]
+}

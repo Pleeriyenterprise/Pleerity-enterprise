@@ -1,0 +1,188 @@
+{
+  "audit_id": "MONGODB-STORAGE-REMEDIATION-AND-LIFECYCLE-GOVERNANCE-01",
+  "mode": "execute",
+  "environment": "staging",
+  "database": "pleerity_staging",
+  "tier": "1",
+  "generated_at": "2026-08-06T14:28:52.966452+00:00",
+  "before": {
+    "database": "pleerity_staging",
+    "ping_ok": true,
+    "captured_at": "2026-08-06T14:03:46.491942+00:00"
+  },
+  "collections": [
+    {
+      "collection": "job_runs",
+      "tier": "1",
+      "protected": false,
+      "document_count": 1937891,
+      "match_count": 1937891,
+      "filter": {
+        "_all": true
+      },
+      "age_days": null,
+      "reclaim_estimate_bytes": 1083583352,
+      "index_reclaim_estimate_bytes": 322142208,
+      "oldest_timestamp": "2026-03-08T13:04:56.046490+00:00",
+      "newest_timestamp": "2026-07-16T17:39:48.068886+00:00",
+      "timestamp_field": "created_at",
+      "sample_ids": [
+        "69ad73f82bee3879a488f7b5",
+        "69af41e9111c68bf843035c6",
+        "69af41f0111c68bf843035d0",
+        "69af41f8111c68bf843035d7",
+        "69af4207111c68bf843035d8"
+      ],
+      "deletion_reason": "operational_telemetry_unbounded_no_ttl",
+      "would_delete": true,
+      "stats": {
+        "count": 1937891,
+        "size_bytes": 1083583352,
+        "storage_size_bytes": 163942400,
+        "total_index_size_bytes": 322142208,
+        "nindexes": 6
+      }
+    },
+    {
+      "collection": "operational_evidence_events",
+      "tier": "1",
+      "protected": false,
+      "document_count": 543702,
+      "match_count": 543702,
+      "filter": {
+        "_all": true
+      },
+      "age_days": null,
+      "reclaim_estimate_bytes": 999116933,
+      "index_reclaim_estimate_bytes": 360415232,
+      "oldest_timestamp": "2026-06-21T14:06:36.581795+00:00",
+      "newest_timestamp": "2026-07-18T20:07:08.451531+00:00",
+      "timestamp_field": "occurred_at",
+      "sample_ids": [
+        "a005c883-3477-42c6-8618-6f73c8898e5b",
+        "e51c5737-e5fe-43fa-9767-d52526746b4b",
+        "3aec5170-0fca-4ec1-bf57-21938568e249",
+        "e2ac0384-7328-4628-9a58-c884b2babf0f",
+        "a1698f7c-580b-4373-aef1-696553a883e0"
+      ],
+      "deletion_reason": "derived_oep_index_unbounded_retention",
+      "would_delete": true,
+      "stats": {
+        "count": 543702,
+        "size_bytes": 999116933,
+        "storage_size_bytes": 174813184,
+        "total_index_size_bytes": 360415232,
+        "nindexes": 21
+      }
+    },
+    {
+      "collection": "operational_evidence_executions",
+      "tier": "1",
+      "protected": false,
+      "document_count": 150211,
+      "match_count": 150211,
+      "filter": {
+        "_all": true
+      },
+      "age_days": null,
+      "reclaim_estimate_bytes": 75198689,
+      "index_reclaim_estimate_bytes": 17653760,
+      "oldest_timestamp": "2026-06-21T14:27:51.682612+00:00",
+      "newest_timestamp": "2026-07-18T20:07:03.711384+00:00",
+      "timestamp_field": "started_at",
+      "sample_ids": [
+        "6a4060d2d2d2b839f3b8b1ea",
+        "6a4060e1d2d2b839f3b8b254",
+        "6a4060e1d2d2b839f3b8b255",
+        "6a4060f0d2d2b839f3b8b29a",
+        "6a4060f4d2d2b839f3b8b2bc"
+      ],
+      "deletion_reason": "derived_execution_registry",
+      "would_delete": true,
+      "stats": {
+        "count": 150211,
+        "size_bytes": 75198689,
+        "storage_size_bytes": 29810688,
+        "total_index_size_bytes": 17653760,
+        "nindexes": 3
+      }
+    }
+  ],
+  "delete_results": [
+    {
+      "collection": "job_runs",
+      "batches": 389,
+      "deleted_total": 1937891,
+      "elapsed_ms": 1107942
+    },
+    {
+      "collection": "operational_evidence_events",
+      "batches": 110,
+      "deleted_total": 543702,
+      "elapsed_ms": 312735
+    },
+    {
+      "collection": "operational_evidence_executions",
+      "batches": 32,
+      "deleted_total": 150211,
+      "elapsed_ms": 76179
+    }
+  ],
+  "after": [
+    {
+      "collection": "job_runs",
+      "stats": {
+        "count": 0,
+        "size_bytes": 0,
+        "storage_size_bytes": 189386752,
+        "total_index_size_bytes": 482320384,
+        "nindexes": 6
+      }
+    },
+    {
+      "collection": "operational_evidence_events",
+      "stats": {
+        "count": 0,
+        "size_bytes": 0,
+        "storage_size_bytes": 238395392,
+        "total_index_size_bytes": 766193664,
+        "nindexes": 21
+      }
+    },
+    {
+      "collection": "operational_evidence_executions",
+      "stats": {
+        "count": 0,
+        "size_bytes": 0,
+        "storage_size_bytes": 41398272,
+        "total_index_size_bytes": 28880896,
+        "nindexes": 3
+      }
+    }
+  ],
+  "totals": {
+    "reclaim_estimate_bytes": 2157898974,
+    "index_reclaim_estimate_bytes": 700211200,
+    "deleted_total": 2631804
+  },
+  "production_touched": false,
+  "protected_blocklist": [
+    "audit_logs",
+    "clients",
+    "compliance_audit_packs.chunks",
+    "compliance_audit_packs.files",
+    "compliance_decision_snapshots",
+    "compliance_decisions",
+    "compliance_evidence_edges",
+    "compliance_evidence_nodes",
+    "consent_events",
+    "consent_state",
+    "documents",
+    "order_files.chunks",
+    "order_files.files",
+    "properties",
+    "requirements",
+    "score_ledger_events",
+    "users"
+  ]
+}

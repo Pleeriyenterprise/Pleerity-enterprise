@@ -1,4 +1,9 @@
-import { formatApiErrorDetail } from './capabilityRuntime';
+import {
+  DATABASE_CAPACITY_USER_MESSAGE,
+  formatApiErrorDetail,
+  formatApiErrorMessage,
+  isDatabaseCapacityError,
+} from './capabilityRuntime';
 import {
   isApiCircuitOpen,
   isGlobalApiPaused,
@@ -25,6 +30,22 @@ describe('formatApiErrorDetail', () => {
 
   it('falls back for empty detail', () => {
     expect(formatApiErrorDetail(null, 'fallback')).toBe('fallback');
+  });
+
+  it('maps DATABASE_CAPACITY_EXCEEDED to capacity user message', () => {
+    expect(
+      formatApiErrorDetail({ code: 'DATABASE_CAPACITY_EXCEEDED', detail: 'raw' }, 'fallback'),
+    ).toBe(DATABASE_CAPACITY_USER_MESSAGE);
+    expect(
+      formatApiErrorMessage({
+        response: { status: 503, data: { code: 'DATABASE_CAPACITY_EXCEEDED', detail: 'x' } },
+      }),
+    ).toBe(DATABASE_CAPACITY_USER_MESSAGE);
+    expect(
+      isDatabaseCapacityError({
+        response: { status: 503, data: { code: 'DATABASE_CAPACITY_EXCEEDED' } },
+      }),
+    ).toBe(true);
   });
 });
 

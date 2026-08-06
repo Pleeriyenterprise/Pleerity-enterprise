@@ -628,20 +628,20 @@ async def build_health_summary_payload() -> Dict[str, Any]:
 
     last_success = {j: jobs_detail[j]["last_success"] for j in HEALTH_SUMMARY_JOBS}
 
-    # Scheduler heartbeat
+    # Scheduler heartbeat (single authority)
     heartbeat_doc = await db.scheduler_heartbeat.find_one(
         {"_id": "default"},
         {"_id": 0, "last_heartbeat_at": 1},
     )
     last_heartbeat_at = heartbeat_doc.get("last_heartbeat_at") if heartbeat_doc else None
-    heartbeat_stale = False
-    if last_heartbeat_at:
-        try:
-            t = _parse_iso(last_heartbeat_at)
-            if t and (now - t).total_seconds() > HEARTBEAT_STALE_SECONDS:
-                heartbeat_stale = True
-        except Exception:
-            heartbeat_stale = True
+    from services.scheduler_health_authority import evaluate_scheduler_heartbeat
+
+    sched_snap = evaluate_scheduler_heartbeat(
+        last_heartbeat_at=last_heartbeat_at,
+        now=now,
+        stale_after_seconds=HEARTBEAT_STALE_SECONDS,
+    )
+    heartbeat_stale = sched_snap.stale
 
     # Delivery unknown stale
     from services.delivery_reconciliation import RECONCILIATION_JOBS, DELIVERY_UNKNOWN_STALE_HOURS
@@ -665,6 +665,25 @@ async def build_health_summary_payload() -> Dict[str, Any]:
                 "finished_at": doc.get("finished_at"),
                 "delivery_unknown": om.get("delivery_unknown", 0),
             })
+    except Exception:
+        pass
+
+    # Merge high-frequency poll heartbeats before job state computation (idle-skip path).
+    try:
+        from services.job_run_idle_persist import COLLECTION_POLL_HEARTBEATS
+
+        async for hb in db[COLLECTION_POLL_HEARTBEATS].find({}):
+            jn = hb.get("job_name") or str(hb.get("_id") or "")
+            if not jn or jn not in jobs_detail:
+                continue
+            tick = hb.get("last_tick_at")
+            if tick and (
+                not jobs_detail[jn].get("last_completed")
+                or str(tick) > str(jobs_detail[jn].get("last_completed") or "")
+            ):
+                jobs_detail[jn]["last_completed"] = tick
+                jobs_detail[jn]["last_poll_tick_at"] = tick
+                jobs_detail[jn]["poll_persist_skipped"] = bool(hb.get("skipped_persist"))
     except Exception:
         pass
 
@@ -812,6 +831,14 @@ async def build_health_summary_payload() -> Dict[str, Any]:
     # Backward compat: status_badge for UI that still expects ok/degraded/incident
     status_badge = "incident" if open_p0_p1 > 0 else ("degraded" if overall_health != OVERALL_HEALTH_HEALTHY else "ok")
 
+    mongo_storage = None
+    try:
+        from services.mongo_storage_monitor import collect_mongo_storage_snapshot
+
+        mongo_storage = await collect_mongo_storage_snapshot()
+    except Exception:
+        mongo_storage = {"available": False, "reason": "collection_failed"}
+
     return {
         "observability_db_name": observability_db_name,
         "status": status_badge,
@@ -822,6 +849,7 @@ async def build_health_summary_payload() -> Dict[str, Any]:
         "recent_failures": recent_failures,
         "jobs": jobs_detail,
         "job_states": job_states,
+        "mongo_storage": mongo_storage,
         "summary_counts": {
             "critical_missed": critical_missed_count,
             "never_ran": never_ran_overdue_count,
@@ -841,6 +869,7 @@ async def build_health_summary_payload() -> Dict[str, Any]:
         ],
         "last_heartbeat_at": last_heartbeat_at,
         "heartbeat_stale": heartbeat_stale,
+        "scheduler_health": sched_snap.as_dict(),
         "alerting_configured": alerting_configured,
         "delivery_unknown_stale_runs": delivery_unknown_stale_runs,
         "delivery_unknown_stale_hours": DELIVERY_UNKNOWN_STALE_HOURS,

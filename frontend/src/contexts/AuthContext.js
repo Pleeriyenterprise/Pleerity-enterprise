@@ -2,6 +2,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../api/client';
 import { applySessionRuntimeFromUser, clearSessionRuntimeVersions } from '../utils/sessionRuntimeStore';
 import { broadcastAuthSync } from '../utils/sessionRuntimeSync';
+import {
+  DATABASE_CAPACITY_USER_MESSAGE,
+  isDatabaseCapacityError,
+} from '../utils/capabilityRuntime';
 
 export const AuthContext = createContext(null);
 
@@ -93,7 +97,11 @@ export const AuthProvider = ({ children }) => {
       const data = error.response?.data;
       const detail = data?.detail;
       let message = 'Login failed';
-      if (typeof detail === 'string') {
+      if (isDatabaseCapacityError(error) || data?.code === 'DATABASE_CAPACITY_EXCEEDED') {
+        message = DATABASE_CAPACITY_USER_MESSAGE;
+      } else if (status === 503) {
+        message = 'Service temporarily unavailable. Please try again shortly.';
+      } else if (typeof detail === 'string') {
         message = detail;
       } else if (detail && typeof detail === 'object' && detail.message) {
         message = detail.message;
@@ -104,6 +112,7 @@ export const AuthProvider = ({ children }) => {
         success: false,
         error: message,
         status,
+        code: data?.code || null,
       };
     }
   };

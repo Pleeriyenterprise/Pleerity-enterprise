@@ -109,6 +109,97 @@ async def run_instrumented(
         corr = ctx.correlation_id if ctx else None
     except Exception:
         pass
+
+    # High-frequency schedule polls: run first; skip job_runs+OEP on idle success (storage governance).
+    from services.job_run_idle_persist import (
+        ALWAYS_SKIP_JOB_RUN_PERSIST,
+        IDLE_SKIP_JOB_RUN_PERSIST,
+        idle_skip_enabled,
+        should_skip_full_persist,
+        touch_job_poll_heartbeat,
+    )
+
+    _hf_jobs = ALWAYS_SKIP_JOB_RUN_PERSIST | IDLE_SKIP_JOB_RUN_PERSIST
+    if idle_skip_enabled() and run_type == "schedule" and job_id in _hf_jobs:
+        call_kw = _filter_kwargs_for_callable(fn, kw)
+        try:
+            if call_kw:
+                result = await fn(**call_kw)
+            else:
+                result = await fn()
+            if not isinstance(result, dict):
+                result = {"message": str(result), "count": result if isinstance(result, (int, float)) else None}
+            if should_skip_full_persist(job_id, run_type, result):
+                await touch_job_poll_heartbeat(job_id, result=result, skipped_persist=True)
+                logger.debug(
+                    "run_instrumented: skipped job_runs persist for idle/high-freq job_id=%s",
+                    job_id,
+                )
+                return result
+        except Exception as e:
+            # Failures always persist a job_runs row for SLA / System Health.
+            job_run_id = await start_job_run(
+                job_id, run_type, triggered_by=triggered_by, correlation_id=corr, metadata=meta if meta else None
+            )
+            await finish_job_run_failure(
+                job_run_id,
+                error_code=type(e).__name__,
+                error_message=str(e),
+                stack_trace=traceback.format_exc(),
+            )
+            await _emit_job_run_evidence_finished(job_run_id, job_id, "failed", error_message=str(e))
+            raise
+        # Non-idle success/degraded/failed outcome: fall through to normal persist using result below.
+        job_run_id = await start_job_run(
+            job_id, run_type, triggered_by=triggered_by, correlation_id=corr, metadata=meta if meta else None
+        )
+        logger.info("run_instrumented: start_job_run returned job_run_id=%s for job_id=%s", job_run_id, job_id)
+        try:
+            from services.operational_evidence.producers import emit_job_run_started
+            await emit_job_run_started(
+                job_run_id=job_run_id,
+                job_name=job_id,
+                run_type=run_type,
+                correlation_id=corr,
+                triggered_by=triggered_by,
+            )
+        except Exception as emit_err:
+            logger.debug("operational_evidence job started emit skipped: %s", emit_err)
+        count = result.get("count")
+        outcome_status = result.get("outcome_status", OUTCOME_SUCCESS)
+        outcome_metrics = result.get("outcome_metrics") or {}
+        if outcome_status == OUTCOME_FAILED:
+            await finish_job_run_failure(
+                job_run_id,
+                error_code=result.get("error_code", "JobReportedFailed"),
+                error_message=result.get("error_message", "Job completed with outcome_status=failed"),
+                stack_trace=result.get("stack_trace"),
+                outcome_metrics=outcome_metrics if outcome_metrics else None,
+            )
+            await _emit_job_run_evidence_finished(
+                job_run_id, job_id, "failed", error_message=result.get("error_message"), outcome_status=outcome_status
+            )
+            return result
+        if outcome_status == OUTCOME_DEGRADED:
+            await finish_job_run_degraded(
+                job_run_id,
+                affected_clients_count=count,
+                outcome_metrics=outcome_metrics,
+                error_message=result.get("error_message"),
+            )
+            await _emit_job_run_evidence_finished(
+                job_run_id, job_id, "degraded", error_message=result.get("error_message"), outcome_status=outcome_status
+            )
+            return result
+        await finish_job_run_success(
+            job_run_id,
+            affected_clients_count=count,
+            outcome_status=outcome_status,
+            outcome_metrics=outcome_metrics if outcome_metrics else None,
+        )
+        await _emit_job_run_evidence_finished(job_run_id, job_id, "success", outcome_status=outcome_status)
+        return result
+
     job_run_id = await start_job_run(
         job_id, run_type, triggered_by=triggered_by, correlation_id=corr, metadata=meta if meta else None
     )
@@ -1188,6 +1279,13 @@ async def run_operational_evidence_maintenance_job():
     return await run_operational_evidence_maintenance()
 
 
+async def run_mongo_storage_capacity_monitor():
+    """Cluster storage capacity snapshot + incident before Atlas write block."""
+    from services.mongo_storage_monitor import run_mongo_storage_capacity_monitor as _run
+
+    return await _run()
+
+
 async def run_risk_signal_regen_worker():
     """Process debounced risk_signal_regen_queue: regenerate heuristic signals + operational automation."""
     try:
@@ -1816,6 +1914,7 @@ JOB_RUNNERS = {
     "risk_signals_job": run_risk_signals_job,
     "rent_operations_daily_job": run_rent_operations_daily_job,
     "operational_evidence_maintenance_job": run_operational_evidence_maintenance_job,
+    "mongo_storage_capacity_monitor": run_mongo_storage_capacity_monitor,
     "risk_signal_regen_worker": run_risk_signal_regen_worker,
     "risk_signal_regen_alert_monitor": run_risk_signal_regen_alert_monitor,
     "work_order_sla_breach_job": run_work_order_sla_breach_job,

@@ -1,0 +1,489 @@
+{
+  "audit_id": "MONGODB-STORAGE-PREVENTION-VALIDATION-01",
+  "generated_at": "2026-08-06T14:40:15.427801+00:00",
+  "phases": {
+    "deployment": {
+      "phase": 1,
+      "local_head": "072b78f38f0a0e3f0bfc3b78fd9c955043d3fa68",
+      "staging_version": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "commit_sha": "072b78f38f0a0e3f0bfc3b78fd9c955043d3fa68",
+          "environment": "staging"
+        }
+      },
+      "staging_health": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "status": "healthy",
+          "environment": "staging",
+          "readiness": {
+            "stage": "ready",
+            "degraded": false,
+            "last_error": null
+          }
+        }
+      },
+      "remediation_files_tracked": {
+        "backend/services/job_run_idle_persist.py": false,
+        "backend/services/mongo_storage_monitor.py": false,
+        "backend/services/operational_retention_purge.py": false,
+        "backend/utils/mongo_capacity_errors.py": false,
+        "backend/scripts/mongodb_controlled_cleanup_01.py": false,
+        "backend/tests/test_mongo_storage_governance_01.py": false
+      },
+      "all_remediation_files_in_git": false,
+      "staging_matches_local_head": true,
+      "remediation_deployed_to_staging": false,
+      "verdict": "FAIL_NOT_DEPLOYED",
+      "evidence_note": "Remediation Python modules are untracked locally and therefore absent from deployed commit 072b78f38f0a0e3f0bfc3b78fd9c955043d3fa68. Staging cannot be executing idle-skip/monitor/retention/503 handlers."
+    },
+    "monitoring": {
+      "phase": 2,
+      "mode": "unit_contract",
+      "thresholds_constant": [
+        {
+          "pct": 95,
+          "level": "emergency"
+        },
+        {
+          "pct": 90,
+          "level": "platform_alert"
+        },
+        {
+          "pct": 85,
+          "level": "critical"
+        },
+        {
+          "pct": 75,
+          "level": "attention"
+        },
+        {
+          "pct": 60,
+          "level": "warning"
+        }
+      ],
+      "classification_matrix": [
+        {
+          "pct": 10,
+          "expected": "ok",
+          "got": "ok",
+          "pass": true
+        },
+        {
+          "pct": 60,
+          "expected": "warning",
+          "got": "warning",
+          "pass": true
+        },
+        {
+          "pct": 75,
+          "expected": "attention",
+          "got": "attention",
+          "pass": true
+        },
+        {
+          "pct": 85,
+          "expected": "critical",
+          "got": "critical",
+          "pass": true
+        },
+        {
+          "pct": 90,
+          "expected": "platform_alert",
+          "got": "platform_alert",
+          "pass": true
+        },
+        {
+          "pct": 95,
+          "expected": "emergency",
+          "got": "emergency",
+          "pass": true
+        }
+      ],
+      "incident_severity_contract": {
+        "warning": null,
+        "attention": null,
+        "critical": "P2",
+        "platform_alert": "P1",
+        "emergency": "P0"
+      },
+      "live_dashboard_exercise": "BLOCKED_NOT_DEPLOYED",
+      "duplicate_prevention": "BLOCKED_NOT_DEPLOYED \u2014 fingerprint atlas_flex_storage_pressure only live after deploy",
+      "stale_state_cleanup": "N/A_NO_LIVE_SIMULATION",
+      "verdict": "PASS_UNIT",
+      "post_deploy_required": [
+        "Run mongo_storage_capacity_monitor on staging",
+        "Inject/override MONGO_STORAGE_LIMIT_BYTES temporarily to cross each band OR use admin test hook",
+        "Confirm health-summary.mongo_storage, Control Centre alert, incident upsert+resolve"
+      ]
+    },
+    "scheduler": {
+      "phase": "3_4",
+      "window_seconds": 90,
+      "before": {
+        "database": "pleerity_staging",
+        "job_runs": 0,
+        "operational_evidence_events": 0,
+        "operational_evidence_executions": 0,
+        "job_poll_heartbeats": 0,
+        "audit_logs": 191429,
+        "clients": 43,
+        "score_ledger_events": 13283,
+        "recent_job_runs_sample": [],
+        "dbStats": {
+          "dataSize": 445524619,
+          "indexSize": 149905408,
+          "storageSize": 140316672
+        }
+      },
+      "after": {
+        "database": "pleerity_staging",
+        "job_runs": 0,
+        "operational_evidence_events": 0,
+        "operational_evidence_executions": 0,
+        "job_poll_heartbeats": 0,
+        "audit_logs": 191429,
+        "clients": 43,
+        "score_ledger_events": 13283,
+        "recent_job_runs_sample": [],
+        "dbStats": {
+          "dataSize": 445524619,
+          "indexSize": 149905408,
+          "storageSize": 140316672
+        }
+      },
+      "delta": {
+        "job_runs": 0,
+        "operational_evidence_events": 0,
+        "operational_evidence_executions": 0,
+        "job_poll_heartbeats": 0
+      },
+      "idle_skip_unit_local_code": {
+        "idle_zero_count_skips": true,
+        "heartbeat_skips": true,
+        "manual_does_not_skip": true,
+        "non_idle_does_not_skip": true
+      },
+      "idle_skip_unit_pass": true,
+      "runtime_idle_growth_stopped": null,
+      "verdict": "INCONCLUSIVE_SCHEDULER_INACTIVE",
+      "note": "Staging scheduler executes deployed SHA without idle-skip. Any job_runs growth in window confirms pre-remediation behaviour still live.",
+      "scheduler_heartbeat": {
+        "last_heartbeat_at": "2026-07-16T17:39:33.087764+00:00",
+        "unchanged_over_130s": true,
+        "interpretation": "STAGING_SCHEDULER_INACTIVE"
+      }
+    },
+    "retention": {
+      "phase": 5,
+      "dry_run": {
+        "ok": true,
+        "dry_run": true,
+        "enabled_flag": false,
+        "collections": [
+          {
+            "collection": "job_runs",
+            "timestamp_field": "created_at",
+            "retention_days": 90,
+            "cutoff": "2026-05-08T14:42:28.512323+00:00",
+            "matched": 0,
+            "deleted": 0,
+            "dry_run": true
+          },
+          {
+            "collection": "operational_evidence_events",
+            "timestamp_field": "occurred_at",
+            "retention_days": 90,
+            "cutoff": "2026-05-08T14:42:34.670310+00:00",
+            "matched": 0,
+            "deleted": 0,
+            "dry_run": true
+          },
+          {
+            "collection": "operational_evidence_executions",
+            "timestamp_field": "started_at",
+            "retention_days": 90,
+            "cutoff": "2026-05-08T14:42:35.500975+00:00",
+            "matched": 0,
+            "deleted": 0,
+            "dry_run": true
+          },
+          {
+            "collection": "message_logs",
+            "timestamp_field": "created_at",
+            "retention_days": 180,
+            "cutoff": "2026-02-07T14:42:36.204526+00:00",
+            "matched": 0,
+            "deleted": 0,
+            "dry_run": true
+          },
+          {
+            "collection": "reminder_evaluation_log",
+            "timestamp_field": "created_at",
+            "retention_days": 90,
+            "cutoff": "2026-05-08T14:42:37.155540+00:00",
+            "matched": 6372,
+            "deleted": 0,
+            "dry_run": true
+          },
+          {
+            "collection": "workflow_nudge_audit",
+            "timestamp_field": "created_at",
+            "retention_days": 90,
+            "cutoff": "2026-05-08T14:42:38.753725+00:00",
+            "matched": 0,
+            "deleted": 0,
+            "dry_run": true
+          },
+          {
+            "collection": "workflow_recovery_audit",
+            "timestamp_field": "created_at",
+            "retention_days": 90,
+            "cutoff": "2026-05-08T14:42:39.982849+00:00",
+            "matched": 0,
+            "deleted": 0,
+            "dry_run": true
+          }
+        ]
+      },
+      "live_run": null,
+      "live_run_repeat": null,
+      "protected_counts_after": {
+        "audit_logs": 191429,
+        "clients": 43,
+        "score_ledger_events": 13283,
+        "requirements": 630
+      },
+      "live_executed": false,
+      "idempotent_second_pass": null,
+      "verdict": "PASS_DRY_RUN",
+      "note": "Live purge skipped unless --allow-retention-live (operating principle: no extra deletes by default)."
+    },
+    "capacity": {
+      "phase": 6,
+      "detector": [
+        {
+          "msg": "You exceeded the size limit of your Atlas cluster",
+          "expected": true,
+          "got": true,
+          "pass": true
+        },
+        {
+          "msg": "connection refused",
+          "expected": false,
+          "got": false,
+          "pass": true
+        },
+        {
+          "msg": "Quota exceeded",
+          "expected": true,
+          "got": true,
+          "pass": true
+        }
+      ],
+      "payload": {
+        "detail": "Database storage capacity exceeded. Writes are temporarily unavailable.",
+        "code": "DATABASE_CAPACITY_EXCEEDED",
+        "retryable": true
+      },
+      "local_handler_status": 503,
+      "local_handler_body": {
+        "detail": "Database storage capacity exceeded. Writes are temporarily unavailable.",
+        "code": "DATABASE_CAPACITY_EXCEEDED",
+        "retryable": true
+      },
+      "local_handler_pass": true,
+      "frontend_capacity_message_files": [],
+      "frontend_capacity_ux_pass": false,
+      "live_staging_api_pass": "BLOCKED_NOT_DEPLOYED",
+      "verdict": "PASS_LOCAL_HANDLER"
+    },
+    "governance": {
+      "phase": 8,
+      "cleanup_refuses_production": true,
+      "cleanup_exit_code": 1,
+      "cleanup_stderr_tail": "REFUSED: cleanup must never target pleerity_production\n",
+      "production_counts": {
+        "database": "pleerity_production",
+        "job_runs": 611973,
+        "operational_evidence_events": 495814,
+        "operational_evidence_executions": 245147,
+        "job_poll_heartbeats": 0,
+        "audit_logs": 5375,
+        "clients": 6,
+        "score_ledger_events": 1033,
+        "recent_job_runs_sample": [
+          {
+            "job_name": "compliance_recalc_worker",
+            "created_at": "2026-07-27T08:20:28.085575+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "risk_signal_regen_worker",
+            "created_at": "2026-07-27T08:20:13.204900+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "created_at": "2026-07-27T08:20:13.204574+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "lead_compliance_gap_detection",
+            "created_at": "2026-07-27T08:20:01.464263+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "generation_auto_retry_processing",
+            "created_at": "2026-07-27T08:20:01.464014+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "queued_order_processing",
+            "created_at": "2026-07-27T08:20:01.463764+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "order_delivery_processing",
+            "created_at": "2026-07-27T08:20:01.463494+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "notification_retry_worker",
+            "created_at": "2026-07-27T08:20:01.463190+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "sla_watchdog",
+            "created_at": "2026-07-27T08:20:01.462958+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "notification_failure_spike_monitor",
+            "created_at": "2026-07-27T08:20:01.462707+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "compliance_recalc_sla_monitor",
+            "created_at": "2026-07-27T08:20:01.461551+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "scheduled_admin_communications",
+            "created_at": "2026-07-27T08:20:01.461209+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "work_order_schedule_reminders",
+            "created_at": "2026-07-27T08:20:01.460890+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "created_at": "2026-07-27T08:19:58.082573+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "risk_signal_regen_worker",
+            "created_at": "2026-07-27T08:19:43.217364+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "created_at": "2026-07-27T08:19:43.217017+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "created_at": "2026-07-27T08:19:28.099870+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "risk_signal_regen_worker",
+            "created_at": "2026-07-27T08:19:13.208398+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "compliance_recalc_worker",
+            "created_at": "2026-07-27T08:19:13.207600+00:00",
+            "run_type": "schedule"
+          },
+          {
+            "job_name": "notification_retry_worker",
+            "created_at": "2026-07-27T08:19:00.357874+00:00",
+            "run_type": "schedule"
+          }
+        ],
+        "dbStats": {
+          "dataSize": 1415545165,
+          "indexSize": 499683328,
+          "storageSize": 274034688
+        }
+      },
+      "staging_counts": {
+        "database": "pleerity_staging",
+        "job_runs": 0,
+        "operational_evidence_events": 0,
+        "operational_evidence_executions": 0,
+        "job_poll_heartbeats": 0,
+        "audit_logs": 191429,
+        "clients": 43,
+        "score_ledger_events": 13283,
+        "recent_job_runs_sample": [],
+        "dbStats": {
+          "dataSize": 445524619,
+          "indexSize": 149905408,
+          "storageSize": 140316672
+        }
+      },
+      "cluster_used_bytes": 2510658520,
+      "cluster_pct": 46.76,
+      "environment_isolation_logical": true,
+      "environment_isolation_physical": false,
+      "verdict": "PASS"
+    },
+    "readiness": {
+      "phase": 10,
+      "atlas_flex_suitable_pre_launch": false,
+      "separate_clusters_still_recommended": true,
+      "m10_before_customer_growth": true,
+      "retention_sufficient_when_enabled": "CONDITIONAL \u2014 enable MONGO_OPERATIONAL_RETENTION_PURGE_ENABLED after deploy soak",
+      "alert_earliness": "60% warning in code; unproven live until deploy",
+      "launch_readiness_verdict": "NOT_READY_PENDING_DEPLOY_AND_SOAK",
+      "recommendations": [
+        "Commit and deploy remediation to staging; verify /api/version SHA includes idle-skip + monitor",
+        "Re-run this validation suite post-deploy (idle growth window must show ~0 job_runs for idle polls)",
+        "Enable retention purge on staging only after dry-run review",
+        "Provision separate Atlas cluster for staging before production customer ramp",
+        "Plan M10 (or dedicated) when combined forecast exceeds ~50% of Flex with growth margin",
+        "Add frontend handling for code=DATABASE_CAPACITY_EXCEEDED (currently missing)"
+      ]
+    },
+    "observability": {
+      "phase": 9,
+      "health_api_healthy": true,
+      "scheduler_heartbeat_stale": true,
+      "verdict": "FAIL_HEALTHY_WHILE_SCHEDULER_DEAD"
+    }
+  },
+  "overall_verdict": "BLOCKED_PENDING_DEPLOYMENT",
+  "claims_vs_evidence": {
+    "writes_restored": "PRIOR_EVIDENCE \u2014 re-check via staging write not repeated this phase",
+    "cluster_46_47_pct": "MEASURED_NOW_46.76%",
+    "production_untouched": "PASS \u2014 cleanup refuses production; prod counts sampled",
+    "tier1_cleanup_completed": "PRIOR_EVIDENCE",
+    "idle_persistence_reduced": "FAIL_NOT_DEPLOYED_AND_SCHEDULER_INACTIVE",
+    "storage_monitoring_implemented": "CODE_EXISTS_UNTRACKED \u2014 not on staging SHA",
+    "capacity_handling_implemented": "LOCAL_HANDLER_PASS \u2014 not on staging SHA; FE message FAIL",
+    "retention_framework_implemented": "DRY_RUN_PASS \u2014 live gated; not on staging maintenance job until deploy"
+  },
+  "follow_up": [
+    "Commit and deploy remediation",
+    "Restore staging scheduler (heartbeat must advance)",
+    "Re-run validation harness post-deploy",
+    "Add frontend DATABASE_CAPACITY_EXCEEDED UX"
+  ]
+}

@@ -534,6 +534,34 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
 
     alerts: List[Dict[str, Any]] = []
 
+    mongo_storage = health.get("mongo_storage") or {}
+    if mongo_storage.get("available") and mongo_storage.get("level") not in (None, "ok"):
+        lvl = mongo_storage.get("level")
+        pct = mongo_storage.get("usage_percent")
+        sev = "P0" if lvl in ("emergency", "platform_alert") else "P1" if lvl == "critical" else "P2"
+        alerts.append(
+            {
+                "id": "platform:mongo_storage_capacity",
+                "category": "platform",
+                "severity": sev,
+                "timestamp": mongo_storage.get("captured_at"),
+                "status": "open",
+                "title": f"MongoDB storage {lvl} ({pct}%)",
+                "detail": (
+                    f"Cluster data+indexes at {pct}% of limit "
+                    f"({mongo_storage.get('used_bytes')} / {mongo_storage.get('limit_bytes')} bytes). "
+                    "Purge operational telemetry on staging and enable retention before writes block."
+                ),
+                "required_action": "Review System Health → mongo_storage; run staging Tier-1 cleanup if needed.",
+                "link_path": "/admin/system-health",
+                "metadata": {
+                    "level": lvl,
+                    "usage_percent": pct,
+                    "writes_at_risk": mongo_storage.get("writes_at_risk"),
+                },
+            }
+        )
+
     inc_cursor = (
         db.incidents.find(
             {"status": {"$in": ["open", "acknowledged"]}},
@@ -887,6 +915,7 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
                 "revenue": revenue_breakdown if is_owner else None,
             },
             "observability_db_name": health.get("observability_db_name"),
+            "mongo_storage": health.get("mongo_storage"),
             "revenue_excluded_from_status_when_redacted": not is_owner,
             "integrations": {
                 "zoho": health.get("zoho_integration_health") or health.get("integrations", {}).get("zoho") or {},

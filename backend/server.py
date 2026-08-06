@@ -1173,6 +1173,18 @@ async def lifespan(app: FastAPI):
         )
         scheduler.add_job(
             "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
+            id="mongo_storage_capacity_monitor",
+            name="MongoDB Storage Capacity Monitor",
+            replace_existing=True,
+            args=["mongo_storage_capacity_monitor"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
             CronTrigger(minute=35, timezone=SCHEDULER_TIMEZONE),
             id="operational_recovery_processing",
             name="Operational Recovery Orchestration (Phase 2A)",
@@ -1713,25 +1725,41 @@ async def health_check(request: Request):
                 },
             },
         )
-    if getattr(request.app.state, "startup_degraded", False):
-        return {
-            "status": "degraded",
-            "environment": os.getenv("ENVIRONMENT", "development"),
-            "readiness": {
-                "stage": getattr(request.app.state, "startup_stage", "degraded"),
-                "degraded": True,
-                "last_error": getattr(request.app.state, "startup_last_error", "") or None,
-            },
-        }
-    return {
-        "status": "healthy",
+
+    scheduler_snap = None
+    try:
+        from services.scheduler_health_authority import (
+            load_scheduler_health_snapshot,
+            map_platform_status,
+        )
+
+        scheduler_snap = await load_scheduler_health_snapshot()
+        platform_status = map_platform_status(
+            scheduler_snap,
+            startup_degraded=bool(getattr(request.app.state, "startup_degraded", False)),
+        )
+    except Exception:
+        platform_status = (
+            "degraded" if getattr(request.app.state, "startup_degraded", False) else "healthy"
+        )
+        scheduler_snap = None
+
+    if getattr(request.app.state, "startup_degraded", False) and platform_status == "healthy":
+        platform_status = "degraded"
+
+    body = {
+        "status": platform_status,
         "environment": os.getenv("ENVIRONMENT", "development"),
         "readiness": {
             "stage": getattr(request.app.state, "startup_stage", "ready"),
-            "degraded": False,
-            "last_error": None,
+            "degraded": platform_status != "healthy",
+            "last_error": getattr(request.app.state, "startup_last_error", "") or None,
         },
     }
+    if scheduler_snap is not None:
+        body["scheduler"] = scheduler_snap.as_dict()
+    # Keep HTTP 200 when process is up so Render liveness does not flap; truth is in status.
+    return body
 
 
 # Version/build stamp for deployment verification (commit SHA set by CI/CD, e.g. GIT_COMMIT_SHA)
@@ -1807,6 +1835,18 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 # Global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    try:
+        from utils.mongo_capacity_errors import capacity_unavailable_payload, is_mongo_capacity_error
+
+        if is_mongo_capacity_error(exc):
+            logger.error("Database capacity exceeded: %s", exc, exc_info=True)
+            return JSONResponse(
+                status_code=503,
+                content=capacity_unavailable_payload(),
+                headers=_cors_headers_for_origin(request),
+            )
+    except Exception:
+        pass
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,

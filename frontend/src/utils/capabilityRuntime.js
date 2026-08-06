@@ -216,9 +216,27 @@ export function coercePortalDisplayText(value, fallback = '') {
   return formatApiErrorDetail(value, fallback);
 }
 
+export const DATABASE_CAPACITY_USER_MESSAGE =
+  'The service is temporarily unavailable because of a system capacity issue. Please try again shortly.';
+
+export function isDatabaseCapacityError(error) {
+  if (!error) return false;
+  const status = error.response?.status ?? error.status;
+  const data = error.response?.data ?? error.data ?? {};
+  const code = data.code ?? data?.detail?.code;
+  if (code === 'DATABASE_CAPACITY_EXCEEDED') return true;
+  if (status === 503 && typeof data.detail === 'string' && /capacity/i.test(data.detail)) {
+    return true;
+  }
+  return false;
+}
+
 export function formatApiErrorDetail(detail, fallback = 'Something went wrong') {
   if (detail == null || detail === '') {
     return fallback;
+  }
+  if (typeof detail === 'object' && !Array.isArray(detail) && detail.code === 'DATABASE_CAPACITY_EXCEEDED') {
+    return DATABASE_CAPACITY_USER_MESSAGE;
   }
   if (typeof detail === 'string') {
     return sanitizeCapabilityCustomerMessage(detail, null, detail);
@@ -255,6 +273,9 @@ export function formatApiErrorMessage(error, fallback = 'Something went wrong') 
   if (!error) {
     return fallback;
   }
+  if (isDatabaseCapacityError(error)) {
+    return DATABASE_CAPACITY_USER_MESSAGE;
+  }
   const denied = extractCapabilityDeniedFromError(error);
   if (denied?.message) {
     return sanitizeCapabilityCustomerMessage(
@@ -264,5 +285,9 @@ export function formatApiErrorMessage(error, fallback = 'Something went wrong') 
     );
   }
   const detail = error.response?.data?.detail ?? error.detail;
+  const data = error.response?.data;
+  if (data?.code === 'DATABASE_CAPACITY_EXCEEDED') {
+    return DATABASE_CAPACITY_USER_MESSAGE;
+  }
   return formatApiErrorDetail(detail, fallback);
 }
