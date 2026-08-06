@@ -26,6 +26,26 @@ def test_idle_success_detection():
     assert is_idle_success_result({"count": 0, "outcome_metrics": {"attempted_count": 0}})
     assert not is_idle_success_result({"count": 3, "outcome_metrics": {"attempted_count": 3}})
     assert not is_idle_success_result({"count": 0, "outcome_status": "failed"})
+    assert is_idle_success_result(
+        {
+            "count": 0,
+            "outcome_status": "success",
+            "outcome_metrics": {
+                "outcome_kind": "CONTENTION_ONLY",
+                "attempted_count": 10,
+                "queue_items_seen_batch": 10,
+                "queue_items_claim_skipped": 10,
+                "success_count": 0,
+            },
+        }
+    )
+    assert is_idle_success_result(
+        {
+            "count": 0,
+            "outcome_status": "conditional_no_output",
+            "outcome_metrics": {"outcome_kind": "NO_WORK_ELIGIBLE", "queue_empty": True, "attempted_count": 0},
+        }
+    )
 
 
 def test_should_skip_heartbeat_schedule(monkeypatch):

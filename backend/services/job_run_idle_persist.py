@@ -39,16 +39,16 @@ def is_idle_success_result(result: Optional[Dict[str, Any]]) -> bool:
         return False
     if result.get("outcome_status") in ("failed", "degraded"):
         return False
+    om = result.get("outcome_metrics") or {}
+    # Explicit no-work / contention-only kinds: no useful work performed this tick.
+    kind = str(om.get("outcome_kind") or "")
+    if kind in ("NO_WORK_ELIGIBLE", "CONTENTION_ONLY"):
+        return True
+    if om.get("queue_empty") is True and int(om.get("success_count") or 0) == 0:
+        return True
     if result.get("error_code") or result.get("error_message"):
-        # allow heartbeat-style messages without treating as failure
         if result.get("outcome_status") == "failed":
             return False
-    om = result.get("outcome_metrics") or {}
-    if om.get("outcome_kind") in ("WORK_PERFORMED",) and int(result.get("count") or 0) > 0:
-        # heartbeat returns WORK_PERFORMED with count=1 — handled by ALWAYS_SKIP
-        if int(om.get("attempted_count") or 0) > 0 and int(result.get("count") or 0) > 0:
-            # risk/regen empty queue sets attempted_count 0
-            pass
     count = result.get("count")
     if count is None:
         count = om.get("attempted_count")
@@ -58,9 +58,13 @@ def is_idle_success_result(result: Optional[Dict[str, Any]]) -> bool:
         n = 0
     attempted = int(om.get("attempted_count") or 0)
     regenerated = int(om.get("regenerated_count") or 0)
-    processed = int(om.get("processed") or om.get("processed_count") or 0)
-    batch_size = int(om.get("batch_size") or 0)
+    processed = int(om.get("processed") or om.get("processed_count") or om.get("success_count") or 0)
+    batch_size = int(om.get("batch_size") or om.get("queue_items_seen_batch") or 0)
+    claim_skipped = int(om.get("queue_items_claim_skipped") or 0)
     if result.get("idle") is True:
+        return True
+    # Contention: saw rows but claimed none and processed none
+    if batch_size > 0 and claim_skipped == batch_size and processed == 0 and regenerated == 0:
         return True
     if n == 0 and attempted == 0 and regenerated == 0 and processed == 0:
         return True
