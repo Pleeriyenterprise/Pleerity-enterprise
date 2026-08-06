@@ -1,0 +1,38 @@
+{
+  "idle_observation": {
+    "window_s": 210,
+    "before": {
+      "at": "2026-08-06T15:11:20.364212+00:00",
+      "heartbeat": "2026-08-06T15:09:59.802496+00:00",
+      "job_runs": 15,
+      "oep": 109,
+      "oep_exec": 1,
+      "poll_hb": 4
+    },
+    "after": {
+      "at": "2026-08-06T15:14:54.796486+00:00",
+      "heartbeat": "2026-08-06T15:13:42.815787+00:00",
+      "job_runs": 26,
+      "oep": 132,
+      "oep_exec": 1,
+      "poll_hb": 5
+    },
+    "delta": {
+      "job_runs": 11,
+      "oep": 23,
+      "oep_exec": 0,
+      "poll_hb": 1
+    },
+    "recent_job_counts": {
+      "compliance_recalc_worker": 17,
+      "risk_signal_regen_worker": 1,
+      "generation_auto_retry_processing": 1,
+      "sla_watchdog": 2,
+      "notification_failure_spike_monitor": 1,
+      "compliance_recalc_sla_monitor": 1,
+      "queued_order_processing": 1,
+      "order_delivery_processing": 1,
+      "scheduled_reports": 1
+    }
+  }
+}

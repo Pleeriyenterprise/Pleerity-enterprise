@@ -1,0 +1,89 @@
+{
+  "idle_observation_post_contention_fix": {
+    "window_s": 240,
+    "deployed_sha_expected": "9b76213eb9d70f999f7581cadbd41c8af88a7c49",
+    "before": {
+      "at": "2026-08-06T15:33:45.864782+00:00",
+      "heartbeat": "2026-08-06T15:32:01.653171+00:00",
+      "job_runs": 58,
+      "oep": 261,
+      "oep_exec": 2,
+      "poll_hb": 5
+    },
+    "after": {
+      "at": "2026-08-06T15:37:50.585830+00:00",
+      "heartbeat": "2026-08-06T15:36:01.888457+00:00",
+      "job_runs": 64,
+      "oep": 273,
+      "oep_exec": 2,
+      "poll_hb": 5
+    },
+    "delta": {
+      "job_runs": 6,
+      "oep": 12,
+      "oep_exec": 0,
+      "poll_hb": 0
+    },
+    "recent_job_key_counts_sample50": {
+      "unknown": 50
+    },
+    "recent_outcome_kinds_sample50": {
+      "n/a": 32,
+      "NO_SPIKE_DETECTED": 4,
+      "SLA_CHECK_COMPLETED": 2,
+      "CONTENTION_ONLY": 12
+    },
+    "poll_heartbeats": [
+      {
+        "idle": true,
+        "job_name": "scheduled_admin_communications",
+        "last_count": 0,
+        "last_message": "Executed 0 scheduled communication(s)",
+        "last_tick_at": "2026-08-06T15:36:00.595225+00:00",
+        "skipped_persist": true,
+        "tick_count": 11,
+        "updated_at": "2026-08-06T15:36:00.595225+00:00"
+      },
+      {
+        "idle": false,
+        "job_name": "scheduler_heartbeat",
+        "last_count": 1,
+        "last_message": "Heartbeat updated",
+        "last_tick_at": "2026-08-06T15:36:02.009675+00:00",
+        "skipped_persist": true,
+        "tick_count": 11,
+        "updated_at": "2026-08-06T15:36:02.009675+00:00"
+      },
+      {
+        "idle": true,
+        "job_name": "notification_retry_worker",
+        "last_count": 0,
+        "last_message": "Processed 0 notification retries",
+        "last_tick_at": "2026-08-06T15:37:00.474616+00:00",
+        "skipped_persist": true,
+        "tick_count": 22,
+        "updated_at": "2026-08-06T15:37:00.474616+00:00"
+      },
+      {
+        "idle": true,
+        "job_name": "risk_signal_regen_worker",
+        "last_count": 0,
+        "last_message": "Risk signal regen worker: no pending jobs (queue empty)",
+        "last_tick_at": "2026-08-06T15:37:31.976724+00:00",
+        "skipped_persist": true,
+        "tick_count": 42,
+        "updated_at": "2026-08-06T15:37:31.976724+00:00"
+      },
+      {
+        "idle": true,
+        "job_name": "compliance_recalc_worker",
+        "last_count": 0,
+        "last_message": "Compliance recalc worker: no pending queue items due now.",
+        "last_tick_at": "2026-08-06T15:37:46.653194+00:00",
+        "skipped_persist": true,
+        "tick_count": 68,
+        "updated_at": "2026-08-06T15:37:46.653194+00:00"
+      }
+    ]
+  }
+}
