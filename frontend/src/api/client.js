@@ -178,7 +178,9 @@ apiClient.interceptors.response.use(
     setLastApiError(status, typeof message === 'string' ? message : JSON.stringify(detail ?? message));
     const errPath = normalizedApiUrlPath(error.config || {});
     if (status === 403 || status === 429) {
-      recordApiCircuitFailure(errPath, status, typeof message === 'string' ? message : '');
+      const errorCode =
+        detail && typeof detail === 'object' && !Array.isArray(detail) ? detail.error_code : '';
+      recordApiCircuitFailure(errPath, status, typeof message === 'string' ? message : '', errorCode);
     }
     if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
       error.structuredDetail = detail;

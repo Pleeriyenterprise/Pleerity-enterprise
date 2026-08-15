@@ -8,6 +8,7 @@ import {
   isApiCircuitOpen,
   isGlobalApiPaused,
   recordApiCircuitFailure,
+  CIRCUIT_STEP_UP_CHALLENGE_FINGERPRINT,
   resetAllApiCircuits,
 } from './apiRequestCircuit';
 
@@ -74,5 +75,29 @@ describe('apiRequestCircuit', () => {
     resetAllApiCircuits();
     recordApiCircuitFailure('client/requirements', 429, 'Request blocked due to suspicious activity.');
     expect(isGlobalApiPaused()).toBe(true);
+  });
+
+  it('does not count STEP_UP_REQUIRED as a circuit failure', () => {
+    const path = 'admin/clients/x/commercial-entitlement/execute';
+    expect(CIRCUIT_STEP_UP_CHALLENGE_FINGERPRINT).toBe('cc-step-up-circuit-fix-04');
+    recordApiCircuitFailure(path, 403, 'Confirm your password to continue.', 'STEP_UP_REQUIRED');
+    recordApiCircuitFailure(path, 403, 'Confirm your password to continue.', 'STEP_UP_REQUIRED');
+    expect(isApiCircuitOpen(path)).toBe(false);
+    expect(isGlobalApiPaused()).toBe(false);
+  });
+
+  it('allows immediate retry after cancelled STEP_UP_REQUIRED (circuit stays closed)', () => {
+    const path = 'admin/clients/x/commercial-entitlement/execute';
+    recordApiCircuitFailure(path, 403, 'Confirm your password.', 'STEP_UP_REQUIRED');
+    // operator cancels; submits again — another expected challenge
+    recordApiCircuitFailure(path, 403, 'Confirm your password.', 'STEP_UP_REQUIRED');
+    expect(isApiCircuitOpen(path)).toBe(false);
+  });
+
+  it('still opens circuit on genuine authorization 403s', () => {
+    const path = 'admin/clients/x/commercial-entitlement/execute';
+    recordApiCircuitFailure(path, 403, 'Forbidden');
+    recordApiCircuitFailure(path, 403, 'Forbidden');
+    expect(isApiCircuitOpen(path)).toBe(true);
   });
 });
