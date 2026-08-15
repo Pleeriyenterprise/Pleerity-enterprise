@@ -1,0 +1,63 @@
+{
+  "programme": "COMMERCIAL-CONTROLS-AUTHORITY-CORRECTION-AND-E2E-CERTIFICATION-02",
+  "at_utc": "2026-08-15T18:55:00+00:00",
+  "verdict": "COMMERCIAL_CONTROLS_INCOMPLETE",
+  "previous_sha": "dfe9e19edf88d88559b6003c2215fd84419956f7",
+  "new_sha": "02533d50faafc114292ab1cba56c2a283df01664",
+  "rollback_sha": "dfe9e19edf88d88559b6003c2215fd84419956f7",
+  "branch": "develop",
+  "merged_to_main": false,
+  "production_deployed": false,
+  "staging": {
+    "api": "https://pleerity-enterprise.onrender.com/api",
+    "api_version": {
+      "commit_sha": "02533d50faafc114292ab1cba56c2a283df01664",
+      "environment": "staging"
+    },
+    "render_service": "srv-d68995vpm1nc738v1s70",
+    "render_deploy": "dep-da0b8be1egvs739cft9g",
+    "frontend_alias": "https://pleerity-enterprise-9jjg.vercel.app",
+    "frontend_preview": "https://pleerity-enterprise-9jjg-lz1ca2id0-victory-aigbochies-projects.vercel.app",
+    "bundle": "main.c8b6a433.js",
+    "bundle_contains_step_up_host": true,
+    "production_api_version": {
+      "commit_sha": "89217062481b4eb858a8b530ec90c83de067a4be",
+      "environment": "production"
+    }
+  },
+  "soak": {
+    "interrupted_by_staging_deploy": true,
+    "deploy_live_at_utc": "2026-08-15T18:50:05Z",
+    "prior_baseline_at_utc": "2026-08-06T17:59:07Z",
+    "observation_window": "must_restart_or_extend"
+  },
+  "operator_access": {
+    "exercise_01_block": "423 Locked",
+    "root_cause": "governed AUTH_LOCK_EMAIL after failed admin logins; default 15 minutes",
+    "recovery": "wait for lock expiry; did not delete locks or weaken auth",
+    "this_exercise_login": "401 Invalid credentials with stale ops_verify temp password",
+    "intended_operator": "aigbochievictory@gmail.com",
+    "rbac": "ROLE_ADMIN",
+    "step_up_policy": "commercial_entitlement_execute requires_step_up",
+    "env_password_present": false
+  },
+  "unit_tests": {
+    "backend_targeted_passed": 72,
+    "frontend_commercial_passed": 6
+  },
+  "runtime": {
+    "step_up_ui": "bundle_host_present_live_flow_unverified",
+    "seven_controls_execute": "unverified",
+    "stripe_refetch": "unverified",
+    "postmark": "unverified",
+    "expiry": "unverified"
+  },
+  "suspend_billing_authority": {
+    "available_when_cancelled": true,
+    "canonical_preserved": true,
+    "effective_overlay": true,
+    "plan_resolver_no_solo_default": true,
+    "stripe_pause_collection_void": true,
+    "cancelled_no_recreate": true
+  }
+}

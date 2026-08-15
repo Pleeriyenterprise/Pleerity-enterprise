@@ -99,3 +99,19 @@ tests/test_account_lifecycle_runtime_contract.py
 tests/test_admin_action_governance_policy.py
 → 72 passed
 ```
+
+Frontend `CommercialEntitlementControls.test.js` → 6 passed.
+
+## Staging deploy (this exercise)
+
+Source SHA `02533d50` is live on staging backend (`/api/version` environment=staging). Staging frontend alias `pleerity-enterprise-9jjg.vercel.app` serves `main.c8b6a433.js` containing `commercial-step-up-modal-host`. Production was not deployed (`89217062`).
+
+## Operator access
+
+423 lock from exercise 01 expired under governed timeout. A subsequent login with the stored ops_verify temp password returned **401**. `STAGING_ADMIN_PASSWORD` is unset. Live execute, Stripe refetch, Postmark, expiry, and UI step-up completion were therefore not run.
+
+## Final verdict
+
+```text
+COMMERCIAL_CONTROLS_INCOMPLETE
+```
