@@ -21,7 +21,9 @@ EXPECTED_ACTIONS = {
     "backfill_evidence_match_batch",
 }
 
-# Full registry must stay in sync with frontend/src/config/adminActionPolicyRegistry.json
+# Full registry must stay in sync with frontend/src/config/adminActionPolicyRegistry.json.
+# The five lifecycle_ops_* keys are intentional governed actions from
+# AdminLifecycleOperationsPanel / routes/admin_lifecycle_operations.py, not accidental drift.
 FULL_REGISTRY_ACTIONS = {
     "admin_cancel_subscription",
     "authority_backfill_p0_apply",
@@ -51,6 +53,11 @@ FULL_REGISTRY_ACTIONS = {
     "seed_admin_remediation_probe",
     "start_impersonation",
     "unlock_account",
+    "lifecycle_ops_refresh_runtime",
+    "lifecycle_ops_reconcile_stripe",
+    "lifecycle_ops_resume_subscription",
+    "lifecycle_ops_mark_support_review",
+    "lifecycle_ops_export_support_bundle",
 }
 
 REQUIRED_FIELDS = {

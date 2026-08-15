@@ -1,0 +1,120 @@
+{
+  "programme": "COMMERCIAL-CONTROLS-END-TO-END-REMEDIATION-01",
+  "at_utc": "2026-08-15T18:00:00+00:00",
+  "verdict": "COMMERCIAL_CONTROLS_INCOMPLETE",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "branch": "develop",
+  "deployed_this_exercise": false,
+  "soak_reset": false,
+  "staging_blockers": [
+    {
+      "code": "STAGING_ADMIN_LOCKED",
+      "http_status": 423,
+      "detail": "POST /api/auth/admin/login returned 423 Locked. Execute, email, Stripe object, and UI refresh probes were not run."
+    },
+    {
+      "code": "SPINNER_FIX_NOT_DEPLOYED",
+      "detail": "commercial-step-up-modal-host exists in source only. Deployed frontend still omits stepUp.modal."
+    }
+  ],
+  "root_cause": {
+    "classification": "frontend_promise_never_resolving",
+    "stop_point": "useStepUpApi.request waiting for password modal that CommercialEntitlementControls did not render",
+    "first_request": "POST execute without X-Step-Up-Token → 403 STEP_UP_REQUIRED"
+  },
+  "unit_tests": {
+    "test_commercial_entitlement_governance.py": "passed",
+    "CommercialEntitlementControls.test.js": "5 passed"
+  },
+  "controls": {
+    "grant_grace_period": {
+      "ui": "UNVERIFIED",
+      "api": "UNVERIFIED",
+      "db": "CODE_PATH",
+      "authority": "UNIT",
+      "stripe": "NO_STRIPE_ACTION",
+      "email": "UNVERIFIED",
+      "audit": "CODE_PATH",
+      "expiry": "PRIOR_2026_06_01",
+      "ui_refresh": "CODE_PATH",
+      "verdict": "FAIL"
+    },
+    "suspend_billing": {
+      "ui": "FAIL_DEPLOYED_SPINNER",
+      "api": "UNVERIFIED",
+      "db": "CODE_PATH",
+      "authority": "UNIT_CANCELLED_STAYS_CANCELLED",
+      "stripe": "NO_STRIPE_ACTION",
+      "email": "UNVERIFIED",
+      "audit": "CODE_PATH",
+      "expiry": "PRIOR_2026_06_01",
+      "ui_refresh": "CODE_PATH",
+      "verdict": "FAIL"
+    },
+    "grant_sponsored_access": {
+      "ui": "UNVERIFIED",
+      "api": "UNVERIFIED",
+      "db": "CODE_PATH",
+      "authority": "UNIT_SPONSOR_REQUIRED",
+      "stripe": "NO_STRIPE_ACTION",
+      "email": "UNVERIFIED",
+      "audit": "CODE_PATH",
+      "expiry": "PRIOR_2026_06_01",
+      "ui_refresh": "CODE_PATH",
+      "verdict": "FAIL"
+    },
+    "retention_extension": {
+      "ui": "UNVERIFIED",
+      "api": "UNVERIFIED",
+      "db": "CODE_PATH",
+      "authority": "CODE_PATH",
+      "stripe": "NO_STRIPE_ACTION",
+      "email": "UNVERIFIED",
+      "audit": "CODE_PATH",
+      "expiry": "UNVERIFIED",
+      "ui_refresh": "CODE_PATH",
+      "verdict": "FAIL"
+    },
+    "waive_onboarding_fee": {
+      "ui": "UNVERIFIED",
+      "api": "UNVERIFIED",
+      "db": "CODE_PATH",
+      "authority": "CODE_PATH_WAIVER_FLAGS",
+      "stripe": "NO_STRIPE_ACTION",
+      "email": "UNVERIFIED",
+      "audit": "CODE_PATH",
+      "expiry": "WAIVER_FLAGS_PERMANENT",
+      "ui_refresh": "CODE_PATH",
+      "verdict": "FAIL"
+    },
+    "apply_recovery_compensation": {
+      "ui": "UNVERIFIED",
+      "api": "UNVERIFIED",
+      "db": "CODE_PATH",
+      "authority": "TIME_BOUND_CONTINUITY_NOT_CREDIT",
+      "stripe": "NO_STRIPE_ACTION",
+      "email": "UNVERIFIED",
+      "audit": "CODE_PATH",
+      "expiry": "UNVERIFIED",
+      "ui_refresh": "CODE_PATH",
+      "verdict": "FAIL"
+    },
+    "restrict_entitlement": {
+      "ui": "UNVERIFIED",
+      "api": "UNVERIFIED",
+      "db": "CODE_PATH",
+      "authority": "UNIT_CANONICAL_SUSPENDED",
+      "stripe": "NO_STRIPE_ACTION",
+      "email": "UNVERIFIED",
+      "audit": "CODE_PATH",
+      "expiry": "UNVERIFIED",
+      "ui_refresh": "CODE_PATH",
+      "verdict": "FAIL"
+    }
+  },
+  "authority_decisions_required": [
+    "Whether Suspend billing / grace / sponsorship may run when canonical access is CANCELLED",
+    "Whether v1 should implement Stripe pause_collection or stop claiming customer billing is paused",
+    "Whether recovery compensation should ever become a Stripe credit"
+  ]
+}

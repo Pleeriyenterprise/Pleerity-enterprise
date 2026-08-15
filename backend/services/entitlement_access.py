@@ -85,6 +85,36 @@ def evaluate_subscription_feature_access(
             pilot_gov_err,
         )
 
+    try:
+        from services.commercial_entitlement_service import (
+            commercial_continuity_overlay_active,
+            commercial_restored_plan_code,
+        )
+
+        if commercial_continuity_overlay_active(client, billing):
+            restored = commercial_restored_plan_code(client, billing)
+            if not restored:
+                return "Temporary access cannot be evaluated because the previous plan is unresolved.", {
+                    "error_code": "PLAN_UNRESOLVED",
+                    "canonical_entitlement_state": canon,
+                    "effective_entitlement_state": "ENABLED",
+                    "feature": feature_key,
+                }
+            plan_code = plan_registry.resolve_plan_code(restored)
+            is_allowed, message, upgrade_info = plan_registry.check_feature_access(plan_code, feature_key)
+            if not is_allowed:
+                return message, {
+                    "error_code": "PLAN_NOT_ELIGIBLE",
+                    "feature": feature_key,
+                    "upgrade_required": True,
+                    "current_plan": restored,
+                    "effective_entitlement_state": "ENABLED",
+                    **(upgrade_info or {}),
+                }
+            return None
+    except ImportError:
+        pass
+
     if canon == "CANCELLED" or lc == "cancelled":
         return "This subscription is cancelled. Open Billing if you need to resubscribe.", {
             "error_code": "SUBSCRIPTION_CANCELLED",

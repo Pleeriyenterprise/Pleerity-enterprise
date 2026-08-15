@@ -92,3 +92,47 @@ def test_extract_successful_invoice_payment_fields_from_stripe_shape():
     assert fields.get("last_payment_invoice_number") == "ST-500"
     assert fields.get("last_payment_status") == "paid"
     assert fields.get("last_payment_at") is not None
+
+
+def test_commercial_overlay_on_cancelled_uses_restored_plan_gates():
+    cancelled = {
+        "client_id": "c1",
+        "billing_plan": "PLAN_1_SOLO",
+        "subscription_status": "CANCELED",
+        "canonical_entitlement_state": "CANCELLED",
+        "commercial_effective_entitlement_state": "ENABLED",
+        "commercial_restored_plan_code": "PLAN_1_SOLO",
+    }
+    billing = {
+        "subscription_status": "CANCELED",
+        "billing_lifecycle_state": "cancelled",
+        "canonical_entitlement_state": "CANCELLED",
+        "commercial_effective_entitlement_state": "ENABLED",
+        "commercial_restored_plan_code": "PLAN_1_SOLO",
+    }
+    allowed = evaluate_subscription_feature_access(
+        client=cancelled, billing=billing, feature_key="compliance_dashboard"
+    )
+    assert allowed is None
+    denied = evaluate_subscription_feature_access(
+        client=cancelled, billing=billing, feature_key="predictive_maintenance"
+    )
+    assert denied is not None
+    assert denied[1].get("error_code") == "PLAN_NOT_ELIGIBLE"
+
+    pro = dict(cancelled)
+    pro["commercial_restored_plan_code"] = "PLAN_3_PRO"
+    pro_billing = dict(billing)
+    pro_billing["commercial_restored_plan_code"] = "PLAN_3_PRO"
+    pro_ok = evaluate_subscription_feature_access(
+        client=pro, billing=pro_billing, feature_key="predictive_maintenance"
+    )
+    assert pro_ok is None
+
+
+def test_cancelled_without_overlay_still_denied():
+    client = {"client_id": "c1", "billing_plan": "PLAN_3_PRO", "canonical_entitlement_state": "CANCELLED"}
+    billing = {"subscription_status": "CANCELED", "billing_lifecycle_state": "cancelled"}
+    d = evaluate_subscription_feature_access(client=client, billing=billing, feature_key="compliance_dashboard")
+    assert d is not None
+    assert d[1].get("error_code") == "SUBSCRIPTION_CANCELLED"

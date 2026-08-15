@@ -915,6 +915,15 @@ class Database:
             await self.db.commercial_entitlement_governance.create_index(
                 [("client_id", 1), ("status", 1)]
             )
+            try:
+                await self.db.commercial_entitlement_governance.create_index(
+                    [("client_id", 1)],
+                    unique=True,
+                    partialFilterExpression={"status": "active"},
+                    name="uniq_client_active_commercial_governance",
+                )
+            except Exception:
+                pass
             await self.db.commercial_entitlement_governance.create_index("entitlement_expiry_at")
             await self.db.commercial_entitlement_governance.create_index("entitlement_review_at")
             try:

@@ -64,6 +64,7 @@ async def send_commercial_continuity_email(
     impact_preview: Dict[str, Any],
     effective_access_reason: str,
     expiry_at: Optional[str] = None,
+    governance_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     from services.commercial_entitlement_execution_service import (
         ACTION_GRANT_GRACE,
@@ -81,7 +82,10 @@ async def send_commercial_continuity_email(
 
     subject = "An update about your Compliance Vault Pro account"
     if action == ACTION_SUSPEND_BILLING:
-        subject = "Billing temporarily paused on your account"
+        subject = (
+            impact_preview.get("notification_subject")
+            or "Billing temporarily paused on your account"
+        )
     elif action in (ACTION_GRANT_GRACE, ACTION_RETENTION_EXTENSION):
         subject = "Your access has been extended"
     elif action == ACTION_SPONSORED_ACCESS:
@@ -96,7 +100,11 @@ async def send_commercial_continuity_email(
         effective_access_reason=effective_access_reason,
         expiry_label=_expiry_label(expiry_at),
     )
-    idempotency_key = f"commercial_entitlement_{client_id}_{action}_{uuid.uuid4()}"
+    idempotency_key = (
+        f"commercial_entitlement_{client_id}_{governance_id}_{action}"
+        if governance_id
+        else f"commercial_entitlement_{client_id}_{action}_{uuid.uuid4()}"
+    )
     result = await notification_orchestrator.send(
         template_key=TEMPLATE_KEY,
         client_id=client_id,

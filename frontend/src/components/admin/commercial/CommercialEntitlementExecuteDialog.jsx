@@ -15,7 +15,10 @@ import {
   getGovernanceConfirmationWording,
   getGovernanceWarning,
 } from '../../../utils/adminActionGovernance';
-import { commercialActionLabel } from '../../../utils/commercialEntitlementAdmin';
+import {
+  ACTION_DURATION_MAX_DAYS,
+  commercialActionLabel,
+} from '../../../utils/commercialEntitlementAdmin';
 
 const ACTION_ID = 'commercial_entitlement_execute';
 
@@ -37,6 +40,7 @@ export default function CommercialEntitlementExecuteDialog({
   clientId,
   action,
   onSubmit,
+  lifecycleWarning,
 }) {
   const [reason, setReason] = useState('');
   const [durationDays, setDurationDays] = useState(14);
@@ -85,10 +89,17 @@ export default function CommercialEntitlementExecuteDialog({
     };
   }, [open, clientId, action, durationDays, sponsorReference]);
 
+  const durationMax = ACTION_DURATION_MAX_DAYS[action] || 90;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     if (!confirmed) {
       setError('Please confirm you have reviewed impact and reason.');
+      return;
+    }
+    if (NEEDS_DURATION.has(action) && (durationDays < 1 || durationDays > durationMax)) {
+      setError(`Duration must be between 1 and ${durationMax} days for this action.`);
       return;
     }
     setLoading(true);
@@ -105,7 +116,12 @@ export default function CommercialEntitlementExecuteDialog({
       onOpenChange(false);
     } catch (err) {
       if (err?.message === 'step_up_cancelled') return;
-      setError(apiErrorMessage(err, 'Commercial action failed'));
+      const timedOut = err?.code === 'ECONNABORTED' || /timeout/i.test(String(err?.message || ''));
+      setError(
+        timedOut
+          ? 'The request timed out before a confirmed outcome. Check commercial state before retrying — do not assume success.'
+          : apiErrorMessage(err, 'Commercial action failed'),
+      );
     } finally {
       setLoading(false);
     }
@@ -114,7 +130,13 @@ export default function CommercialEntitlementExecuteDialog({
   const revocable = action === 'resume_billing' || action === 'revoke_commercial_exception';
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (loading && !v) return;
+        onOpenChange(v);
+      }}
+    >
       <DialogContent data-testid="commercial-entitlement-execute-dialog">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -127,6 +149,14 @@ export default function CommercialEntitlementExecuteDialog({
             <p className="text-xs text-amber-900 rounded border border-amber-200 bg-amber-50 p-2">
               {getGovernanceWarning(ACTION_ID)}
             </p>
+            {lifecycleWarning ? (
+              <p
+                className="text-xs text-amber-900 rounded border border-amber-200 bg-amber-50 p-2"
+                data-testid="commercial-lifecycle-warning"
+              >
+                {lifecycleWarning}
+              </p>
+            ) : null}
             {previewLoading && <p className="text-xs text-gray-500">Loading impact preview…</p>}
             {preview && (
               <div className="rounded border border-slate-200 bg-slate-50 p-2 text-xs space-y-1" data-testid="commercial-impact-preview">
@@ -143,10 +173,13 @@ export default function CommercialEntitlementExecuteDialog({
                 <input
                   type="number"
                   min={1}
-                  max={90}
+                  max={durationMax}
                   className="mt-1 w-full border rounded px-2 py-1.5 text-sm"
                   value={durationDays}
-                  onChange={(e) => setDurationDays(Number(e.target.value) || 1)}
+                  onChange={(e) => {
+                    const n = Number(e.target.value) || 1;
+                    setDurationDays(Math.min(Math.max(n, 1), durationMax));
+                  }}
                   data-testid="commercial-execute-duration"
                 />
               </label>
@@ -203,8 +236,8 @@ export default function CommercialEntitlementExecuteDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || reason.trim().length < 10}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+            <Button type="submit" disabled={loading || reason.trim().length < 10} data-testid="commercial-execute-submit">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Submitting" /> : 'Apply'}
             </Button>
           </DialogFooter>
         </form>

@@ -27,6 +27,9 @@ from services.commercial_entitlement_service import (
     detect_entitlement_drift,
     ACCESS_FULL,
     ACCESS_SUSPENDED,
+    _lifecycle_action_warnings,
+    _derive_executable_actions,
+    resolve_authoritative_plan_code,
 )
 from services.commercial_entitlement_stripe_convergence_service import prevent_duplicate_subscription_risk
 
@@ -59,6 +62,7 @@ def test_derive_customer_access_state_preserves_continuity_on_billing_suspend():
     }
     access = derive_customer_access_state(signals)
     assert access["canonical_entitlement_state"] == "ENABLED"
+    assert access["effective_entitlement_state"] == "ENABLED"
     assert access["access_policy"] == ACCESS_FULL
 
 
@@ -192,3 +196,168 @@ async def test_prevent_duplicate_subscription_risk():
         result = await prevent_duplicate_subscription_risk("client-1")
     assert result["duplicate_risk"] is True
     assert len(result["subscription_ids"]) == 2
+
+
+def test_suspend_billing_on_cancelled_preserves_canonical_and_restores_effective_access():
+    signals = {
+        "client": {
+            "billing_lifecycle_state": "cancelled",
+            "subscription_status": "CANCELED",
+            "billing_plan": "PLAN_3_PRO",
+        },
+        "billing": {
+            "billing_lifecycle_state": "cancelled",
+            "subscription_status": "CANCELED",
+            "current_plan_code": "PLAN_3_PRO",
+        },
+        "active_governance": _governance(
+            entitlement_state=STATE_BILLING_SUSPENDED,
+            exception_type="billing_suspension",
+            access_policy=ACCESS_FULL,
+            restored_plan_code="PLAN_3_PRO",
+        ),
+    }
+    access = derive_customer_access_state(signals)
+    assert access["canonical_entitlement_state"] == "CANCELLED"
+    assert access["underlying_canonical_entitlement_state"] == "CANCELLED"
+    assert access["effective_entitlement_state"] == "ENABLED"
+    assert access["restored_plan_code"] == "PLAN_3_PRO"
+    assert access["access_policy"] == ACCESS_FULL
+
+
+def test_impact_preview_operator_copy_describes_stripe_pause_for_active():
+    preview = derive_customer_impact_preview(
+        action=ACTION_SUSPEND_BILLING,
+        duration_days=14,
+        entitlement_expiry_at=None,
+        sponsor_reference=None,
+        access_policy=ACCESS_FULL,
+        customer_note=None,
+        underlying_canonical="ENABLED",
+        restored_plan_code="PLAN_2_PORTFOLIO",
+        stripe_pause_mode="pause_collection",
+    )
+    assert "pause_collection" in preview["stripe_impact"]
+    assert "paused" in preview["billing_impact"].lower()
+    assert "reactivated" not in preview["customer_impact"].lower()
+
+
+def test_impact_preview_cancelled_does_not_claim_subscription_reactivated():
+    preview = derive_customer_impact_preview(
+        action=ACTION_SUSPEND_BILLING,
+        duration_days=14,
+        entitlement_expiry_at=None,
+        sponsor_reference=None,
+        access_policy=ACCESS_FULL,
+        customer_note=None,
+        underlying_canonical="CANCELLED",
+        restored_plan_code="PLAN_3_PRO",
+        stripe_pause_mode="already_non_collecting",
+    )
+    assert "remains cancelled" in preview["customer_impact"].lower()
+    assert "not be created" in preview["billing_impact"].lower() or "non-collecting" in preview["billing_impact"].lower()
+    assert "Professional" in preview["customer_impact"] or "PLAN_3_PRO" in preview["access_impact"]
+
+
+def test_lifecycle_warnings_for_cancelled_without_blocking_actions():
+    signals = {
+        "found": True,
+        "client": {"billing_lifecycle_state": "cancelled", "subscription_status": "CANCELED"},
+        "billing": {"billing_lifecycle_state": "cancelled", "subscription_status": "CANCELED"},
+    }
+    warnings = _lifecycle_action_warnings(signals, None)
+    actions = _derive_executable_actions(signals, None)
+    assert "suspend_billing" in actions
+    assert "suspend_billing" in warnings
+    assert "cancelled" in warnings["suspend_billing"].lower()
+
+
+def test_lifecycle_warnings_empty_when_active_exception():
+    signals = {
+        "client": {"billing_lifecycle_state": "active", "subscription_status": "ACTIVE"},
+        "billing": {},
+    }
+    warnings = _lifecycle_action_warnings(signals, _governance())
+    assert warnings == {}
+
+
+def test_validate_transition_blocks_revoke_without_active():
+    with pytest.raises(CommercialEntitlementExecutionError) as exc:
+        validate_transition("resume_billing", has_active=False)
+    assert exc.value.code == "NO_ACTIVE_EXCEPTION"
+
+
+def test_duration_cap_grace_rejects_over_max():
+    from services.commercial_entitlement_service import EXCEPTION_GRACE_EXTENSION
+
+    ok, err = validate_entitlement_authority(
+        exception_type=EXCEPTION_GRACE_EXTENSION,
+        duration_days=31,
+        sponsor_reference=None,
+        entitlement_expiry_at=None,
+    )
+    assert not ok
+    assert "30" in (err or "")
+
+
+@pytest.mark.asyncio
+async def test_persist_governance_duplicate_key_maps_to_active_exception():
+    from pymongo.errors import DuplicateKeyError
+    from services.commercial_entitlement_execution_service import _persist_governance_row
+
+    gov = MagicMock()
+    gov.insert_one = AsyncMock(side_effect=DuplicateKeyError("E11000"))
+    db = MagicMock()
+    db.__getitem__.return_value = gov
+    with patch("services.commercial_entitlement_execution_service.database") as mock_db:
+        mock_db.get_db.return_value = db
+        with pytest.raises(CommercialEntitlementExecutionError) as exc:
+            await _persist_governance_row(
+                client_id="c1",
+                exception_type="billing_suspension",
+                entitlement_state=STATE_BILLING_SUSPENDED,
+                reason="Help required for billing review",
+                scope="account",
+                actor={"id": "a1", "email": "a@example.com"},
+                origin="test",
+                duration_days=14,
+                entitlement_expiry_at=None,
+                entitlement_review_at=None,
+                entitlement_review_required=False,
+                sponsor_reference=None,
+                access_policy=ACCESS_FULL,
+                supersedes_governance_id=None,
+                send_customer_email=False,
+            )
+    assert exc.value.code == "ACTIVE_EXCEPTION_EXISTS"
+
+
+def test_resolve_authoritative_plan_code_precedence_and_no_solo_default():
+    empty = resolve_authoritative_plan_code({"client": {}, "billing": {}})
+    assert empty == (None, None)
+    unknown = resolve_authoritative_plan_code({"client": {"billing_plan": "ENTERPRISE_UNLIMITED"}, "billing": {}})
+    assert unknown == (None, None)
+    billed = resolve_authoritative_plan_code(
+        {
+            "client": {"billing_plan": "PLAN_1_SOLO"},
+            "billing": {"current_plan_code": "PLAN_3_PRO"},
+        }
+    )
+    assert billed == ("PLAN_3_PRO", "client_billing.current_plan_code")
+    alias = resolve_authoritative_plan_code({"client": {"selected_plan": "Professional"}, "billing": {}})
+    assert alias[0] == "PLAN_3_PRO"
+
+
+def test_waive_onboarding_does_not_overlay_cancelled_access():
+    signals = {
+        "client": {"billing_lifecycle_state": "cancelled", "subscription_status": "CANCELED"},
+        "billing": {"billing_lifecycle_state": "cancelled", "subscription_status": "CANCELED"},
+        "active_governance": _governance(
+            entitlement_state="WAIVED",
+            exception_type="onboarding_waiver",
+            access_policy=ACCESS_FULL,
+        ),
+    }
+    access = derive_customer_access_state(signals)
+    assert access["canonical_entitlement_state"] == "CANCELLED"
+    assert access["effective_entitlement_state"] == "CANCELLED"

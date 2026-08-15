@@ -1148,6 +1148,195 @@ class StripeService:
             )
             raise ValueError(f"Failed to resume subscription: {str(e)}")
 
+    _NON_COLLECTING_STRIPE_STATUSES = frozenset(
+        {"canceled", "cancelled", "incomplete_expired", "unpaid"}
+    )
+
+    async def pause_subscription_collection(
+        self,
+        client_id: str,
+        *,
+        actor_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Pause Stripe invoice collection without cancelling or recreating the subscription.
+
+        Cancelled / incomplete_expired subscriptions are already non-collecting; no mutation.
+        """
+        db = database.get_db()
+        billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0}) or {}
+        subscription_id = (billing.get("stripe_subscription_id") or "").strip()
+        local_status = str(billing.get("subscription_status") or "").lower()
+
+        if not subscription_id or local_status in self._NON_COLLECTING_STRIPE_STATUSES:
+            return {
+                "ok": True,
+                "mutation": "already_non_collecting",
+                "reconciliation_status": "already_non_collecting",
+                "subscription_id": subscription_id or None,
+                "subscription_status": (billing.get("subscription_status") or "").upper() or None,
+            }
+
+        try:
+            subscription = stripe.Subscription.retrieve(subscription_id)
+            sub_d = stripe_subscription_to_dict(subscription)
+            stripe_status = str(sub_d.get("status") or "").lower()
+            if stripe_status in self._NON_COLLECTING_STRIPE_STATUSES:
+                return {
+                    "ok": True,
+                    "mutation": "already_non_collecting",
+                    "reconciliation_status": "already_non_collecting",
+                    "subscription_id": subscription_id,
+                    "subscription_status": stripe_status.upper(),
+                }
+            existing_pause = sub_d.get("pause_collection")
+            if isinstance(existing_pause, dict) and existing_pause.get("behavior"):
+                await db.client_billing.update_one(
+                    {"client_id": client_id},
+                    {
+                        "$set": {
+                            "stripe_collection_paused": True,
+                            "stripe_pause_collection_behavior": existing_pause.get("behavior"),
+                        }
+                    },
+                )
+                return {
+                    "ok": True,
+                    "mutation": "already_paused",
+                    "reconciliation_status": "pause_collection_already_set",
+                    "subscription_id": subscription_id,
+                    "subscription_status": stripe_status.upper(),
+                    "behavior": existing_pause.get("behavior"),
+                }
+            modified = stripe.Subscription.modify(
+                subscription_id,
+                pause_collection={"behavior": "void"},
+            )
+            mod_d = stripe_subscription_to_dict(modified)
+            pause = mod_d.get("pause_collection") or {"behavior": "void"}
+            behavior = pause.get("behavior") if isinstance(pause, dict) else "void"
+            await db.client_billing.update_one(
+                {"client_id": client_id},
+                {
+                    "$set": {
+                        "stripe_collection_paused": True,
+                        "stripe_pause_collection_behavior": behavior,
+                        "updated_at": datetime.now(timezone.utc),
+                    }
+                },
+            )
+            await create_audit_log(
+                action=AuditAction.ADMIN_ACTION,
+                actor_role="ROLE_ADMIN",
+                actor_id=actor_id,
+                client_id=client_id,
+                metadata={
+                    "action": "stripe_pause_collection",
+                    "subscription_id": subscription_id,
+                    "behavior": behavior,
+                    "subscription_status": str(mod_d.get("status") or "").upper(),
+                },
+            )
+            return {
+                "ok": True,
+                "mutation": "pause_collection",
+                "reconciliation_status": "pause_collection_applied",
+                "subscription_id": subscription_id,
+                "subscription_status": str(mod_d.get("status") or "").upper(),
+                "behavior": behavior,
+            }
+        except stripe.error.StripeError as e:
+            logger.error("Stripe pause_collection error for client %s: %s", client_id, e)
+            await mark_billing_reconciliation_needed(
+                client_id=client_id,
+                reason="pause_collection_stripe_error",
+                context={"error": str(e)[:500], "subscription_id": subscription_id},
+            )
+            raise ValueError(f"Failed to pause Stripe collection: {str(e)}") from e
+
+    async def resume_subscription_collection(
+        self,
+        client_id: str,
+        *,
+        actor_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Clear pause_collection only when the underlying subscription remains billable."""
+        db = database.get_db()
+        billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0}) or {}
+        subscription_id = (billing.get("stripe_subscription_id") or "").strip()
+        local_status = str(billing.get("subscription_status") or "").lower()
+        if not subscription_id or local_status in self._NON_COLLECTING_STRIPE_STATUSES:
+            return {
+                "ok": True,
+                "mutation": "none",
+                "reason": "underlying_not_billable",
+                "subscription_id": subscription_id or None,
+            }
+        try:
+            subscription = stripe.Subscription.retrieve(subscription_id)
+            sub_d = stripe_subscription_to_dict(subscription)
+            stripe_status = str(sub_d.get("status") or "").lower()
+            if stripe_status in self._NON_COLLECTING_STRIPE_STATUSES:
+                return {
+                    "ok": True,
+                    "mutation": "none",
+                    "reason": "underlying_not_billable",
+                    "subscription_id": subscription_id,
+                    "subscription_status": stripe_status.upper(),
+                }
+            if not sub_d.get("pause_collection"):
+                await db.client_billing.update_one(
+                    {"client_id": client_id},
+                    {
+                        "$set": {
+                            "stripe_collection_paused": False,
+                            "stripe_pause_collection_behavior": None,
+                        }
+                    },
+                )
+                return {
+                    "ok": True,
+                    "mutation": "none",
+                    "reason": "not_paused",
+                    "subscription_id": subscription_id,
+                }
+            modified = stripe.Subscription.modify(subscription_id, pause_collection="")
+            mod_d = stripe_subscription_to_dict(modified)
+            await db.client_billing.update_one(
+                {"client_id": client_id},
+                {
+                    "$set": {
+                        "stripe_collection_paused": False,
+                        "stripe_pause_collection_behavior": None,
+                        "updated_at": datetime.now(timezone.utc),
+                    }
+                },
+            )
+            await create_audit_log(
+                action=AuditAction.ADMIN_ACTION,
+                actor_role="ROLE_ADMIN",
+                actor_id=actor_id,
+                client_id=client_id,
+                metadata={
+                    "action": "stripe_resume_collection",
+                    "subscription_id": subscription_id,
+                    "subscription_status": str(mod_d.get("status") or "").upper(),
+                },
+            )
+            return {
+                "ok": True,
+                "mutation": "resume_collection",
+                "subscription_id": subscription_id,
+                "subscription_status": str(mod_d.get("status") or "").upper(),
+            }
+        except stripe.error.StripeError as e:
+            logger.error("Stripe resume collection error for client %s: %s", client_id, e)
+            await mark_billing_reconciliation_needed(
+                client_id=client_id,
+                reason="resume_collection_stripe_error",
+                context={"error": str(e)[:500], "subscription_id": subscription_id},
+            )
+            raise ValueError(f"Failed to resume Stripe collection: {str(e)}") from e
+
     async def list_invoices(self, client_id: str, limit: int = 24) -> Dict[str, Any]:
         """
         List paid invoices for the client (billing history).

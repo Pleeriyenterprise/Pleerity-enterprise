@@ -228,6 +228,14 @@ async def persist_subscription_billing_from_stripe(
     if additional_billing_set:
         billing_update.update(additional_billing_set)
 
+    pause = sub_d.get("pause_collection")
+    if isinstance(pause, dict) and pause.get("behavior"):
+        billing_update["stripe_collection_paused"] = True
+        billing_update["stripe_pause_collection_behavior"] = pause.get("behavior")
+    else:
+        billing_update["stripe_collection_paused"] = False
+        billing_update["stripe_pause_collection_behavior"] = None
+
     update_doc: Dict[str, Any] = {"$set": billing_update}
     if increment_entitlements_version:
         update_doc["$inc"] = {"entitlements_version": increment_entitlements_version}
