@@ -1,0 +1,61 @@
+{
+  "programme": "COMMERCIAL-CONTROLS-CERTIFICATION-CLOSURE-AND-PROMOTION-GATE-05",
+  "at_utc": "2026-08-15T21:13:00+00:00",
+  "commercial_controls_verdict": "COMMERCIAL_CONTROLS_VERIFIED",
+  "platform_promotion_gate": "HOLD_FOR_MONGO_SOAK",
+  "production_deployed": false,
+  "main_merged": false,
+  "git": {
+    "branch": "develop",
+    "local_head": "f88ce26d6711e881fc20cdae148ac8bff4b2f9cb",
+    "origin_develop": "7c77391a5ee65f0a85372d9c462448c270b6b066",
+    "origin_main": "89217062481b4eb858a8b530ec90c83de067a4be",
+    "ahead_of_origin_develop": 1,
+    "post_certification_source_drift": false
+  },
+  "deployment": {
+    "staging_backend_sha": "7c77391a5ee65f0a85372d9c462448c270b6b066",
+    "staging_backend_environment": "staging",
+    "staging_frontend_bundle": "main.7fd31560.js",
+    "circuit_fingerprint": "cc-step-up-circuit-fix-04",
+    "production_backend_sha": "89217062481b4eb858a8b530ec90c83de067a4be",
+    "production_frontend_bundle": "main.eac95fab.js",
+    "render_auto_deploy_develop": true,
+    "render_rebuilds_on_docs_commits": true,
+    "SOAK_WILL_RESET": true
+  },
+  "soak": {
+    "do_not_reuse": "2026-08-06T17:59:07Z",
+    "current_baseline_utc": "2026-08-15T18:59:45.440677Z",
+    "current_baseline_sha": "7c77391a5ee65f0a85372d9c462448c270b6b066",
+    "elapsed_hours_approx": 2.2,
+    "required_hours": 24,
+    "status": "INCOMPLETE",
+    "scheduler_status": "healthy",
+    "scheduler_reason": "heartbeat_fresh",
+    "last_heartbeat_at": "2026-08-15T21:09:31.582726+00:00"
+  },
+  "mongo_storage_live": {
+    "captured_at": "2026-08-15T21:13:38.743613+00:00",
+    "usage_percent": 53.16,
+    "level": "ok",
+    "writes_at_risk": false,
+    "open_p0_p1_count": 0,
+    "open_incidents_count": 4,
+    "overall_health": "degraded"
+  },
+  "governance_drift_lifecycle_ops": "VALID_INTENTIONAL_EXTENSION",
+  "gate_matrix": [
+    {"domain": "Commercial Controls", "authority": "CC-04", "status": "PASS", "blocking": false},
+    {"domain": "MongoDB capacity", "authority": "health-summary 2026-08-15", "status": "PASS_WITH_CONDITION", "blocking": false},
+    {"domain": "MongoDB soak", "authority": "Render 7c77391a 18:59Z", "status": "BLOCKED", "blocking": true},
+    {"domain": "Scheduler", "authority": "/api/health", "status": "PASS_WITH_CONDITION", "blocking": false},
+    {"domain": "Subscription lifecycle", "authority": "CC-04", "status": "PASS", "blocking": false},
+    {"domain": "Payments/Stripe", "authority": "CC-04", "status": "PASS_WITH_CONDITION", "blocking": false},
+    {"domain": "Authentication", "authority": "CC-03/04", "status": "PASS", "blocking": false},
+    {"domain": "Email/Postmark", "authority": "CC-04", "status": "PASS", "blocking": false},
+    {"domain": "Customer journeys", "authority": "scorecard 2026-07-09", "status": "PASS_WITH_CONDITION", "blocking": false},
+    {"domain": "Observability", "authority": "health-summary", "status": "PASS_WITH_CONDITION", "blocking": false},
+    {"domain": "Security", "authority": "readiness 2026-07-09", "status": "PASS_WITH_CONDITION", "blocking": false}
+  ]
+}
