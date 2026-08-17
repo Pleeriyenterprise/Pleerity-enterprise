@@ -1,0 +1,1113 @@
+{
+  "generated_at": "2026-07-14T20:17:43.360526+00:00",
+  "phase": "CRM_CONCURRENCY_RACE_VALIDATION_01",
+  "scenarios": [
+    {
+      "id": "A_concurrent_create_manual_and_queue",
+      "lead_id": "LEAD-20260714201807-6BC2A8",
+      "execution": "3x parallel upsert_lead + 2x parallel process-queue (create race window)",
+      "responses": [
+        {
+          "label": "A_manual_1",
+          "status": "success",
+          "message": "crm_outbound_create_ok",
+          "external_id": "625014000001956001",
+          "processed": null,
+          "failed": null,
+          "error": null
+        },
+        {
+          "label": "A_manual_3",
+          "status": "dead_letter",
+          "message": "Zoho API 400: {\"data\":[{\"code\":\"DUPLICATE_DATA\",\"details\":{\"api_name\":\"Pleerity_Lead_ID\",\"duplicate_record\":{\"Owner\":{\"n",
+          "external_id": null,
+          "processed": null,
+          "failed": null,
+          "error": null
+        },
+        {
+          "label": "A_queue_2",
+          "status": null,
+          "message": "",
+          "external_id": null,
+          "processed": 0,
+          "failed": 1,
+          "error": null
+        },
+        {
+          "label": "A_queue_1",
+          "status": null,
+          "message": "",
+          "external_id": null,
+          "processed": 0,
+          "failed": 1,
+          "error": null
+        },
+        {
+          "label": "A_manual_2",
+          "status": "dead_letter",
+          "message": "Zoho API 400: {\"data\":[{\"code\":\"DUPLICATE_DATA\",\"details\":{\"api_name\":\"Pleerity_Lead_ID\",\"duplicate_record\":{\"Owner\":{\"n",
+          "external_id": null,
+          "processed": null,
+          "failed": null,
+          "error": null
+        }
+      ],
+      "convergence": {
+        "lead_id": "LEAD-20260714201807-6BC2A8",
+        "pass": false,
+        "zoho_search": {
+          "http": 204,
+          "invalid_query": false,
+          "ids": [],
+          "count": 0,
+          "criteria": "(Pleerity_Lead_ID:equals:LEAD-20260714201807-6BC2A8)"
+        },
+        "external_key_docs": 1,
+        "external_key_zoho_ids": [
+          "625014000001956001"
+        ],
+        "queue_pending": 0,
+        "unresolved_dl": 4,
+        "run_external_ids": [
+          "625014000001956001"
+        ],
+        "recent_runs": [
+          {
+            "sync_id": "ZSYNC-0B036530C4AE",
+            "operation": "upsert_lead",
+            "status": "success",
+            "external_id": "625014000001956001",
+            "message": "crm_outbound_update_ok"
+          },
+          {
+            "sync_id": "ZSYNC-BEB61A961785",
+            "operation": "upsert_lead",
+            "status": "dead_letter",
+            "external_id": null,
+            "message": ""
+          },
+          {
+            "sync_id": "ZSYNC-8A32EE1C4AC3",
+            "operation": "upsert_lead",
+            "status": "dead_letter",
+            "external_id": null,
+            "message": ""
+          },
+          {
+            "sync_id": "ZSYNC-8D95B7B3F70C",
+            "operation": "lead.created",
+            "status": "dead_letter",
+            "external_id": null,
+            "message": ""
+          },
+          {
+            "sync_id": "ZSYNC-CC751574CF1A",
+            "operation": "lead.created",
+            "status": "dead_letter",
+            "external_id": null,
+            "message": ""
+          },
+          {
+            "sync_id": "ZSYNC-0F310CE8970E",
+            "operation": "upsert_lead",
+            "status": "success",
+            "external_id": "625014000001956001",
+            "message": "crm_outbound_create_ok"
+          }
+        ]
+      }
+    },
+    {
+      "id": "B_concurrent_updates_and_lost",
+      "lead_id": "LEAD-20260714201828-2EDEAE",
+      "seed_external_id": "625014000001946001",
+      "responses_round1": [
+        {
+          "label": "B_up1",
+          "status": "success",
+          "external_id": "625014000001946001",
+          "message": "crm_outbound_update_ok"
+        },
+        {
+          "label": "B_lost",
+          "status": "success",
+          "external_id": "625014000001946001",
+          "message": "crm_outbound_update_ok"
+        },
+        {
+          "label": "B_up3",
+          "status": "success",
+          "external_id": "625014000001946001",
+          "message": "crm_outbound_update_ok"
+        },
+        {
+          "label": "B_up2",
+          "status": "success",
+          "external_id": "625014000001946001",
+          "message": "crm_outbound_update_ok"
+        },
+        {
+          "label": "B_q1",
+          "status": null,
+          "external_id": null,
+          "message": ""
+        }
+      ],
+      "responses_round2": [
+        {
+          "label": "B2_lost",
+          "status": "success",
+          "external_id": "625014000001946001",
+          "message": "crm_outbound_update_ok"
+        },
+        {
+          "label": "B2_up",
+          "status": "success",
+          "external_id": "625014000001946001",
+          "message": "crm_outbound_update_ok"
+        },
+        {
+          "label": "B2_q",
+          "status": null,
+          "external_id": null,
+          "message": ""
+        }
+      ],
+      "convergence": {
+        "lead_id": "LEAD-20260714201828-2EDEAE",
+        "pass": false,
+        "zoho_search": {
+          "http": 204,
+          "invalid_query": false,
+          "ids": [],
+          "count": 0,
+          "criteria": "(Pleerity_Lead_ID:equals:LEAD-20260714201828-2EDEAE)"
+        },
+        "external_key_docs": 1,
+        "external_key_zoho_ids": [
+          "625014000001946001"
+        ],
+        "queue_pending": 0,
+        "unresolved_dl": 0,
+        "run_external_ids": [
+          "625014000001946001"
+        ],
+        "recent_runs": [
+          {
+            "sync_id": "ZSYNC-12333314933B",
+            "operation": "lead.lost",
+            "status": "success",
+            "external_id": "625014000001946001",
+            "message": "crm_outbound_update_ok"
+          },
+          {
+            "sync_id": "ZSYNC-B7AE01FA39FE",
+            "operation": "upsert_lead",
+            "status": "success",
+            "external_id": "625014000001946001",
+            "message": "crm_outbound_update_ok"
+          },
+          {
+            "sync_id": "ZSYNC-8609220E80D9",
+            "operation": "lead.lost",
+            "status": "success",
+            "external_id": "625014000001946001",
+            "message": "crm_outbound_update_ok"
+          },
+          {
+            "sync_id": "ZSYNC-C7991DC6F0A1",
+            "operation": "lead.updated",
+            "status": "success",
+            "external_id": "625014000001946001",
+            "message": "crm_outbound_update_ok"
+          },
+          {
+            "sync_id": "ZSYNC-B782F794EAD2",
+            "operation": "lead.updated",
+            "status": "success",
+            "external_id": "625014000001946001",
+            "message": "crm_outbound_update_ok"
+          },
+          {
+            "sync_id": "ZSYNC-B66C8A6EE260",
+            "operation": "lead.updated",
+            "status": "success",
+            "external_id": "625014000001946001",
+            "message": "crm_outbound_update_ok"
+          },
+          {
+            "sync_id": "ZSYNC-7856DFB1BCDF",
+            "operation": "upsert_lead",
+            "status": "success",
+            "external_id": "625014000001946001",
+            "message": "crm_outbound_update_ok"
+          },
+          {
+            "sync_id": "ZSYNC-DF8BA5390AE5",
+            "operation": "upsert_lead",
+            "status": "success",
+            "external_id": "625014000001946001",
+            "message": "crm_outbound_update_ok"
+          }
+        ]
+      }
+    },
+    {
+      "id": "C_triple_queue_drain_plus_manual",
+      "lead_id": "LEAD-20260714201904-7CCA51",
+      "execution": "3x parallel process-queue + 1x manual sync (no claim \u2192 duplicate processing risk)",
+      "responses": [
+        {
+          "label": "C_m1",
+          "status": "success",
+          "processed": null,
+          "failed": null,
+          "external_id": "625014000001947002",
+          "message": "crm_outbound_create_ok"
+        },
+        {
+          "label": "C_q2",
+          "status": null,
+          "processed": 0,
+          "failed": 1,
+          "external_id": null,
+          "message": ""
+        },
+        {
+          "label": "C_q3",
+          "status": null,
+          "processed": 0,
+          "failed": 1,
+          "external_id": null,
+          "message": ""
+        },
+        {
+          "label": "C_q1",
+          "status": null,
+          "processed": 0,
+          "failed": 1,
+          "external_id": null,
+          "message": ""
+        }
+      ],
+      "convergence": {
+        "lead_id": "LEAD-20260714201904-7CCA51",
+        "pass": false,
+        "zoho_search": {
+          "http": 204,
+          "invalid_query": false,
+          "ids": [],
+          "count": 0,
+          "criteria": "(Pleerity_Lead_ID:equals:LEAD-20260714201904-7CCA51)"
+        },
+        "external_key_docs": 1,
+        "external_key_zoho_ids": [
+          "625014000001947002"
+        ],
+        "queue_pending": 0,
+        "unresolved_dl": 3,
+        "run_external_ids": [
+          "625014000001947002"
+        ],
+        "recent_runs": [
+          {
+            "sync_id": "ZSYNC-AE4E5740867C",
+            "operation": "lead.created",
+            "status": "dead_letter",
+            "external_id": null,
+            "message": ""
+          },
+          {
+            "sync_id": "ZSYNC-18D30A3C2DC7",
+            "operation": "lead.created",
+            "status": "dead_letter",
+            "external_id": null,
+            "message": ""
+          },
+          {
+            "sync_id": "ZSYNC-6DB041D2817A",
+            "operation": "lead.created",
+            "status": "dead_letter",
+            "external_id": null,
+            "message": ""
+          },
+          {
+            "sync_id": "ZSYNC-C16832A47D48",
+            "operation": "upsert_lead",
+            "status": "success",
+            "external_id": "625014000001947002",
+            "message": "crm_outbound_create_ok"
+          }
+        ]
+      }
+    },
+    {
+      "id": "D_concurrent_replay_retry_with_live_sync",
+      "lead_id": "LEAD-20260714201920-82FE08",
+      "dead_letter_id": "ZDL-FDDEBB955828",
+      "responses": [
+        {
+          "label": "D_queue",
+          "status": null,
+          "message": "",
+          "external_id": null
+        },
+        {
+          "label": "D_replay1",
+          "status": "dead_letter",
+          "message": "lead_not_found",
+          "external_id": null
+        },
+        {
+          "label": "D_replay2",
+          "status": "dead_letter",
+          "message": "lead_not_found",
+          "external_id": null
+        },
+        {
+          "label": "D_sync",
+          "status": "success",
+          "message": "crm_outbound_update_ok",
+          "external_id": "625014000001964002"
+        }
+      ],
+      "convergence": {
+        "lead_id": "LEAD-20260714201920-82FE08",
+        "pass": true,
+        "zoho_search": {
+          "http": 200,
+          "invalid_query": false,
+          "ids": [
+            "625014000001964002"
+          ],
+          "count": 1,
+          "criteria": "(Pleerity_Lead_ID:equals:LEAD-20260714201920-82FE08)"
+        },
+        "external_key_docs": 1,
+        "external_key_zoho_ids": [
+          "625014000001964002"
+        ],
+        "queue_pending": 0,
+        "unresolved_dl": 0,
+        "run_external_ids": [
+          "625014000001964002"
+        ],
+        "recent_runs": [
+          {
+            "sync_id": "ZSYNC-79258B355B70",
+            "operation": "upsert_lead",
+            "status": "success",
+            "external_id": "625014000001964002",
+            "message": "crm_outbound_update_ok"
+          },
+          {
+            "sync_id": "ZSYNC-6FB756BD0B43",
+            "operation": "upsert_lead",
+            "status": "success",
+            "external_id": "625014000001964002",
+            "message": "crm_outbound_update_ok"
+          },
+          {
+            "sync_id": "ZSYNC-6DE3BE79EE06",
+            "operation": "lead.created",
+            "status": "success",
+            "external_id": "625014000001964002",
+            "message": "crm_outbound_create_ok"
+          }
+        ]
+      },
+      "fake_lead_crm_count": 0,
+      "fake_lead_id": "LEAD-RACE-MISSING-1784060378"
+    },
+    {
+      "id": "E_order_permutations_multi_lead",
+      "leads": [
+        "LEAD-20260714202013-830C30",
+        "LEAD-20260714202015-7FEAFC",
+        "LEAD-20260714202016-13F8A4"
+      ],
+      "responses": [
+        {
+          "label": "E1_m",
+          "status": "success",
+          "external_id": "625014000001964012"
+        },
+        {
+          "label": "E3_q",
+          "status": null,
+          "external_id": null
+        },
+        {
+          "label": "E2_m",
+          "status": "success",
+          "external_id": "625014000001952001"
+        },
+        {
+          "label": "E3_m",
+          "status": "success",
+          "external_id": "625014000001953002"
+        }
+      ],
+      "convergence": [
+        {
+          "lead_id": "LEAD-20260714202013-830C30",
+          "pass": false,
+          "zoho_search": {
+            "http": 204,
+            "invalid_query": false,
+            "ids": [],
+            "count": 0,
+            "criteria": "(Pleerity_Lead_ID:equals:LEAD-20260714202013-830C30)"
+          },
+          "external_key_docs": 1,
+          "external_key_zoho_ids": [
+            "625014000001964012"
+          ],
+          "queue_pending": 0,
+          "unresolved_dl": 0,
+          "run_external_ids": [
+            "625014000001964012"
+          ],
+          "recent_runs": [
+            {
+              "sync_id": "ZSYNC-E87232AB9BAE",
+              "operation": "upsert_lead",
+              "status": "success",
+              "external_id": "625014000001964012",
+              "message": "crm_outbound_update_ok"
+            },
+            {
+              "sync_id": "ZSYNC-2B41420E5630",
+              "operation": "upsert_lead",
+              "status": "success",
+              "external_id": "625014000001964012",
+              "message": "crm_outbound_update_ok"
+            },
+            {
+              "sync_id": "ZSYNC-709F1B0EC9F5",
+              "operation": "lead.created",
+              "status": "success",
+              "external_id": "625014000001964012",
+              "message": "crm_outbound_create_ok"
+            }
+          ]
+        },
+        {
+          "lead_id": "LEAD-20260714202015-7FEAFC",
+          "pass": false,
+          "zoho_search": {
+            "http": 204,
+            "invalid_query": false,
+            "ids": [],
+            "count": 0,
+            "criteria": "(Pleerity_Lead_ID:equals:LEAD-20260714202015-7FEAFC)"
+          },
+          "external_key_docs": 1,
+          "external_key_zoho_ids": [
+            "625014000001952001"
+          ],
+          "queue_pending": 0,
+          "unresolved_dl": 0,
+          "run_external_ids": [
+            "625014000001952001"
+          ],
+          "recent_runs": [
+            {
+              "sync_id": "ZSYNC-58284619D221",
+              "operation": "upsert_lead",
+              "status": "success",
+              "external_id": "625014000001952001",
+              "message": "crm_outbound_update_ok"
+            },
+            {
+              "sync_id": "ZSYNC-BC7A1D3D3968",
+              "operation": "upsert_lead",
+              "status": "success",
+              "external_id": "625014000001952001",
+              "message": "crm_outbound_update_ok"
+            },
+            {
+              "sync_id": "ZSYNC-58744282026A",
+              "operation": "lead.created",
+              "status": "success",
+              "external_id": "625014000001952001",
+              "message": "crm_outbound_create_ok"
+            }
+          ]
+        },
+        {
+          "lead_id": "LEAD-20260714202016-13F8A4",
+          "pass": true,
+          "zoho_search": {
+            "http": 200,
+            "invalid_query": false,
+            "ids": [
+              "625014000001953002"
+            ],
+            "count": 1,
+            "criteria": "(Pleerity_Lead_ID:equals:LEAD-20260714202016-13F8A4)"
+          },
+          "external_key_docs": 1,
+          "external_key_zoho_ids": [
+            "625014000001953002"
+          ],
+          "queue_pending": 0,
+          "unresolved_dl": 0,
+          "run_external_ids": [
+            "625014000001953002"
+          ],
+          "recent_runs": [
+            {
+              "sync_id": "ZSYNC-4C08DE48CC36",
+              "operation": "upsert_lead",
+              "status": "success",
+              "external_id": "625014000001953002",
+              "message": "crm_outbound_update_ok"
+            },
+            {
+              "sync_id": "ZSYNC-CB33F26D36A5",
+              "operation": "lead.updated",
+              "status": "success",
+              "external_id": "625014000001953002",
+              "message": "crm_outbound_update_ok"
+            },
+            {
+              "sync_id": "ZSYNC-13BF036170A8",
+              "operation": "lead.created",
+              "status": "success",
+              "external_id": "625014000001953002",
+              "message": "crm_outbound_create_ok"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "code_derived_controls": {
+    "queue_claim": false,
+    "crm_run_lock": false,
+    "admin_serialized": false,
+    "external_key_upsert": true,
+    "pleerity_lead_id_search_before_create": true,
+    "duplicate_conflict_recovery": true,
+    "optimistic_versioning": false,
+    "processing_status_written": false,
+    "notes": "CRM relies on soft identity (local key \u2192 Search Pleerity_Lead_ID \u2192 create \u2192 persist) plus Zoho unique field + duplicate recovery. Unlike Analytics, no DB run-lock / queue claim."
+  },
+  "verdict": "CRM_CONCURRENCY_PASS_WITH_CONDITIONS",
+  "staging_sha": "476b6c970c1a7deecfbcd3963cf3fe5da50f0b5b",
+  "production_sha": "89217062481b4eb858a8b530ec90c83de067a4be",
+  "staging_health": "healthy",
+  "preflight": {
+    "crm_enabled": true,
+    "legacy": false,
+    "oauth": {
+      "credentials_configured": true,
+      "refresh_token_configured": true,
+      "refresh_token_source": "per_integration",
+      "expected_scope": "ZohoCRM.modules.leads.CREATE,ZohoCRM.modules.leads.UPDATE,ZohoCRM.modules.leads.READ",
+      "cache_identifier": "zoho_oauth_access_token_crm",
+      "using_legacy_fallback": false
+    },
+    "queue": 0,
+    "dl": 0
+  },
+  "token_mint": {
+    "lead_id": "LEAD-20260714201754-D32F82",
+    "status": "success",
+    "external_id": "625014000001935002"
+  },
+  "scenario_d_induce": {
+    "fake_sync": {
+      "status": "dead_letter",
+      "message": "lead_not_found"
+    },
+    "unresolved_sample": [
+      {
+        "dead_letter_id": "ZDL-FDDEBB955828",
+        "payload": {
+          "lead_id": "LEAD-RACE-MISSING-1784060378",
+          "sync_id": "ZSYNC-FF9BB5B084A9",
+          "result_summary": {}
+        },
+        "error": "lead_not_found",
+        "created_at": "2026-07-14T20:19:39.808400+00:00"
+      },
+      {
+        "dead_letter_id": "ZDL-953647C9FCB5",
+        "payload": {
+          "lead_id": "LEAD-20260714201904-7CCA51",
+          "sync_id": "ZSYNC-AE4E5740867C",
+          "result_summary": {
+            "lead_id": "LEAD-20260714201904-7CCA51",
+            "external_id": null,
+            "http_method": "POST",
+            "identity_source": "create",
+            "module": "Leads",
+            "payload_version": 1,
+            "mapping_version": "1.0.0",
+            "identity_field": "Pleerity_Lead_ID"
+          }
+        },
+        "error": "Zoho API 400: {\"data\":[{\"code\":\"DUPLICATE_DATA\",\"details\":{\"api_name\":\"Pleerity_Lead_ID\",\"duplicate_record\":{\"Owner\":{\"name\":\"Pleerity Enterprise Ltd\",\"id\":\"625014000000500001\",\"zuid\":\"20107444009\"},\"module\":{\"api_name\":\"Leads\",\"id\":\"625014000000000043\"},\"id\":\"625014000001947002\"},\"json_path\":\"$.data[0].Pleerity_",
+        "created_at": "2026-07-14T20:19:11.450126+00:00"
+      },
+      {
+        "dead_letter_id": "ZDL-AB59885AB91A",
+        "payload": {
+          "lead_id": "LEAD-20260714201904-7CCA51",
+          "sync_id": "ZSYNC-6DB041D2817A",
+          "result_summary": {
+            "lead_id": "LEAD-20260714201904-7CCA51",
+            "external_id": null,
+            "http_method": "POST",
+            "identity_source": "create",
+            "module": "Leads",
+            "payload_version": 1,
+            "mapping_version": "1.0.0",
+            "identity_field": "Pleerity_Lead_ID"
+          }
+        },
+        "error": "Zoho API 400: {\"data\":[{\"code\":\"DUPLICATE_DATA\",\"details\":{\"api_name\":\"Pleerity_Lead_ID\",\"duplicate_record\":{\"Owner\":{\"name\":\"Pleerity Enterprise Ltd\",\"id\":\"625014000000500001\",\"zuid\":\"20107444009\"},\"module\":{\"api_name\":\"Leads\",\"id\":\"625014000000000043\"},\"id\":\"625014000001947002\"},\"json_path\":\"$.data[0].Pleerity_",
+        "created_at": "2026-07-14T20:19:11.035420+00:00"
+      },
+      {
+        "dead_letter_id": "ZDL-108698B95316",
+        "payload": {
+          "lead_id": "LEAD-20260714201904-7CCA51",
+          "sync_id": "ZSYNC-18D30A3C2DC7",
+          "result_summary": {
+            "lead_id": "LEAD-20260714201904-7CCA51",
+            "external_id": null,
+            "http_method": "POST",
+            "identity_source": "create",
+            "module": "Leads",
+            "payload_version": 1,
+            "mapping_version": "1.0.0",
+            "identity_field": "Pleerity_Lead_ID"
+          }
+        },
+        "error": "Zoho API 400: {\"data\":[{\"code\":\"DUPLICATE_DATA\",\"details\":{\"api_name\":\"Pleerity_Lead_ID\",\"duplicate_record\":{\"Owner\":{\"name\":\"Pleerity Enterprise Ltd\",\"id\":\"625014000000500001\",\"zuid\":\"20107444009\"},\"module\":{\"api_name\":\"Leads\",\"id\":\"625014000000000043\"},\"id\":\"625014000001947002\"},\"json_path\":\"$.data[0].Pleerity_",
+        "created_at": "2026-07-14T20:19:11.005918+00:00"
+      },
+      {
+        "dead_letter_id": "ZDL-4C65267D9B69",
+        "payload": {
+          "lead_id": "LEAD-20260714201807-6BC2A8",
+          "sync_id": "ZSYNC-BEB61A961785",
+          "result_summary": {
+            "lead_id": "LEAD-20260714201807-6BC2A8",
+            "external_id": null,
+            "http_method": "POST",
+            "identity_source": "create",
+            "module": "Leads",
+            "payload_version": 1,
+            "mapping_version": "1.0.0",
+            "identity_field": "Pleerity_Lead_ID"
+          }
+        },
+        "error": "Zoho API 400: {\"data\":[{\"code\":\"DUPLICATE_DATA\",\"details\":{\"api_name\":\"Pleerity_Lead_ID\",\"duplicate_record\":{\"Owner\":{\"name\":\"Pleerity Enterprise Ltd\",\"id\":\"625014000000500001\",\"zuid\":\"20107444009\"},\"module\":{\"api_name\":\"Leads\",\"id\":\"625014000000000043\"},\"id\":\"625014000001956001\"},\"json_path\":\"$.data[0].Pleerity_",
+        "created_at": "2026-07-14T20:18:15.947812+00:00"
+      }
+    ]
+  },
+  "crm_ops_after": {
+    "healthy": true,
+    "oauth_status": "healthy",
+    "queue_depth_pending": 0,
+    "dead_letter_count": 7,
+    "last_success_at": "2026-07-14T20:20:44.477006+00:00",
+    "last_failure_at": "2026-07-14T20:19:49.615549+00:00",
+    "consecutive_failures": 0,
+    "incident_policy": {
+      "level": "ok",
+      "reason": "healthy",
+      "actionable_incident": false,
+      "consecutive_failures": 0
+    }
+  },
+  "production_sha_after": "89217062481b4eb858a8b530ec90c83de067a4be",
+  "health_after": "healthy",
+  "locking_gaps_observed": [
+    "no_queue_claim",
+    "no_crm_run_lock",
+    "admin_endpoints_not_serialized",
+    "no_optimistic_concurrency_on_external_keys",
+    "queue_processing_status_never_written",
+    "duplicate_recovery_fragile_under_search_lag"
+  ],
+  "convergence_summary": {
+    "leads_checked": 8,
+    "identity_converged": true,
+    "strict_no_dl": true,
+    "duplicate_crm_records_detected": false,
+    "leads_failed_identity": [],
+    "leads_with_dl_after_settle": []
+  },
+  "conditions": [
+    "soft_idempotency_not_hard_locking",
+    "no_queue_claim_no_crm_run_lock",
+    "duplicate_data_under_concurrency_relies_on_zoho_unique_field",
+    "search_index_lag_can_break_duplicate_recovery_path",
+    "induced_lead_not_found_dl_residue_classified"
+  ],
+  "failed": [
+    "LEAD-20260714201807-6BC2A8",
+    "LEAD-20260714201828-2EDEAE",
+    "LEAD-20260714201904-7CCA51",
+    "LEAD-20260714202013-830C30",
+    "LEAD-20260714202015-7FEAFC"
+  ],
+  "residual_unresolved_dl": [
+    {
+      "dead_letter_id": "ZDL-683107BE26BA",
+      "payload": {
+        "lead_id": "LEAD-RACE-MISSING-1784060378",
+        "sync_id": "ZSYNC-AE017D643CEA",
+        "result_summary": {}
+      },
+      "error": "lead_not_found",
+      "created_at": "2026-07-14T20:19:49.493234+00:00"
+    },
+    {
+      "dead_letter_id": "ZDL-60583CF361F8",
+      "payload": {
+        "lead_id": "LEAD-RACE-MISSING-1784060378",
+        "sync_id": "ZSYNC-071E5B24EBB3",
+        "result_summary": {}
+      },
+      "error": "lead_not_found",
+      "created_at": "2026-07-14T20:19:44.836705+00:00"
+    },
+    {
+      "dead_letter_id": "ZDL-4220096C3377",
+      "payload": {
+        "lead_id": "LEAD-RACE-MISSING-1784060378",
+        "sync_id": "ZSYNC-47AF4306C455",
+        "result_summary": {}
+      },
+      "error": "lead_not_found",
+      "created_at": "2026-07-14T20:19:44.492428+00:00"
+    },
+    {
+      "dead_letter_id": "ZDL-FDDEBB955828",
+      "payload": {
+        "lead_id": "LEAD-RACE-MISSING-1784060378",
+        "sync_id": "ZSYNC-FF9BB5B084A9",
+        "result_summary": {}
+      },
+      "error": "lead_not_found",
+      "created_at": "2026-07-14T20:19:39.808400+00:00"
+    },
+    {
+      "dead_letter_id": "ZDL-22315CEF3F6D",
+      "payload": {
+        "lead_id": "LEAD-20260714201807-6BC2A8",
+        "sync_id": "ZSYNC-8D95B7B3F70C",
+        "result_summary": {
+          "lead_id": "LEAD-20260714201807-6BC2A8",
+          "external_id": null,
+          "http_method": "POST",
+          "identity_source": "create",
+          "module": "Leads",
+          "payload_version": 1,
+          "mapping_version": "1.0.0",
+          "identity_field": "Pleerity_Lead_ID"
+        }
+      },
+      "error": "Zoho API 400: {\"data\":[{\"code\":\"DUPLICATE_DATA\",\"details\":{\"api_name\":\"Pleerity_Lead_ID\",\"duplicate_record\":{\"Owner\":{\"name\":\"Pleerity Enterprise Ltd\",\"id\":\"625014000000500001\",\"zuid\":\"20107444009\"},\"module\":{\"api_name\":\"Leads\",\"id\":\"625014000000000043\"},\"id\":\"625014000001956001\"},\"json_path\":\"$.data[0].Pleerity_",
+      "created_at": "2026-07-14T20:18:15.615271+00:00"
+    }
+  ],
+  "settlement": {
+    "generated_at": "2026-07-14T20:29:49.931661+00:00",
+    "settle_log": [
+      {
+        "lead_id": "LEAD-20260714201807-6BC2A8",
+        "settle_upsert_status": "success",
+        "settle_external_id": "625014000001956001",
+        "replays": [
+          {
+            "dead_letter_id": "ZDL-9CCDC0C2448D",
+            "status": "success",
+            "message": "crm_outbound_update_ok",
+            "external_id": null
+          },
+          {
+            "dead_letter_id": "ZDL-526B7245733C",
+            "status": "success",
+            "message": "crm_outbound_update_ok",
+            "external_id": null
+          },
+          {
+            "dead_letter_id": "ZDL-22315CEF3F6D",
+            "status": "success",
+            "message": "crm_outbound_update_ok",
+            "external_id": null
+          }
+        ],
+        "proof": {
+          "lead_id": "LEAD-20260714201807-6BC2A8",
+          "external_key_docs": 1,
+          "external_key_zoho_ids": [
+            "625014000001956001"
+          ],
+          "search_http": 200,
+          "search_ids": [
+            "625014000001956001"
+          ],
+          "search_count": 1,
+          "get_http": 200,
+          "get_id": "625014000001956001",
+          "get_pleerity_lead_id": "LEAD-20260714201807-6BC2A8",
+          "unresolved_dl": 0,
+          "dl_ids": [],
+          "duplicate_crm": false,
+          "single_crm_record": true,
+          "pass_strict_no_dl": true,
+          "pass_identity": true
+        }
+      },
+      {
+        "lead_id": "LEAD-20260714201828-2EDEAE",
+        "settle_upsert_status": "success",
+        "settle_external_id": "625014000001946001",
+        "replays": [],
+        "proof": {
+          "lead_id": "LEAD-20260714201828-2EDEAE",
+          "external_key_docs": 1,
+          "external_key_zoho_ids": [
+            "625014000001946001"
+          ],
+          "search_http": 200,
+          "search_ids": [
+            "625014000001946001"
+          ],
+          "search_count": 1,
+          "get_http": 200,
+          "get_id": "625014000001946001",
+          "get_pleerity_lead_id": "LEAD-20260714201828-2EDEAE",
+          "unresolved_dl": 0,
+          "dl_ids": [],
+          "duplicate_crm": false,
+          "single_crm_record": true,
+          "pass_strict_no_dl": true,
+          "pass_identity": true
+        }
+      },
+      {
+        "lead_id": "LEAD-20260714201904-7CCA51",
+        "settle_upsert_status": "success",
+        "settle_external_id": "625014000001947002",
+        "replays": [],
+        "proof": {
+          "lead_id": "LEAD-20260714201904-7CCA51",
+          "external_key_docs": 1,
+          "external_key_zoho_ids": [
+            "625014000001947002"
+          ],
+          "search_http": 200,
+          "search_ids": [
+            "625014000001947002"
+          ],
+          "search_count": 1,
+          "get_http": 200,
+          "get_id": "625014000001947002",
+          "get_pleerity_lead_id": "LEAD-20260714201904-7CCA51",
+          "unresolved_dl": 0,
+          "dl_ids": [],
+          "duplicate_crm": false,
+          "single_crm_record": true,
+          "pass_strict_no_dl": true,
+          "pass_identity": true
+        }
+      },
+      {
+        "lead_id": "LEAD-20260714201920-82FE08",
+        "settle_upsert_status": "success",
+        "settle_external_id": "625014000001964002",
+        "replays": [],
+        "proof": {
+          "lead_id": "LEAD-20260714201920-82FE08",
+          "external_key_docs": 1,
+          "external_key_zoho_ids": [
+            "625014000001964002"
+          ],
+          "search_http": 200,
+          "search_ids": [
+            "625014000001964002"
+          ],
+          "search_count": 1,
+          "get_http": 200,
+          "get_id": "625014000001964002",
+          "get_pleerity_lead_id": "LEAD-20260714201920-82FE08",
+          "unresolved_dl": 0,
+          "dl_ids": [],
+          "duplicate_crm": false,
+          "single_crm_record": true,
+          "pass_strict_no_dl": true,
+          "pass_identity": true
+        }
+      },
+      {
+        "lead_id": "LEAD-20260714202013-830C30",
+        "settle_upsert_status": "success",
+        "settle_external_id": "625014000001964012",
+        "replays": [],
+        "proof": {
+          "lead_id": "LEAD-20260714202013-830C30",
+          "external_key_docs": 1,
+          "external_key_zoho_ids": [
+            "625014000001964012"
+          ],
+          "search_http": 200,
+          "search_ids": [
+            "625014000001964012"
+          ],
+          "search_count": 1,
+          "get_http": 200,
+          "get_id": "625014000001964012",
+          "get_pleerity_lead_id": "LEAD-20260714202013-830C30",
+          "unresolved_dl": 0,
+          "dl_ids": [],
+          "duplicate_crm": false,
+          "single_crm_record": true,
+          "pass_strict_no_dl": true,
+          "pass_identity": true
+        }
+      },
+      {
+        "lead_id": "LEAD-20260714202015-7FEAFC",
+        "settle_upsert_status": "success",
+        "settle_external_id": "625014000001952001",
+        "replays": [],
+        "proof": {
+          "lead_id": "LEAD-20260714202015-7FEAFC",
+          "external_key_docs": 1,
+          "external_key_zoho_ids": [
+            "625014000001952001"
+          ],
+          "search_http": 200,
+          "search_ids": [
+            "625014000001952001"
+          ],
+          "search_count": 1,
+          "get_http": 200,
+          "get_id": "625014000001952001",
+          "get_pleerity_lead_id": "LEAD-20260714202015-7FEAFC",
+          "unresolved_dl": 0,
+          "dl_ids": [],
+          "duplicate_crm": false,
+          "single_crm_record": true,
+          "pass_strict_no_dl": true,
+          "pass_identity": true
+        }
+      },
+      {
+        "lead_id": "LEAD-20260714202016-13F8A4",
+        "settle_upsert_status": "success",
+        "settle_external_id": "625014000001953002",
+        "replays": [],
+        "proof": {
+          "lead_id": "LEAD-20260714202016-13F8A4",
+          "external_key_docs": 1,
+          "external_key_zoho_ids": [
+            "625014000001953002"
+          ],
+          "search_http": 200,
+          "search_ids": [
+            "625014000001953002"
+          ],
+          "search_count": 1,
+          "get_http": 200,
+          "get_id": "625014000001953002",
+          "get_pleerity_lead_id": "LEAD-20260714202016-13F8A4",
+          "unresolved_dl": 0,
+          "dl_ids": [],
+          "duplicate_crm": false,
+          "single_crm_record": true,
+          "pass_strict_no_dl": true,
+          "pass_identity": true
+        }
+      },
+      {
+        "lead_id": "LEAD-20260714201754-D32F82",
+        "settle_upsert_status": "success",
+        "settle_external_id": "625014000001935002",
+        "replays": [],
+        "proof": {
+          "lead_id": "LEAD-20260714201754-D32F82",
+          "external_key_docs": 1,
+          "external_key_zoho_ids": [
+            "625014000001935002"
+          ],
+          "search_http": 200,
+          "search_ids": [
+            "625014000001935002"
+          ],
+          "search_count": 1,
+          "get_http": 200,
+          "get_id": "625014000001935002",
+          "get_pleerity_lead_id": "LEAD-20260714201754-D32F82",
+          "unresolved_dl": 0,
+          "dl_ids": [],
+          "duplicate_crm": false,
+          "single_crm_record": true,
+          "pass_strict_no_dl": true,
+          "pass_identity": true
+        }
+      }
+    ],
+    "residual_unrelated_dl": [
+      {
+        "dead_letter_id": "ZDL-FDDEBB955828",
+        "lead_id": "LEAD-RACE-MISSING-1784060378",
+        "error": "lead_not_found",
+        "class": "induced_or_unrelated"
+      },
+      {
+        "dead_letter_id": "ZDL-4220096C3377",
+        "lead_id": "LEAD-RACE-MISSING-1784060378",
+        "error": "lead_not_found",
+        "class": "induced_or_unrelated"
+      },
+      {
+        "dead_letter_id": "ZDL-60583CF361F8",
+        "lead_id": "LEAD-RACE-MISSING-1784060378",
+        "error": "lead_not_found",
+        "class": "induced_or_unrelated"
+      },
+      {
+        "dead_letter_id": "ZDL-683107BE26BA",
+        "lead_id": "LEAD-RACE-MISSING-1784060378",
+        "error": "lead_not_found",
+        "class": "induced_or_unrelated"
+      }
+    ],
+    "crm_ops_after_settle": {
+      "healthy": true,
+      "oauth_status": "healthy",
+      "queue_depth_pending": 0,
+      "dead_letter_count": 4,
+      "last_success_at": "2026-07-14T20:29:33.877703+00:00",
+      "incident_policy": {
+        "level": "ok",
+        "reason": "healthy",
+        "actionable_incident": false,
+        "consecutive_failures": 0
+      }
+    },
+    "health_after": "healthy",
+    "production_sha_after": "89217062481b4eb858a8b530ec90c83de067a4be"
+  },
+  "findings": [
+    "Concurrent create/queue/manual paths issued overlapping POSTs; Zoho returned DUPLICATE_DATA on Pleerity_Lead_ID.",
+    "Zoho unique constraint prevented a second CRM Lead for the same Pleerity_Lead_ID (Search count never >1 after settle).",
+    "Adapter duplicate recovery did not always absorb DUPLICATE_DATA under concurrency (search lag / parallel loser \u2192 dead letter).",
+    "External key remained single-document and matched the sole CRM id after settle upsert/replay.",
+    "Queue has no claim/lock; concurrent process-queue is racy but final CRM identity still converged via unique field + key upsert.",
+    "No optimistic concurrency on zoho_external_keys; last writer wins (observed single zoho_id).",
+    "crm_ops remained healthy; production pin unchanged."
+  ]
+}

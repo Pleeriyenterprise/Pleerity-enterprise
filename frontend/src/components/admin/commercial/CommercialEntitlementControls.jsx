@@ -25,7 +25,7 @@ function SummaryRow({ label, value, testId }) {
 /**
  * Commercial Controls — governed entitlement exceptions (Phase 2C).
  */
-export default function CommercialEntitlementControls({ clientId, enabled = true }) {
+export default function CommercialEntitlementControls({ clientId, enabled = true, onExecuted }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -65,9 +65,16 @@ export default function CommercialEntitlementControls({ clientId, enabled = true
         mutate: async (govHeaders) => {
           const res = await adminAPI.executeCommercialEntitlement(clientId, body, {
             headers: { ...stepHeaders, ...govHeaders },
+            timeout: 60000,
           });
-          toast.success('Commercial entitlement action applied');
+          const emailOutcome = res.data?.email_result?.outcome;
+          if (body.send_customer_email && emailOutcome && emailOutcome !== 'sent' && emailOutcome !== 'duplicate_ignored') {
+            toast.warning('Commercial action applied — customer email was not confirmed. Check notification status.');
+          } else {
+            toast.success('Commercial entitlement action applied');
+          }
           await reload();
+          if (onExecuted) await onExecuted(res.data);
           return res;
         },
       });
@@ -130,6 +137,8 @@ export default function CommercialEntitlementControls({ clientId, enabled = true
                 </div>
                 <SummaryRow label="Governance state" value={classification.governance_state} testId="commercial-governance-state" />
                 <SummaryRow label="Canonical access" value={access.canonical_entitlement_state} testId="commercial-canonical-access" />
+                <SummaryRow label="Effective access" value={access.effective_entitlement_state} testId="commercial-effective-access" />
+                <SummaryRow label="Restored plan" value={access.restored_plan_code} testId="commercial-restored-plan" />
                 <SummaryRow label="Access policy" value={access.access_policy} testId="commercial-access-policy" />
                 <SummaryRow
                   label="Effective reason"
@@ -187,7 +196,9 @@ export default function CommercialEntitlementControls({ clientId, enabled = true
         clientId={clientId}
         action={pendingAction}
         onSubmit={handleExecute}
+        lifecycleWarning={assessment?.lifecycle_action_warnings?.[pendingAction]}
       />
+      <div data-testid="commercial-step-up-modal-host">{stepUp.modal}</div>
     </section>
   );
 }

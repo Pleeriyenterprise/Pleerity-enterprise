@@ -1,0 +1,159 @@
+{
+  "audit_id": "MONGODB-STORAGE-ROOT-CAUSE-AND-CONTROLLED-CLEANUP-01",
+  "generated_at": "2026-08-06",
+  "mode": "investigation_only",
+  "deletes_executed": false,
+  "production_touched": false,
+  "final_verdict": "SAFE_TO_PURGE_STAGING_SELECTIVELY",
+  "verdict_conditions": [
+    "No operations against pleerity_production",
+    "Prefer Tier-1 selective purge of derived OEP + aged job_runs on staging",
+    "Full staging drop deferred until formal evidence archive checklist complete (see STAGING_REQUIRES_ARCHIVE_BEFORE_CLEANUP for option A)"
+  ],
+  "atlas_incident": {
+    "cluster_tier": "Atlas Flex",
+    "limit_gb_data_plus_indexes": 5,
+    "writes_blocked": true,
+    "admin_login_symptom": "HTTP 500 (consistent with capacity write failures)",
+    "shared_cluster_inference": true,
+    "shared_cluster_inference_basis": "Both databases reported on same Flex limit incident; combined footprint approaches 5GB"
+  },
+  "databases": {
+    "pleerity_production": {
+      "logical_data_size_gb_approx": 1.42,
+      "indexes_count_atlas": 916,
+      "render_service": "pleerity-api-production",
+      "render_blueprint": "render.production.yaml",
+      "db_name_env": "pleerity_production",
+      "cleanup_allowed_this_phase": false
+    },
+    "pleerity_staging": {
+      "logical_data_size_gb_approx": 2.6,
+      "indexes_count_atlas": 975,
+      "render_service": "pleerity-api-staging",
+      "render_blueprint": "render.staging.yaml",
+      "db_name_env": "pleerity_staging",
+      "larger_than_production": true,
+      "cleanup_allowed_this_phase": false,
+      "proposed_cleanup_class": "selective_purge_after_approval"
+    }
+  },
+  "environment_authority": {
+    "database_py_requires_mongo_url_and_db_name": true,
+    "server_py_fallback_db_name": "compliance_vault_pro",
+    "tmp_scripts_common_default_db_name": "pleerity_staging",
+    "production_and_staging_same_db_when_configured_correctly": false,
+    "production_and_staging_same_cluster_risk": true,
+    "missing_db_name_causes_pleerity_drift": false,
+    "missing_db_name_causes_keyerror_on_database_connect": true,
+    "local_ci_cert_scripts_can_write_hosted_if_mongo_url_points_at_atlas": true
+  },
+  "growth_collections_production_atlas": [
+    {
+      "name": "operational_evidence_events",
+      "documents_approx": 496000,
+      "data_size_mb_approx": 886.07,
+      "index_size_mb_approx": 335.98,
+      "authority_class": "derived",
+      "primary_writer": "services.operational_evidence.emit_service.emit_operational_evidence",
+      "amplifiers": [
+        "job_runner emit_job_run_started/finished",
+        "queue/notification/incident/score producers",
+        "operational_evidence_maintenance_job backfill"
+      ],
+      "live_emit_idempotency": "new uuid4 event_id per insert",
+      "backfill_idempotency": "_already_indexed(source_collection, source_id, event_type)",
+      "ttl_index": false,
+      "retention": "warm_tier_after_90_days_no_delete",
+      "index_definitions_in_database_py_approx": 20,
+      "proposed_staging_action": "purge_aged_or_all_after_dry_run"
+    },
+    {
+      "name": "job_runs",
+      "documents_approx": 612000,
+      "data_size_mb_approx": 382.61,
+      "index_size_mb_approx": 111.14,
+      "authority_class": "operational",
+      "primary_writer": "services.job_run_service.start_job_run",
+      "caller": "job_runner.run_instrumented",
+      "scheduler_jobs_approx": "40+",
+      "ttl_index": false,
+      "retention": "none",
+      "idempotency": "one_row_per_execution_by_design",
+      "proposed_staging_action": "purge_older_than_30_days"
+    },
+    {
+      "name": "operational_evidence_executions",
+      "documents_approx": 245000,
+      "data_size_mb_approx": 122.72,
+      "index_size_mb_approx": 27.02,
+      "authority_class": "derived",
+      "primary_writer": "emit_service._upsert_execution_summary",
+      "ttl_index": false,
+      "retention": "none",
+      "proposed_staging_action": "purge_with_events"
+    }
+  ],
+  "root_cause_factors": [
+    "shared_atlas_flex_cluster_staging_plus_production",
+    "unbounded_job_runs_retention",
+    "unbounded_operational_evidence_append_only_index",
+    "retention_service_tiers_without_delete",
+    "high_frequency_scheduler_creating_run_plus_oep_events",
+    "oep_backfill_can_increase_event_volume",
+    "large_index_surface_per_database_approx_900_indexes",
+    "staging_validation_workloads_inflate_shared_cluster"
+  ],
+  "protected_until_proven_otherwise": [
+    "compliance_evidence_vault",
+    "lifecycle_history",
+    "audit_logs",
+    "payment_records",
+    "authority_governance_records",
+    "users_and_auth",
+    "clients_properties_requirements",
+    "zoho_integration_state_and_tokens"
+  ],
+  "cleanup_utility_design": {
+    "implemented": false,
+    "default_dry_run": true,
+    "refuse_db": ["pleerity_production"],
+    "allowlist_db": ["pleerity_staging"],
+    "require_explicit_execute_flag": true,
+    "features": [
+      "collection_counts",
+      "date_ranges",
+      "estimated_logical_and_index_reclaim",
+      "sample_record_ids",
+      "deletion_reasons",
+      "protected_exclusions",
+      "batch_limits",
+      "resumable_checkpoints",
+      "before_after_collstats_evidence"
+    ]
+  },
+  "prevention_plan_summary": [
+    "ttl_or_purge_job_for_oep_and_job_runs",
+    "daily_rollups_for_ops_telemetry",
+    "storage_alerts_at_60_75_90_percent",
+    "surface_storage_in_system_health_and_platform_status",
+    "incident_before_write_block",
+    "503_database_capacity_exceeded",
+    "index_review_against_query_paths",
+    "separate_atlas_clusters_for_staging_and_production"
+  ],
+  "deliverables": [
+    "backend/docs/audit/MONGODB_STORAGE_ROOT_CAUSE_01.md",
+    "backend/docs/audit/MONGODB_COLLECTION_AUTHORITY_MATRIX_01.md",
+    "backend/docs/audit/MONGODB_STAGING_CLEANUP_PLAN_01.md",
+    "backend/docs/audit/MONGODB_RETENTION_POLICY_01.md",
+    "backend/docs/audit/mongodb_storage_inventory_01.json"
+  ],
+  "next_approval_gates": [
+    "Approve Tier-1 staging selective purge deletion set",
+    "Authorise implementation of report-only cleanup utility",
+    "Authorise execute flag run after dry-run review",
+    "Authorise retention/TTL implementation separately",
+    "Authorise Atlas cluster separation project"
+  ]
+}

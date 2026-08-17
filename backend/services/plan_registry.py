@@ -873,6 +873,8 @@ class PlanRegistryService:
                 "subscription_status": 1,
                 "billing_lifecycle_state": 1,
                 "canonical_entitlement_state": 1,
+                "commercial_effective_entitlement_state": 1,
+                "commercial_restored_plan_code": 1,
             },
         )
         
@@ -881,7 +883,14 @@ class PlanRegistryService:
 
         billing = await db.client_billing.find_one(
             {"client_id": client_id},
-            {"_id": 0, "billing_lifecycle_state": 1, "subscription_status": 1, "canonical_entitlement_state": 1},
+            {
+                "_id": 0,
+                "billing_lifecycle_state": 1,
+                "subscription_status": 1,
+                "canonical_entitlement_state": 1,
+                "commercial_effective_entitlement_state": 1,
+                "commercial_restored_plan_code": 1,
+            },
         )
 
         from services.entitlement_access import evaluate_subscription_feature_access
@@ -1008,7 +1017,14 @@ class PlanRegistryService:
         
         client = await db.clients.find_one(
             {"client_id": client_id},
-            {"_id": 0, "billing_plan": 1, "subscription_status": 1, "entitlement_status": 1}
+            {
+                "_id": 0,
+                "billing_plan": 1,
+                "subscription_status": 1,
+                "entitlement_status": 1,
+                "commercial_effective_entitlement_state": 1,
+                "commercial_restored_plan_code": 1,
+            }
         )
         billing = await db.client_billing.find_one(
             {"client_id": client_id},
@@ -1019,6 +1035,9 @@ class PlanRegistryService:
                 "grace_period_ends_at": 1,
                 "payment_failed_at": 1,
                 "cancel_at_period_end": 1,
+                "commercial_effective_entitlement_state": 1,
+                "commercial_restored_plan_code": 1,
+                "current_plan_code": 1,
             },
         )
         
@@ -1031,6 +1050,7 @@ class PlanRegistryService:
             payment_failed_at = None
             cancel_at_period_end = False
             entitlement_status = None
+            feature_lifecycle = lifecycle
         else:
             plan_str = client.get("billing_plan", "PLAN_1_SOLO")
             plan_code = self.resolve_plan_code(plan_str)
@@ -1040,12 +1060,27 @@ class PlanRegistryService:
             payment_failed_at = (billing or {}).get("payment_failed_at")
             cancel_at_period_end = bool((billing or {}).get("cancel_at_period_end"))
             entitlement_status = client.get("entitlement_status")
-            is_active = subscription_allows_feature_access(subscription_status) or lifecycle in (
-                "grace_period",
-                "past_due",
-                "limited",
-                "renewing",
+            overlay_plan = (client or {}).get("commercial_restored_plan_code") or (billing or {}).get(
+                "commercial_restored_plan_code"
             )
+            overlay_active = str(
+                (client or {}).get("commercial_effective_entitlement_state")
+                or (billing or {}).get("commercial_effective_entitlement_state")
+                or ""
+            ).upper() == "ENABLED"
+            feature_lifecycle = lifecycle
+            if overlay_active and overlay_plan:
+                plan_str = overlay_plan
+                plan_code = self.resolve_plan_code(plan_str)
+                feature_lifecycle = "active"
+                is_active = True
+            else:
+                is_active = subscription_allows_feature_access(subscription_status) or lifecycle in (
+                    "grace_period",
+                    "past_due",
+                    "limited",
+                    "renewing",
+                )
         
         plan_def = self.get_plan(plan_code)
         features = self.get_features(plan_code)
@@ -1057,7 +1092,7 @@ class PlanRegistryService:
             if feature_info:
                 min_plan = self.get_minimum_plan_for_feature(feature_key)
                 eff = self._lifecycle_feature_enabled(
-                    feature_key, is_enabled, subscription_status, lifecycle
+                    feature_key, is_enabled, subscription_status, feature_lifecycle
                 )
                 detailed_features[feature_key] = {
                     "enabled": eff,

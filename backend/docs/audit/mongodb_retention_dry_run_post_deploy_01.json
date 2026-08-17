@@ -1,0 +1,70 @@
+{
+  "ok": true,
+  "dry_run": true,
+  "enabled_flag": false,
+  "collections": [
+    {
+      "collection": "job_runs",
+      "timestamp_field": "created_at",
+      "retention_days": 90,
+      "cutoff": "2026-05-08T17:42:52.662557+00:00",
+      "matched": 0,
+      "deleted": 0,
+      "dry_run": true
+    },
+    {
+      "collection": "operational_evidence_events",
+      "timestamp_field": "occurred_at",
+      "retention_days": 90,
+      "cutoff": "2026-05-08T17:42:52.723204+00:00",
+      "matched": 0,
+      "deleted": 0,
+      "dry_run": true
+    },
+    {
+      "collection": "operational_evidence_executions",
+      "timestamp_field": "started_at",
+      "retention_days": 90,
+      "cutoff": "2026-05-08T17:42:52.809803+00:00",
+      "matched": 0,
+      "deleted": 0,
+      "dry_run": true
+    },
+    {
+      "collection": "message_logs",
+      "timestamp_field": "created_at",
+      "retention_days": 180,
+      "cutoff": "2026-02-07T17:42:52.894370+00:00",
+      "matched": 0,
+      "deleted": 0,
+      "dry_run": true
+    },
+    {
+      "collection": "reminder_evaluation_log",
+      "timestamp_field": "created_at",
+      "retention_days": 90,
+      "cutoff": "2026-05-08T17:42:53.118016+00:00",
+      "matched": 6372,
+      "deleted": 0,
+      "dry_run": true
+    },
+    {
+      "collection": "workflow_nudge_audit",
+      "timestamp_field": "created_at",
+      "retention_days": 90,
+      "cutoff": "2026-05-08T17:42:53.198265+00:00",
+      "matched": 0,
+      "deleted": 0,
+      "dry_run": true
+    },
+    {
+      "collection": "workflow_recovery_audit",
+      "timestamp_field": "created_at",
+      "retention_days": 90,
+      "cutoff": "2026-05-08T17:42:53.306154+00:00",
+      "matched": 0,
+      "deleted": 0,
+      "dry_run": true
+    }
+  ]
+}

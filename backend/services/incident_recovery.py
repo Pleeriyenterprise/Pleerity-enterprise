@@ -143,9 +143,76 @@ async def compute_recovery_state_for_incident(incident: dict) -> dict:
             if last_run and last_run.get("status") in (STATUS_SUCCESS, STATUS_DEGRADED):
                 out["recovery_detected"] = True
                 out["recovery_hint"] = "Recovery detected. This incident can be resolved automatically."
+            else:
+                # Idle-skip workers may recover via poll heartbeats without new job_runs.
+                from services.job_run_idle_persist import get_poll_heartbeat_tick, is_idle_skip_job
+
+                if is_idle_skip_job(job_name):
+                    tick = await get_poll_heartbeat_tick(db, job_name)
+                    if tick:
+                        try:
+                            t = datetime.fromisoformat(str(tick).replace("Z", "+00:00"))
+                            if t.tzinfo is None:
+                                t = t.replace(tzinfo=timezone.utc)
+                            max_delay = float(meta.get("max_delay_minutes") or 30)
+                            if entry is not None:
+                                max_delay = float(getattr(entry, "max_delay_minutes", max_delay) or max_delay)
+                            if (datetime.now(timezone.utc) - t).total_seconds() / 60.0 <= max_delay:
+                                out["recovery_detected"] = True
+                                out["last_success"] = tick
+                                out["recovery_hint"] = (
+                                    "Recovery detected via job_poll_heartbeats (idle-skip path)."
+                                )
+                        except Exception:
+                            pass
         return out
 
     return out
+
+
+async def check_and_resolve_idle_skip_job_incidents() -> int:
+    """
+    Resolve open job_monitor incidents for idle-skip jobs when a fresh poll heartbeat exists.
+    """
+    from services.job_run_idle_persist import (
+        ALWAYS_SKIP_JOB_RUN_PERSIST,
+        IDLE_SKIP_JOB_RUN_PERSIST,
+        get_poll_heartbeat_tick,
+    )
+
+    db = database.get_db()
+    if db is None:
+        return 0
+    now = datetime.now(timezone.utc)
+    resolved = 0
+    for job_name in sorted(ALWAYS_SKIP_JOB_RUN_PERSIST | IDLE_SKIP_JOB_RUN_PERSIST):
+        tick = await get_poll_heartbeat_tick(db, job_name)
+        if not tick:
+            continue
+        try:
+            t = datetime.fromisoformat(str(tick).replace("Z", "+00:00"))
+            if t.tzinfo is None:
+                t = t.replace(tzinfo=timezone.utc)
+        except Exception:
+            continue
+        entry = get_job_entry(job_name)
+        max_delay = float(getattr(entry, "max_delay_minutes", 30) or 30) if entry else 30.0
+        if (now - t).total_seconds() / 60.0 > max_delay:
+            continue
+        cursor = db.incidents.find(
+            {
+                "status": {"$in": [STATUS_OPEN, STATUS_ACKNOWLEDGED]},
+                "source": SOURCE_JOB_MONITOR,
+                "related_job_name": job_name,
+            },
+            {"_id": 1},
+        )
+        note = (
+            f"Recovery detected: idle-skip job {job_name} has a fresh poll heartbeat "
+            f"(last_tick_at={tick})."
+        )
+        resolved += await _process_open_incidents_recovery(cursor, note)
+    return resolved
 
 
 async def resolve_recovered_incidents_for_job(

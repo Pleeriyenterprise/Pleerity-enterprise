@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 async def reconcile_entitlement_billing_state(client_id: str) -> Dict[str, Any]:
     """
     v1: sync stored canonical_entitlement_state from platform governance bridge.
-    Does not mutate Stripe subscriptions or pause_collection.
+    Does not create or recreate Stripe subscriptions.
+    For billing_suspension, collection pause is applied in execution before this reconcile.
     """
     signals = await load_client_billing_signals(client_id)
     if not signals.get("found"):
@@ -33,16 +34,15 @@ async def reconcile_entitlement_billing_state(client_id: str) -> Dict[str, Any]:
         return {"ok": True, "client_id": client_id, "canonical_updated": False}
 
     db = database.get_db()
-    await db.clients.update_one(
-        {"client_id": client_id},
-        {"$set": {"canonical_entitlement_state": canon}},
-    )
+    client_set = {
+        "canonical_entitlement_state": canon,
+        "commercial_effective_entitlement_state": access.get("effective_entitlement_state"),
+        "commercial_restored_plan_code": access.get("restored_plan_code"),
+    }
+    await db.clients.update_one({"client_id": client_id}, {"$set": client_set})
     billing = signals.get("billing") or {}
     if billing:
-        await db.client_billing.update_one(
-            {"client_id": client_id},
-            {"$set": {"canonical_entitlement_state": canon}},
-        )
+        await db.client_billing.update_one({"client_id": client_id}, {"$set": client_set})
 
     drift = await detect_entitlement_drift(client_id)
     recon = await reconcile_stripe_vs_platform_state(client_id)

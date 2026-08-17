@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from database import database
 from services.entitlement_access import compute_canonical_entitlement_state
+from services.plan_registry import PlanCode
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,107 @@ _MAX_DURATION_DAYS: Dict[str, int] = {
     EXCEPTION_ONBOARDING_WAIVER: 30,
     EXCEPTION_RESTRICTED: 30,
 }
+
+_PLAN_ALIASES = {
+    "PLAN_1": "PLAN_1_SOLO",
+    "PLAN_1_SOLO": "PLAN_1_SOLO",
+    "SOLO": "PLAN_1_SOLO",
+    "STARTER": "PLAN_1_SOLO",
+    "PLAN_2_5": "PLAN_2_PORTFOLIO",
+    "PLAN_2_PORTFOLIO": "PLAN_2_PORTFOLIO",
+    "PORTFOLIO": "PLAN_2_PORTFOLIO",
+    "PLAN_6_15": "PLAN_3_PRO",
+    "PLAN_3_PRO": "PLAN_3_PRO",
+    "PROFESSIONAL": "PLAN_3_PRO",
+    "PRO": "PLAN_3_PRO",
+}
+
+CONTINUITY_ACCESS_STATES = frozenset(
+    {
+        STATE_GRACE_PERIOD,
+        STATE_BILLING_SUSPENDED,
+        STATE_SPONSORED_ACCESS,
+        STATE_RETENTION_EXTENSION,
+        STATE_RECOVERY_CONTINUITY,
+        STATE_ACTIVE,
+    }
+)
+
+PLAN_DISPLAY_LABELS = {
+    "PLAN_1_SOLO": "Solo",
+    "PLAN_2_PORTFOLIO": "Portfolio",
+    "PLAN_3_PRO": "Professional",
+}
+
+COMMERCIAL_OVERLAY_UNSET = {
+    "commercial_governance_id": "",
+    "commercial_governance_state": "",
+    "effective_access_reason": "",
+    "commercial_effective_entitlement_state": "",
+    "commercial_restored_plan_code": "",
+    "commercial_billing_collection_paused": "",
+}
+
+
+def _strict_plan_code(raw: Any) -> Optional[str]:
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    try:
+        return PlanCode(text).value
+    except ValueError:
+        return _PLAN_ALIASES.get(text.upper())
+
+
+def resolve_authoritative_plan_code(signals: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
+    """Last valid subscribed plan. Never invent PLAN_1_SOLO.
+
+    Precedence: client_billing.current_plan_code → clients.billing_plan →
+    client_billing.plan_code → clients.plan_code / selected_plan.
+    """
+    billing = signals.get("billing") or {}
+    client = signals.get("client") or {}
+    candidates = (
+        (billing.get("current_plan_code"), "client_billing.current_plan_code"),
+        (client.get("billing_plan"), "clients.billing_plan"),
+        (billing.get("plan_code"), "client_billing.plan_code"),
+        (client.get("plan_code"), "clients.plan_code"),
+        (client.get("selected_plan"), "clients.selected_plan"),
+    )
+    for raw, source in candidates:
+        code = _strict_plan_code(raw)
+        if code:
+            return code, source
+    return None, None
+
+
+def commercial_continuity_overlay_active(
+    client: Optional[Dict[str, Any]] = None,
+    billing: Optional[Dict[str, Any]] = None,
+) -> bool:
+    effective = (
+        (client or {}).get("commercial_effective_entitlement_state")
+        or (billing or {}).get("commercial_effective_entitlement_state")
+    )
+    return str(effective or "").upper() == "ENABLED"
+
+
+def commercial_restored_plan_code(
+    client: Optional[Dict[str, Any]] = None,
+    billing: Optional[Dict[str, Any]] = None,
+) -> Optional[str]:
+    return _strict_plan_code(
+        (client or {}).get("commercial_restored_plan_code")
+        or (billing or {}).get("commercial_restored_plan_code")
+    )
+
+
+def plan_display_label(plan_code: Optional[str]) -> str:
+    if not plan_code:
+        return "previous"
+    return PLAN_DISPLAY_LABELS.get(plan_code, plan_code)
 
 
 def _now() -> datetime:
@@ -258,8 +360,9 @@ def derive_effective_access_reason(governance: Optional[Dict[str, Any]]) -> Opti
 
 def derive_customer_access_state(signals: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Sole bridge: commercial governance → canonical access band (ENABLED/GRACE/SUSPENDED/CANCELLED).
-    Platform governance is authoritative for exceptions; Stripe lifecycle fills baseline.
+    Bridge: underlying canonical band stays subscription-derived.
+    Continuity exceptions grant effective plan-equivalent access without rewriting
+    CANCELLED → ACTIVE on the underlying lifecycle.
     """
     client = signals.get("client") or {}
     billing = signals.get("billing") or {}
@@ -269,10 +372,15 @@ def derive_customer_access_state(signals: Dict[str, Any]) -> Dict[str, Any]:
         billing_lifecycle_state=(billing.get("billing_lifecycle_state") or client.get("billing_lifecycle_state")),
         subscription_status_upper=(billing.get("subscription_status") or client.get("subscription_status")),
     )
+    plan_code, plan_source = resolve_authoritative_plan_code(signals)
 
     if not governance:
         return {
             "canonical_entitlement_state": baseline,
+            "effective_entitlement_state": baseline,
+            "underlying_canonical_entitlement_state": baseline,
+            "restored_plan_code": plan_code,
+            "restored_plan_source": plan_source,
             "governance_applied": False,
             "effective_access_reason": None,
             "access_policy": ACCESS_FULL,
@@ -280,31 +388,30 @@ def derive_customer_access_state(signals: Dict[str, Any]) -> Dict[str, Any]:
 
     g_state = governance.get("entitlement_state") or STATE_ACTIVE
     policy = governance.get("access_policy") or ACCESS_FULL
+    restored = _strict_plan_code(governance.get("restored_plan_code")) or plan_code
 
     if g_state in (STATE_ENTITLEMENT_DRIFT, STATE_MANUAL_REVIEW_REQUIRED):
-        canon = baseline
+        canon, effective = baseline, baseline
     elif g_state == STATE_TERMINATION_PENDING:
-        canon = "CANCELLED"
+        canon, effective = "CANCELLED", "CANCELLED"
     elif g_state == STATE_RESTRICTED or policy == ACCESS_SUSPENDED:
-        canon = "SUSPENDED"
+        canon, effective = "SUSPENDED", "SUSPENDED"
     elif g_state == STATE_PAYMENT_HOLD:
-        canon = "GRACE"
-    elif policy == ACCESS_FULL and g_state in (
-        STATE_GRACE_PERIOD,
-        STATE_BILLING_SUSPENDED,
-        STATE_SPONSORED_ACCESS,
-        STATE_RETENTION_EXTENSION,
-        STATE_RECOVERY_CONTINUITY,
-        STATE_WAIVED,
-        STATE_ACTIVE,
-    ):
-        # Operational continuity preserved — do not downgrade access band
-        canon = "ENABLED" if baseline != "CANCELLED" else baseline
-    else:
+        canon, effective = baseline, "GRACE"
+    elif policy == ACCESS_FULL and g_state in CONTINUITY_ACCESS_STATES:
         canon = baseline
+        effective = "ENABLED"
+    elif g_state == STATE_WAIVED:
+        canon, effective = baseline, baseline
+    else:
+        canon, effective = baseline, baseline
 
     return {
         "canonical_entitlement_state": canon,
+        "effective_entitlement_state": effective,
+        "underlying_canonical_entitlement_state": baseline,
+        "restored_plan_code": restored,
+        "restored_plan_source": plan_source,
         "governance_applied": True,
         "governance_state": g_state,
         "effective_access_reason": derive_effective_access_reason(governance),
@@ -434,6 +541,7 @@ async def build_commercial_entitlement_assessment(client_id: str) -> Dict[str, A
         "drift": drift,
         "billing_mode_drift": billing_mode_drift,
         "executable_actions": _derive_executable_actions(signals, governance),
+        "lifecycle_action_warnings": _lifecycle_action_warnings(signals, governance),
         "completion_rule": (
             "Commercial exceptions require explicit authority, scope, duration, audit, and customer impact — "
             "not hidden billing mutations."
@@ -455,6 +563,35 @@ def _derive_executable_actions(
         "apply_recovery_compensation",
         "restrict_entitlement",
     ]
+
+
+def _lifecycle_action_warnings(
+    signals: Dict[str, Any], governance: Optional[Dict[str, Any]]
+) -> Dict[str, str]:
+    """Operator-facing warnings when claimed outcomes cannot hold for the current lifecycle.
+
+    Does not change which actions are executable — backend remains the existing authority.
+    """
+    if governance:
+        return {}
+    access = derive_customer_access_state(signals)
+    canon = (access.get("canonical_entitlement_state") or "").upper()
+    if canon != "CANCELLED":
+        return {}
+    note = (
+        "The underlying account is cancelled. This creates a temporary commercial exception: "
+        "plan-equivalent access is restored for the duration; cancellation remains recorded; "
+        "expiry returns to cancelled access unless another lifecycle event changes the account."
+    )
+    return {
+        "grant_grace_period": note,
+        "suspend_billing": note + " Billing will not be collected during the exception. A cancelled Stripe subscription will not be recreated.",
+        "grant_sponsored_access": note,
+        "retention_extension": note,
+        "waive_onboarding_fee": "Onboarding waiver will persist billing flags if eligible; it will not restore cancelled access unless a continuity exception is also in force.",
+        "apply_recovery_compensation": note + " Recovery compensation is a time-bound access continuity exception, not a Stripe credit.",
+        "restrict_entitlement": "Account is already CANCELLED; restriction will not delete records.",
+    }
 
 
 async def supersede_active_governance(

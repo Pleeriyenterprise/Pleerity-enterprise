@@ -312,9 +312,10 @@ const AdminClientControlPanelPage = () => {
   const [changeEmailConfirmed, setChangeEmailConfirmed] = useState(false);
   const [changeEmailSendActivation, setChangeEmailSendActivation] = useState(true);
 
-  const loadPanel = useCallback(async () => {
+  const loadPanel = useCallback(async (opts = {}) => {
     if (!clientId) return;
-    setLoading(true);
+    const silent = Boolean(opts && opts.silent);
+    if (!silent) setLoading(true);
     try {
       const res = await adminAPI.getClientControlPanel(clientId);
       setData(res.data || null);
@@ -324,7 +325,7 @@ const AdminClientControlPanelPage = () => {
       setPaymentHistoryError('Failed to load payment history');
       setData(null);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [clientId]);
 
@@ -1521,7 +1522,11 @@ const AdminClientControlPanelPage = () => {
         ) : null}
       </SectionCard>
       {canManagePilotRecovery && clientId ? (
-        <CommercialEntitlementControls clientId={clientId} enabled={!loading} />
+        <CommercialEntitlementControls
+          clientId={clientId}
+          enabled={!loading}
+          onExecuted={() => loadPanel({ silent: true })}
+        />
       ) : null}
       <CollapsibleBlock
         title="Payment history & receipts"

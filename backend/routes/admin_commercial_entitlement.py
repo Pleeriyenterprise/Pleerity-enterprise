@@ -91,6 +91,7 @@ async def post_commercial_entitlement_impact_preview(
 
     exception_type = _ACTION_TO_EXCEPTION.get(body.action)
     policy = body.access_policy or _EXCEPTION_DEFAULT_ACCESS.get(exception_type or "", "full_access")
+    access = assessment.get("access") or {}
     preview = derive_customer_impact_preview(
         action=body.action,
         duration_days=body.duration_days,
@@ -98,6 +99,13 @@ async def post_commercial_entitlement_impact_preview(
         sponsor_reference=body.sponsor_reference,
         access_policy=policy,
         customer_note=body.customer_note,
+        underlying_canonical=access.get("underlying_canonical_entitlement_state")
+        or access.get("canonical_entitlement_state"),
+        restored_plan_code=access.get("restored_plan_code"),
+        stripe_pause_mode="already_non_collecting"
+        if (access.get("underlying_canonical_entitlement_state") or access.get("canonical_entitlement_state") or "").upper()
+        == "CANCELLED"
+        else None,
     )
     return {
         "client_id": client_id,
@@ -150,6 +158,25 @@ async def execute_commercial_entitlement_route(
             ip_address=ip_address,
         )
     except CommercialEntitlementExecutionError as e:
+        try:
+            from services.commercial_entitlement_observability_service import (
+                EVENT_COMMERCIAL_REJECTED,
+                record_commercial_entitlement_event,
+            )
+
+            await record_commercial_entitlement_event(
+                event_type=EVENT_COMMERCIAL_REJECTED,
+                client_id=client_id,
+                action=body.action,
+                actor_id=user.get("portal_user_id"),
+                metadata={
+                    "error_code": e.code,
+                    "message": e.message[:300],
+                    "ip_address": ip_address,
+                },
+            )
+        except Exception:
+            logger.exception("failed to record commercial entitlement rejection client_id=%s", client_id)
         raise HTTPException(
             status_code=e.status_code,
             detail={"error_code": e.code, "message": e.message},

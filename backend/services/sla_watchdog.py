@@ -244,16 +244,18 @@ async def run_sla_watchdog() -> Dict[str, Any]:
     alerts_sent = 0
     recovered = 0
 
-    # Recovery pass: resolve incidents whose condition is now cleared (heartbeat fresh, no delivery_unknown stale)
+    # Recovery pass: resolve incidents whose condition is now cleared (heartbeat fresh, idle poll ticks, etc.)
     try:
         from services.incident_recovery import (
             check_and_resolve_heartbeat_incidents,
             check_and_resolve_delivery_unknown_incidents,
             check_and_resolve_risk_regen_queue_incidents,
+            check_and_resolve_idle_skip_job_incidents,
         )
         recovered += await check_and_resolve_heartbeat_incidents()
         recovered += await check_and_resolve_delivery_unknown_incidents()
         recovered += await check_and_resolve_risk_regen_queue_incidents()
+        recovered += await check_and_resolve_idle_skip_job_incidents()
         if recovered:
             logger.info("SLA watchdog recovery pass: resolved %s incident(s)", recovered)
     except Exception as e:
@@ -311,6 +313,8 @@ async def run_sla_watchdog() -> Dict[str, Any]:
 
     # 3) Per-job SLA (grace period: do not create incident if next run is still in the future)
     next_runs = _get_scheduler_next_runs()
+    from services.job_run_idle_persist import get_poll_heartbeat_tick, is_idle_skip_job
+
     for job_name, _expected_min, max_delay_minutes, severity, description in DEFAULT_SLA_CONFIG:
         # Consider both success and degraded as "job ran" so we don't incident when only degraded
         last_success = await db[JOB_RUNS_COLLECTION].find_one(
@@ -318,7 +322,19 @@ async def run_sla_watchdog() -> Dict[str, Any]:
             {"_id": 0, "finished_at": 1, "status": 1},
             sort=[("finished_at", -1)],
         )
-        if not last_success or not last_success.get("finished_at"):
+        # Idle-skip / always-skip jobs may only update job_poll_heartbeats; treat fresh ticks as success.
+        poll_tick = None
+        if is_idle_skip_job(job_name):
+            poll_tick = await get_poll_heartbeat_tick(db, job_name)
+        effective = last_success
+        if poll_tick and (
+            not last_success
+            or not last_success.get("finished_at")
+            or str(poll_tick) > str(last_success.get("finished_at") or "")
+        ):
+            effective = {"finished_at": poll_tick, "status": STATUS_SUCCESS, "from_poll_heartbeat": True}
+
+        if not effective or not effective.get("finished_at"):
             # Never completed - apply grace period: if next scheduled run is in the future, skip incident
             next_run = next_runs.get(job_name)
             if next_run and (next_run - now).total_seconds() > GRACE_PERIOD_NEXT_RUN_FUTURE_SEC:
@@ -337,7 +353,7 @@ async def run_sla_watchdog() -> Dict[str, Any]:
                 alerts_sent += 1
             continue
 
-        finished_str = last_success["finished_at"]
+        finished_str = effective["finished_at"]
         try:
             if isinstance(finished_str, str):
                 finished_at = datetime.fromisoformat(finished_str.replace("Z", "+00:00"))
@@ -349,6 +365,8 @@ async def run_sla_watchdog() -> Dict[str, Any]:
             continue
         delay_minutes = (now - finished_at).total_seconds() / 60
         if delay_minutes <= max_delay_minutes:
+            if effective.get("from_poll_heartbeat"):
+                continue
             # Within SLA window: if last run was degraded, create incident so admin sees repeated degraded runs
             if last_success.get("status") == STATUS_DEGRADED:
                 last_pure_success = await db[JOB_RUNS_COLLECTION].find_one(

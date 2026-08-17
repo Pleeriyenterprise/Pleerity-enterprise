@@ -372,6 +372,12 @@ class LeadService:
         except Exception as e:
             logger.warning("Lead created event log failed: %s", e)
 
+        try:
+            from services.integrations.zoho.events import maybe_enqueue_crm_sync
+            await maybe_enqueue_crm_sync(lead_id, "lead.created")
+        except Exception as e:
+            logger.warning("Zoho CRM enqueue failed: %s", e)
+
         return {**lead_doc, "is_duplicate": False}
     
     @staticmethod
@@ -653,6 +659,13 @@ class LeadService:
                 "after": {k: v for k, v in update_data.items() if k != "updated_at"},
             },
         )
+
+        try:
+            from services.integrations.zoho.events import maybe_enqueue_crm_sync
+            event = "lead.stage_changed" if "stage" in update_data else "lead.updated"
+            await maybe_enqueue_crm_sync(lead_id, event)
+        except Exception as e:
+            logger.warning("Zoho CRM enqueue failed: %s", e)
         
         return await LeadService.get_lead(lead_id)
     
@@ -859,6 +872,12 @@ class LeadService:
             )
         except Exception as e:
             logger.warning("Lead converted event log failed: %s", e)
+
+        try:
+            from services.integrations.zoho.events import maybe_enqueue_crm_sync
+            await maybe_enqueue_crm_sync(lead_id, "lead.converted")
+        except Exception as e:
+            logger.warning("Zoho CRM enqueue failed: %s", e)
         
         logger.info(f"Lead {lead_id} converted to client {client_id}")
         
@@ -902,6 +921,13 @@ class LeadService:
                 "competitor": competitor,
             },
         )
+
+        # Zoho CRM: status-only mirror (never delete/archive in Zoho).
+        try:
+            from services.integrations.zoho.events import maybe_enqueue_crm_sync
+            await maybe_enqueue_crm_sync(lead_id, "lead.lost")
+        except Exception as e:
+            logger.warning("Zoho CRM enqueue failed: %s", e)
         
         return await LeadService.get_lead(lead_id)
     

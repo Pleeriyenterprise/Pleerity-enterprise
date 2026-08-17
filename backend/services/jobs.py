@@ -1856,6 +1856,8 @@ class JobScheduler:
                 continue
             if not await self._client_allowed_for_background(client_id, "subscription_lifecycle"):
                 continue
+            if b.get("commercial_billing_collection_paused"):
+                continue
             if str(b.get("subscription_status") or "").upper() in ("CANCELED", "CANCELLED", "UNPAID", "INCOMPLETE_EXPIRED"):
                 continue
             pfail = b.get("payment_failed_at")
@@ -1907,6 +1909,7 @@ class JobScheduler:
                 "subscription_status": {"$in": ["ACTIVE", "TRIALING"]},
                 "cancel_at_period_end": {"$ne": True},
                 "current_period_end": {"$gte": now},
+                "commercial_billing_collection_paused": {"$ne": True},
             },
             {"_id": 0},
         ).to_list(2000)
@@ -1920,6 +1923,8 @@ class JobScheduler:
             if not client_id:
                 continue
             if not await self._client_allowed_for_background(client_id, "renewal_reminders"):
+                continue
+            if billing.get("commercial_billing_collection_paused"):
                 continue
 
             prefs = await self.db.notification_preferences.find_one(

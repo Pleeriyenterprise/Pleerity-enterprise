@@ -1,0 +1,75 @@
+{
+  "programme": "ZOHO_INTEGRATION_PHASE_0_STAGING_VALIDATION",
+  "date": "2026-07-09",
+  "commit_expected": "e702b2af",
+  "commit_pushed": "e702b2af24585a9e3fa3a4d0f67ea302753d3312",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "production_api": "https://api.pleerityenterprise.co.uk/api",
+  "production_pin_sha": "89217062",
+  "verdict": "PHASE_0_PASS",
+  "checks": {
+    "staging_deploy_sha": {
+      "pass": true,
+      "evidence": {
+        "url": "https://pleerity-enterprise.onrender.com/api/version",
+        "commit_sha": "e702b2af24585a9e3fa3a4d0f67ea302753d3312",
+        "environment": "staging",
+        "converged_after_attempts": 9
+      }
+    },
+    "staging_api_health": {
+      "pass": true,
+      "evidence": {
+        "url": "https://pleerity-enterprise.onrender.com/api/health",
+        "status_code": 200,
+        "status": "healthy",
+        "readiness_stage": "post_db_initialization"
+      }
+    },
+    "zoho_admin_status_hidden": {
+      "pass": true,
+      "evidence": {
+        "url": "https://pleerity-enterprise.onrender.com/api/admin/integrations/zoho/status",
+        "unauthenticated_status_code": 401,
+        "unauthenticated_detail": "Not authenticated",
+        "webhook_crm_status_code": 404,
+        "webhook_crm_detail": "Not found",
+        "note": "Admin route requires authentication before flag guard; unauthenticated=401. Webhook returns 404 when ZOHO_INTEGRATION_ENABLED=false. Authenticated+flag-off 404 covered by unit test test_admin_routes_404_when_disabled."
+      }
+    },
+    "no_zoho_sync_jobs_running": {
+      "pass": true,
+      "evidence": {
+        "scheduler_zoho_cron_entries_in_server_py": 0,
+        "job_runner_manual_only": [
+          "zoho_sync_queue",
+          "zoho_analytics_export",
+          "zoho_books_export",
+          "zoho_campaigns_export"
+        ],
+        "note": "No zoho_* scheduler.add_job in server.py; jobs not cron-wired; no manual trigger executed during deploy window"
+      }
+    },
+    "no_zoho_scheduler_cron": {
+      "pass": true,
+      "evidence": {
+        "server_py_zoho_scheduler_matches": false,
+        "grep_scope": "backend/server.py scheduler.add_job ids"
+      }
+    },
+    "production_unchanged": {
+      "pass": true,
+      "evidence": {
+        "url": "https://api.pleerityenterprise.co.uk/api/version",
+        "commit_sha": "89217062481b4eb858a8b530ec90c83de067a4be",
+        "health_status": "healthy",
+        "environment": "production"
+      }
+    }
+  },
+  "constraints": {
+    "zoho_flags_enabled": false,
+    "production_credentials_added": false,
+    "cron_jobs_wired": false
+  }
+}

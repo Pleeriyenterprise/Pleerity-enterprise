@@ -297,6 +297,7 @@ async def apply_post_grace_transitions(now: Optional[datetime] = None) -> int:
         {
             "subscription_status": "PAST_DUE",
             "grace_period_ends_at": {"$lte": now},
+            "commercial_billing_collection_paused": {"$ne": True},
         },
         {"_id": 0, "client_id": 1},
     )

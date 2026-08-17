@@ -8,6 +8,8 @@ from contextlib import asynccontextmanager
 from database import database
 from routes import auth, intake, onboarding, portal, webhooks, client, client_read_api, admin, admin_client_lifecycle, admin_identity_lifecycle, documents, evidence_review, assistant, profile, properties, rules, compliance_governed_rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, client_billing, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, admin_pilot_invites, admin_pilot_lifecycle, admin_onboarding_recovery, admin_commercial_entitlement, admin_compliance_registry, admin_compliance_truth, analytics, admin_generation_analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads, admin_discovery, discovery_twin_internal, agreements_public, admin_client_agreements, admin_job_execution
 from routes import observability, operational_evidence, compliance_graph, compliance_graph_health, compliance_intelligence, ops_compliance, contractors, maintenance, client_maintenance, client_compliance_execution, client_compliance_evidence, compliance_delivery_audit, api_compliance_workflow, client_approvals, client_rent_operations, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre, admin_communications, requirement_workflow_audit_admin, public_legal_content, client_lifecycle_runtime, client_capability_enforcement, client_session_runtime
+from routes.integrations.zoho import admin as zoho_integration_admin
+from routes.integrations.zoho import webhooks as zoho_integration_webhooks
 from utils.request_ip import get_client_ip as _client_ip
 
 # ClearForm - Separate Product Routes
@@ -1171,6 +1173,18 @@ async def lifespan(app: FastAPI):
         )
         scheduler.add_job(
             "job_runner:run_scheduled_job",
+            CronTrigger(minute="*/15", timezone=SCHEDULER_TIMEZONE),
+            id="mongo_storage_capacity_monitor",
+            name="MongoDB Storage Capacity Monitor",
+            replace_existing=True,
+            args=["mongo_storage_capacity_monitor"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
             CronTrigger(minute=35, timezone=SCHEDULER_TIMEZONE),
             id="operational_recovery_processing",
             name="Operational Recovery Orchestration (Phase 2A)",
@@ -1178,7 +1192,46 @@ async def lifespan(app: FastAPI):
             args=["operational_recovery_processing"],
             kwargs={"run_type": "schedule"},
         )
-        
+
+        # Zoho Analytics daily export — staging only (never register on production).
+        try:
+            from services.integrations.zoho.config import (
+                zoho_analytics_schedule_registration_allowed,
+            )
+            from services.integrations.zoho.types import ANALYTICS_EXPORT_JOB_ID
+
+            if zoho_analytics_schedule_registration_allowed():
+                scheduler.add_job(
+                    "job_runner:run_scheduled_job",
+                    CronTrigger(hour=2, minute=15, timezone=SCHEDULER_TIMEZONE),
+                    id=ANALYTICS_EXPORT_JOB_ID,
+                    name="Zoho Analytics Daily Export (staging)",
+                    replace_existing=True,
+                    max_instances=1,
+                    coalesce=True,
+                    misfire_grace_time=600,
+                    args=[ANALYTICS_EXPORT_JOB_ID],
+                    kwargs={"run_type": "schedule"},
+                )
+                logger.info(
+                    "Scheduler: registered %s at Daily 02:15 UTC (staging-only)",
+                    ANALYTICS_EXPORT_JOB_ID,
+                )
+            else:
+                _dep_env = (
+                    os.environ.get("ENV") or os.environ.get("ENVIRONMENT") or ""
+                ).strip().lower()
+                logger.info(
+                    "Scheduler: %s not registered (deployment ENVIRONMENT=%r; staging-only)",
+                    ANALYTICS_EXPORT_JOB_ID,
+                    _dep_env or "(unset)",
+                )
+        except Exception as zoho_sched_err:
+            logger.warning(
+                "Scheduler: failed to evaluate Zoho Analytics schedule registration: %s",
+                zoho_sched_err,
+            )
+
         _sched_flag[0] = False
         try:
             scheduler.start(paused=True)
@@ -1578,6 +1631,8 @@ app.include_router(risk_check.router)  # Compliance Risk Check (standalone demo,
 app.include_router(admin_risk_leads.router)  # Admin: risk leads list, export, resend report
 app.include_router(admin_discovery.router)  # Admin: discovery review workflow (Stage O)
 app.include_router(discovery_twin_internal.router)  # Stage Y: Twin webhook connector (staging, flag-gated)
+app.include_router(zoho_integration_admin.router)  # Zoho integration admin (flag-gated)
+app.include_router(zoho_integration_webhooks.router)  # Zoho inbound webhooks (flag-gated)
 app.include_router(observability.router)  # Admin: job-runs, incidents, score-events (observability)
 app.include_router(operational_evidence.router)  # Admin: Operational Evidence Platform (timeline, stories, chains)
 app.include_router(compliance_graph.router)  # Compliance Evidence Graph — Graph Service Layer only
@@ -1670,25 +1725,41 @@ async def health_check(request: Request):
                 },
             },
         )
-    if getattr(request.app.state, "startup_degraded", False):
-        return {
-            "status": "degraded",
-            "environment": os.getenv("ENVIRONMENT", "development"),
-            "readiness": {
-                "stage": getattr(request.app.state, "startup_stage", "degraded"),
-                "degraded": True,
-                "last_error": getattr(request.app.state, "startup_last_error", "") or None,
-            },
-        }
-    return {
-        "status": "healthy",
+
+    scheduler_snap = None
+    try:
+        from services.scheduler_health_authority import (
+            load_scheduler_health_snapshot,
+            map_platform_status,
+        )
+
+        scheduler_snap = await load_scheduler_health_snapshot()
+        platform_status = map_platform_status(
+            scheduler_snap,
+            startup_degraded=bool(getattr(request.app.state, "startup_degraded", False)),
+        )
+    except Exception:
+        platform_status = (
+            "degraded" if getattr(request.app.state, "startup_degraded", False) else "healthy"
+        )
+        scheduler_snap = None
+
+    if getattr(request.app.state, "startup_degraded", False) and platform_status == "healthy":
+        platform_status = "degraded"
+
+    body = {
+        "status": platform_status,
         "environment": os.getenv("ENVIRONMENT", "development"),
         "readiness": {
             "stage": getattr(request.app.state, "startup_stage", "ready"),
-            "degraded": False,
-            "last_error": None,
+            "degraded": platform_status != "healthy",
+            "last_error": getattr(request.app.state, "startup_last_error", "") or None,
         },
     }
+    if scheduler_snap is not None:
+        body["scheduler"] = scheduler_snap.as_dict()
+    # Keep HTTP 200 when process is up so Render liveness does not flap; truth is in status.
+    return body
 
 
 # Version/build stamp for deployment verification (commit SHA set by CI/CD, e.g. GIT_COMMIT_SHA)
@@ -1764,6 +1835,18 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 # Global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    try:
+        from utils.mongo_capacity_errors import capacity_unavailable_payload, is_mongo_capacity_error
+
+        if is_mongo_capacity_error(exc):
+            logger.error("Database capacity exceeded: %s", exc, exc_info=True)
+            return JSONResponse(
+                status_code=503,
+                content=capacity_unavailable_payload(),
+                headers=_cors_headers_for_origin(request),
+            )
+    except Exception:
+        pass
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,

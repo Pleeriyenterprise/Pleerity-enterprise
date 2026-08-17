@@ -109,6 +109,97 @@ async def run_instrumented(
         corr = ctx.correlation_id if ctx else None
     except Exception:
         pass
+
+    # High-frequency schedule polls: run first; skip job_runs+OEP on idle success (storage governance).
+    from services.job_run_idle_persist import (
+        ALWAYS_SKIP_JOB_RUN_PERSIST,
+        IDLE_SKIP_JOB_RUN_PERSIST,
+        idle_skip_enabled,
+        should_skip_full_persist,
+        touch_job_poll_heartbeat,
+    )
+
+    _hf_jobs = ALWAYS_SKIP_JOB_RUN_PERSIST | IDLE_SKIP_JOB_RUN_PERSIST
+    if idle_skip_enabled() and run_type == "schedule" and job_id in _hf_jobs:
+        call_kw = _filter_kwargs_for_callable(fn, kw)
+        try:
+            if call_kw:
+                result = await fn(**call_kw)
+            else:
+                result = await fn()
+            if not isinstance(result, dict):
+                result = {"message": str(result), "count": result if isinstance(result, (int, float)) else None}
+            if should_skip_full_persist(job_id, run_type, result):
+                await touch_job_poll_heartbeat(job_id, result=result, skipped_persist=True)
+                logger.debug(
+                    "run_instrumented: skipped job_runs persist for idle/high-freq job_id=%s",
+                    job_id,
+                )
+                return result
+        except Exception as e:
+            # Failures always persist a job_runs row for SLA / System Health.
+            job_run_id = await start_job_run(
+                job_id, run_type, triggered_by=triggered_by, correlation_id=corr, metadata=meta if meta else None
+            )
+            await finish_job_run_failure(
+                job_run_id,
+                error_code=type(e).__name__,
+                error_message=str(e),
+                stack_trace=traceback.format_exc(),
+            )
+            await _emit_job_run_evidence_finished(job_run_id, job_id, "failed", error_message=str(e))
+            raise
+        # Non-idle success/degraded/failed outcome: fall through to normal persist using result below.
+        job_run_id = await start_job_run(
+            job_id, run_type, triggered_by=triggered_by, correlation_id=corr, metadata=meta if meta else None
+        )
+        logger.info("run_instrumented: start_job_run returned job_run_id=%s for job_id=%s", job_run_id, job_id)
+        try:
+            from services.operational_evidence.producers import emit_job_run_started
+            await emit_job_run_started(
+                job_run_id=job_run_id,
+                job_name=job_id,
+                run_type=run_type,
+                correlation_id=corr,
+                triggered_by=triggered_by,
+            )
+        except Exception as emit_err:
+            logger.debug("operational_evidence job started emit skipped: %s", emit_err)
+        count = result.get("count")
+        outcome_status = result.get("outcome_status", OUTCOME_SUCCESS)
+        outcome_metrics = result.get("outcome_metrics") or {}
+        if outcome_status == OUTCOME_FAILED:
+            await finish_job_run_failure(
+                job_run_id,
+                error_code=result.get("error_code", "JobReportedFailed"),
+                error_message=result.get("error_message", "Job completed with outcome_status=failed"),
+                stack_trace=result.get("stack_trace"),
+                outcome_metrics=outcome_metrics if outcome_metrics else None,
+            )
+            await _emit_job_run_evidence_finished(
+                job_run_id, job_id, "failed", error_message=result.get("error_message"), outcome_status=outcome_status
+            )
+            return result
+        if outcome_status == OUTCOME_DEGRADED:
+            await finish_job_run_degraded(
+                job_run_id,
+                affected_clients_count=count,
+                outcome_metrics=outcome_metrics,
+                error_message=result.get("error_message"),
+            )
+            await _emit_job_run_evidence_finished(
+                job_run_id, job_id, "degraded", error_message=result.get("error_message"), outcome_status=outcome_status
+            )
+            return result
+        await finish_job_run_success(
+            job_run_id,
+            affected_clients_count=count,
+            outcome_status=outcome_status,
+            outcome_metrics=outcome_metrics if outcome_metrics else None,
+        )
+        await _emit_job_run_evidence_finished(job_run_id, job_id, "success", outcome_status=outcome_status)
+        return result
+
     job_run_id = await start_job_run(
         job_id, run_type, triggered_by=triggered_by, correlation_id=corr, metadata=meta if meta else None
     )
@@ -1188,6 +1279,13 @@ async def run_operational_evidence_maintenance_job():
     return await run_operational_evidence_maintenance()
 
 
+async def run_mongo_storage_capacity_monitor():
+    """Cluster storage capacity snapshot + incident before Atlas write block."""
+    from services.mongo_storage_monitor import run_mongo_storage_capacity_monitor as _run
+
+    return await _run()
+
+
 async def run_risk_signal_regen_worker():
     """Process debounced risk_signal_regen_queue: regenerate heuristic signals + operational automation."""
     try:
@@ -1816,6 +1914,7 @@ JOB_RUNNERS = {
     "risk_signals_job": run_risk_signals_job,
     "rent_operations_daily_job": run_rent_operations_daily_job,
     "operational_evidence_maintenance_job": run_operational_evidence_maintenance_job,
+    "mongo_storage_capacity_monitor": run_mongo_storage_capacity_monitor,
     "risk_signal_regen_worker": run_risk_signal_regen_worker,
     "risk_signal_regen_alert_monitor": run_risk_signal_regen_alert_monitor,
     "work_order_sla_breach_job": run_work_order_sla_breach_job,
@@ -1830,3 +1929,165 @@ JOB_RUNNERS = {
     "pilot_lifecycle_reconcile": run_pilot_lifecycle_reconcile,
     "commercial_entitlement_expiry": run_commercial_entitlement_expiry,
 }
+
+
+async def run_zoho_sync_queue(client_id: Optional[str] = None):
+    """Process pending Zoho integration queue items."""
+    from services.integrations.zoho.service import zoho_integration_service
+
+    result = await zoho_integration_service.process_queue(limit=100)
+    return {"message": "Zoho sync queue processed", "count": result.get("processed", 0), **result}
+
+
+async def run_zoho_analytics_export(client_id: Optional[str] = None):
+    """
+    Staging daily / manual Analytics export — last completed UTC day, no force_reexport.
+
+    Respects ZOHO_INTEGRATION_ENABLED, ZOHO_ANALYTICS_SYNC_ENABLED, ZOHO_KILL_SWITCH.
+    Uses DB run-lock to prevent overlapping executions across processes.
+    """
+    from services.job_run_service import OUTCOME_FAILED, OUTCOME_SUCCESS
+    from services.integrations.zoho.analytics_schedule import (
+        acquire_analytics_export_lock,
+        new_lock_owner,
+        release_analytics_export_lock,
+    )
+    from services.integrations.zoho.config import (
+        zoho_analytics_sync_enabled,
+        zoho_integration_enabled,
+        zoho_kill_switch_active,
+    )
+    from services.integrations.zoho.service import zoho_integration_service
+    from services.integrations.zoho.types import SyncSkipReason, SyncStatus
+
+    if zoho_kill_switch_active():
+        return {
+            "message": "Zoho analytics export skipped: kill_switch_active",
+            "count": 0,
+            "status": SyncStatus.SKIPPED.value,
+            "skip_reason": SyncSkipReason.KILL_SWITCH.value,
+            "outcome_status": OUTCOME_SUCCESS,
+            "outcome_metrics": {"skipped": 1, "skip_reason": SyncSkipReason.KILL_SWITCH.value},
+        }
+    if not zoho_integration_enabled() or not zoho_analytics_sync_enabled():
+        reason = SyncSkipReason.DISABLED.value
+        return {
+            "message": f"Zoho analytics export skipped: {reason}",
+            "count": 0,
+            "status": SyncStatus.SKIPPED.value,
+            "skip_reason": reason,
+            "outcome_status": OUTCOME_SUCCESS,
+            "outcome_metrics": {"skipped": 1, "skip_reason": reason},
+        }
+
+    owner = new_lock_owner()
+    locked = await acquire_analytics_export_lock(owner)
+    if not locked:
+        return {
+            "message": "Zoho analytics export skipped: run_lock_held",
+            "count": 0,
+            "status": SyncStatus.SKIPPED.value,
+            "skip_reason": SyncSkipReason.RUN_LOCK_HELD.value,
+            "outcome_status": OUTCOME_SUCCESS,
+            "outcome_metrics": {
+                "skipped": 1,
+                "skip_reason": SyncSkipReason.RUN_LOCK_HELD.value,
+                "run_lock": "held",
+            },
+        }
+
+    try:
+        # Scheduled and manual runner paths: never force re-export (duplicate guard authoritative).
+        sync_result = await zoho_integration_service.run_sync(
+            "analytics",
+            "export_aggregates",
+            {"force_reexport": False},
+        )
+        skip_reason = (
+            sync_result.skip_reason.value
+            if sync_result.skip_reason is not None
+            else None
+        )
+        metrics: Dict[str, Any] = {
+            "sync_status": sync_result.status.value,
+            "force_reexport": False,
+        }
+        if skip_reason:
+            metrics["skip_reason"] = skip_reason
+            metrics["skipped"] = 1
+            if sync_result.skip_reason == SyncSkipReason.DUPLICATE_PERIOD:
+                metrics["duplicate_skip"] = 1
+
+        if sync_result.status in (SyncStatus.FAILED, SyncStatus.DEAD_LETTER) or (
+            not sync_result.success
+            and sync_result.status != SyncStatus.SKIPPED
+        ):
+            if sync_result.status == SyncStatus.DEAD_LETTER:
+                metrics["dead_letter"] = 1
+            return {
+                "message": sync_result.message or "Zoho analytics export failed",
+                "count": 0,
+                "sync_id": sync_result.sync_id,
+                "status": sync_result.status.value,
+                "skip_reason": skip_reason,
+                "outcome_status": OUTCOME_FAILED,
+                "error_code": "ZohoAnalyticsExportFailed",
+                "error_message": sync_result.message or "analytics_export_failed",
+                "outcome_metrics": metrics,
+            }
+
+        return {
+            "message": (
+                sync_result.message
+                if sync_result.status == SyncStatus.SKIPPED
+                else "Zoho analytics export completed"
+            ),
+            "count": 1 if sync_result.status == SyncStatus.SUCCESS else 0,
+            "sync_id": sync_result.sync_id,
+            "status": sync_result.status.value,
+            "skip_reason": skip_reason,
+            "outcome_status": OUTCOME_SUCCESS,
+            "outcome_metrics": metrics,
+        }
+    finally:
+        await release_analytics_export_lock(owner)
+
+
+async def run_zoho_books_export(client_id: Optional[str] = None):
+    """Finance summary export to Zoho Books — read-only, no billing authority changes."""
+    from services.integrations.zoho.service import zoho_integration_service
+
+    sync_result = await zoho_integration_service.run_sync("books", "export_finance_summary", {})
+    return {
+        "message": "Zoho Books export completed",
+        "count": 1 if sync_result.success else 0,
+        "sync_id": sync_result.sync_id,
+        "status": sync_result.status.value,
+    }
+
+
+async def run_zoho_campaigns_export(client_id: Optional[str] = None):
+    """Audience and suppression export to Zoho Campaigns."""
+    from services.integrations.zoho.config import zoho_campaigns_sync_enabled
+    from services.integrations.zoho.service import zoho_integration_service
+
+    if not zoho_campaigns_sync_enabled():
+        return {"message": "Zoho Campaigns sync disabled", "count": 0}
+    aud = await zoho_integration_service.run_sync("campaigns", "export_audience", {})
+    sup = await zoho_integration_service.run_sync("campaigns", "export_suppression", {})
+    return {
+        "message": "Zoho Campaigns export completed",
+        "count": int(aud.success) + int(sup.success),
+        "audience_sync_id": aud.sync_id,
+        "suppression_sync_id": sup.sync_id,
+    }
+
+
+JOB_RUNNERS.update(
+    {
+        "zoho_sync_queue": run_zoho_sync_queue,
+        "zoho_analytics_export": run_zoho_analytics_export,
+        "zoho_books_export": run_zoho_books_export,
+        "zoho_campaigns_export": run_zoho_campaigns_export,
+    }
+)

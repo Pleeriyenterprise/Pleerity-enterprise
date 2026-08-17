@@ -14,6 +14,7 @@ from services.commercial_entitlement_observability_service import (
 )
 from services.commercial_entitlement_service import (
     COL_GOVERNANCE,
+    COMMERCIAL_OVERLAY_UNSET,
     EXCEPTION_SPONSORED_ACCESS,
     GOVERNANCE_STATUS_ACTIVE,
     GOVERNANCE_STATUS_EXPIRED,
@@ -84,18 +85,34 @@ async def expire_stale_governance_row(governance: Dict[str, Any], *, actor_id: s
         {"client_id": client_id},
         {
             "$set": {"canonical_entitlement_state": canon},
-            "$unset": {
-                "commercial_governance_id": "",
-                "commercial_governance_state": "",
-                "effective_access_reason": "",
-            },
+            "$unset": COMMERCIAL_OVERLAY_UNSET,
         },
     )
     if billing:
         await db.client_billing.update_one(
             {"client_id": client_id},
-            {"$set": {"canonical_entitlement_state": canon}},
+            {
+                "$set": {"canonical_entitlement_state": canon},
+                "$unset": {
+                    "commercial_effective_entitlement_state": "",
+                    "commercial_restored_plan_code": "",
+                    "commercial_billing_collection_paused": "",
+                },
+            },
         )
+    if client.get("commercial_billing_collection_paused") or billing.get("commercial_billing_collection_paused"):
+        try:
+            from services.stripe_service import stripe_service
+
+            await stripe_service.resume_subscription_collection(client_id, actor_id=actor_id)
+        except Exception as exc:
+            logger.warning("commercial expiry stripe resume failed client_id=%s: %s", client_id, exc)
+    try:
+        from services.account_lifecycle_runtime_contract import invalidate_runtime_cache_for_client
+
+        invalidate_runtime_cache_for_client(client_id)
+    except Exception:
+        logger.debug("runtime cache invalidate skipped client_id=%s", client_id)
     await record_commercial_entitlement_event(
         event_type=EVENT_COMMERCIAL_EXPIRED,
         client_id=client_id,

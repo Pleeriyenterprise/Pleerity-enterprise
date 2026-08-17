@@ -455,13 +455,11 @@ def _compute_job_state_and_reason(
     last_status = (detail.get("last_outcome_status") or "").strip().lower()
     outcome_metrics = detail.get("outcome_metrics") or {}
 
-    # scheduler_heartbeat: state must reflect heartbeat collection staleness, not just last job run
+    # scheduler_heartbeat: scheduler_heartbeat collection is authoritative; job_runs are idle-skipped.
     if job_id == "scheduler_heartbeat":
         if heartbeat_stale:
             return (JOB_STATE_FAILED, "Scheduler heartbeat is stale; scheduler may be down.")
-        if last_success:
-            return (JOB_STATE_HEALTHY, JOB_STATE_REASONS[JOB_STATE_HEALTHY])
-        return (JOB_STATE_NEVER_RAN, JOB_STATE_REASONS[JOB_STATE_NEVER_RAN])
+        return (JOB_STATE_HEALTHY, JOB_STATE_REASONS[JOB_STATE_HEALTHY])
 
     if not last_completed:
         # Startup-aware: if next scheduled run is still in the future, not yet due; else overdue
@@ -476,8 +474,12 @@ def _compute_job_state_and_reason(
     if last_run_status == "degraded":
         return (JOB_STATE_DEGRADED, JOB_STATE_REASONS[JOB_STATE_DEGRADED])
 
-    # Success path: check missed (last success/degraded too old)
+    # Success path: check missed (last success/degraded too old).
+    # Idle-skip jobs update last_completed via job_poll_heartbeats without refreshing last_success.
     last_ok = last_success or last_degraded
+    if detail.get("poll_persist_skipped") and last_completed:
+        if last_ok is None or last_completed >= last_ok:
+            last_ok = last_completed
     if registry_entry and last_ok:
         delay_minutes = (now - last_ok).total_seconds() / 60
         if delay_minutes > registry_entry.max_delay_minutes:
@@ -498,6 +500,7 @@ def _compute_overall_health(
     open_p0_p1: int,
     delivery_unknown_stale_count: int,
     critical_job_ids: list,
+    zoho_integration_degraded: bool = False,
 ) -> str:
     """Strict overall health: never show healthy when critical jobs are never_ran, missed, or failed."""
     if open_p0_p1 > 0:
@@ -519,7 +522,7 @@ def _compute_overall_health(
     )
     if any_critical_failed or any_critical_missed or any_critical_never_ran:
         return OVERALL_HEALTH_DEGRADED if not any_critical_failed else OVERALL_HEALTH_ATTENTION_REQUIRED
-    if any_critical_degraded or delivery_unknown_stale_count > 0:
+    if any_critical_degraded or delivery_unknown_stale_count > 0 or zoho_integration_degraded:
         return OVERALL_HEALTH_DEGRADED
     return OVERALL_HEALTH_HEALTHY
 
@@ -627,20 +630,20 @@ async def build_health_summary_payload() -> Dict[str, Any]:
 
     last_success = {j: jobs_detail[j]["last_success"] for j in HEALTH_SUMMARY_JOBS}
 
-    # Scheduler heartbeat
+    # Scheduler heartbeat (single authority)
     heartbeat_doc = await db.scheduler_heartbeat.find_one(
         {"_id": "default"},
         {"_id": 0, "last_heartbeat_at": 1},
     )
     last_heartbeat_at = heartbeat_doc.get("last_heartbeat_at") if heartbeat_doc else None
-    heartbeat_stale = False
-    if last_heartbeat_at:
-        try:
-            t = _parse_iso(last_heartbeat_at)
-            if t and (now - t).total_seconds() > HEARTBEAT_STALE_SECONDS:
-                heartbeat_stale = True
-        except Exception:
-            heartbeat_stale = True
+    from services.scheduler_health_authority import evaluate_scheduler_heartbeat
+
+    sched_snap = evaluate_scheduler_heartbeat(
+        last_heartbeat_at=last_heartbeat_at,
+        now=now,
+        stale_after_seconds=HEARTBEAT_STALE_SECONDS,
+    )
+    heartbeat_stale = sched_snap.stale
 
     # Delivery unknown stale
     from services.delivery_reconciliation import RECONCILIATION_JOBS, DELIVERY_UNKNOWN_STALE_HOURS
@@ -664,6 +667,25 @@ async def build_health_summary_payload() -> Dict[str, Any]:
                 "finished_at": doc.get("finished_at"),
                 "delivery_unknown": om.get("delivery_unknown", 0),
             })
+    except Exception:
+        pass
+
+    # Merge high-frequency poll heartbeats before job state computation (idle-skip path).
+    try:
+        from services.job_run_idle_persist import COLLECTION_POLL_HEARTBEATS
+
+        async for hb in db[COLLECTION_POLL_HEARTBEATS].find({}):
+            jn = hb.get("job_name") or str(hb.get("_id") or "")
+            if not jn or jn not in jobs_detail:
+                continue
+            tick = hb.get("last_tick_at")
+            if tick and (
+                not jobs_detail[jn].get("last_completed")
+                or str(tick) > str(jobs_detail[jn].get("last_completed") or "")
+            ):
+                jobs_detail[jn]["last_completed"] = tick
+                jobs_detail[jn]["last_poll_tick_at"] = tick
+                jobs_detail[jn]["poll_persist_skipped"] = bool(hb.get("skipped_persist"))
     except Exception:
         pass
 
@@ -754,12 +776,6 @@ async def build_health_summary_payload() -> Dict[str, Any]:
     )
     open_incidents = await db.incidents.count_documents({"status": "open"})
 
-    overall_health = _compute_overall_health(
-        job_states, heartbeat_stale, open_p0_p1, len(delivery_unknown_stale_runs), critical_job_ids
-    )
-    # Backward compat: status_badge for UI that still expects ok/degraded/incident
-    status_badge = "incident" if open_p0_p1 > 0 else ("degraded" if overall_health != OVERALL_HEALTH_HEALTHY else "ok")
-
     recent_failures = await db.job_runs.find(
         {"status": STATUS_FAILED},
         {"_id": 0, "job_name": 1, "finished_at": 1, "error_message": 1},
@@ -780,6 +796,24 @@ async def build_health_summary_payload() -> Dict[str, Any]:
     except Exception:
         pass
 
+    zoho_integration_health: Dict[str, Any] = {}
+    zoho_operational_snapshot: Dict[str, Any] = {}
+    try:
+        from services.integrations.zoho.operational_health import (
+            build_zoho_operational_health_summary,
+            build_zoho_operational_snapshot,
+        )
+
+        zoho_operational_snapshot = await build_zoho_operational_snapshot()
+        zoho_integration_health = build_zoho_operational_health_summary(zoho_operational_snapshot)
+    except Exception:
+        pass
+
+    zoho_integration_degraded = (
+        zoho_integration_health.get("overall_status") == "degraded"
+        and bool(zoho_integration_health.get("zoho_integration_enabled"))
+    )
+
     from services.incident_lifecycle_service import is_deployment_suppression_active
 
     deploy_active, deploy_note = is_deployment_suppression_active(now)
@@ -787,6 +821,25 @@ async def build_health_summary_payload() -> Dict[str, Any]:
     # Expose DB name so operators can verify scheduler and observability use the same DB (runtime truth gap investigation)
     # PyMongo Database does not support bool(); use "is not None" to avoid NotImplementedError
     observability_db_name = getattr(db, "name", None) if db is not None else None
+
+    overall_health = _compute_overall_health(
+        job_states,
+        heartbeat_stale,
+        open_p0_p1,
+        len(delivery_unknown_stale_runs),
+        critical_job_ids,
+        zoho_integration_degraded=zoho_integration_degraded,
+    )
+    # Backward compat: status_badge for UI that still expects ok/degraded/incident
+    status_badge = "incident" if open_p0_p1 > 0 else ("degraded" if overall_health != OVERALL_HEALTH_HEALTHY else "ok")
+
+    mongo_storage = None
+    try:
+        from services.mongo_storage_monitor import collect_mongo_storage_snapshot
+
+        mongo_storage = await collect_mongo_storage_snapshot()
+    except Exception:
+        mongo_storage = {"available": False, "reason": "collection_failed"}
 
     return {
         "observability_db_name": observability_db_name,
@@ -798,6 +851,7 @@ async def build_health_summary_payload() -> Dict[str, Any]:
         "recent_failures": recent_failures,
         "jobs": jobs_detail,
         "job_states": job_states,
+        "mongo_storage": mongo_storage,
         "summary_counts": {
             "critical_missed": critical_missed_count,
             "never_ran": never_ran_overdue_count,
@@ -817,6 +871,7 @@ async def build_health_summary_payload() -> Dict[str, Any]:
         ],
         "last_heartbeat_at": last_heartbeat_at,
         "heartbeat_stale": heartbeat_stale,
+        "scheduler_health": sched_snap.as_dict(),
         "alerting_configured": alerting_configured,
         "delivery_unknown_stale_runs": delivery_unknown_stale_runs,
         "delivery_unknown_stale_hours": DELIVERY_UNKNOWN_STALE_HOURS,
@@ -831,6 +886,10 @@ async def build_health_summary_payload() -> Dict[str, Any]:
             if not_yet_due_count > 0 else None
         ),
         "recalc_queue_health": recalc_queue_health,
+        "zoho_integration_health": zoho_integration_health,
+        "integrations": {
+            "zoho": zoho_integration_health,
+        },
         "deployment_suppression": {
             "active": deploy_active,
             "note": deploy_note,

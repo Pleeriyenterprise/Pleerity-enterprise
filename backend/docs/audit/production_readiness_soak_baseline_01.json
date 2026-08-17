@@ -1,0 +1,88 @@
+{
+  "at": "2026-08-06T17:59:07.527741+00:00",
+  "heartbeat": "2026-08-06T17:58:24.521482+00:00",
+  "counts": {
+    "job_runs": 288,
+    "operational_evidence_events": 898,
+    "operational_evidence_executions": 3,
+    "job_poll_heartbeats": 5
+  },
+  "poll": [
+    {
+      "idle": true,
+      "job_name": "scheduled_admin_communications",
+      "last_tick_at": "2026-08-06T17:58:00.593989+00:00",
+      "skipped_persist": true,
+      "tick_count": 79
+    },
+    {
+      "idle": false,
+      "job_name": "scheduler_heartbeat",
+      "last_tick_at": "2026-08-06T17:58:24.642370+00:00",
+      "skipped_persist": true,
+      "tick_count": 79
+    },
+    {
+      "idle": true,
+      "job_name": "notification_retry_worker",
+      "last_tick_at": "2026-08-06T17:59:00.473286+00:00",
+      "skipped_persist": true,
+      "tick_count": 158
+    },
+    {
+      "idle": true,
+      "job_name": "risk_signal_regen_worker",
+      "last_tick_at": "2026-08-06T17:58:54.836186+00:00",
+      "skipped_persist": true,
+      "tick_count": 305
+    },
+    {
+      "idle": true,
+      "job_name": "compliance_recalc_worker",
+      "last_tick_at": "2026-08-06T17:58:54.636888+00:00",
+      "skipped_persist": true,
+      "tick_count": 607
+    }
+  ],
+  "incidents_sample": [
+    {
+      "_id": "6a74ca6494ba149d43b9e009",
+      "severity": "P1",
+      "title": "Scheduler heartbeat stale",
+      "status": "open",
+      "created_at": "2026-08-06T17:54:44.802835+00:00"
+    },
+    {
+      "_id": "6a74a755cd14bb77cc668363",
+      "severity": "P2",
+      "title": "Job workflow_nudge_processing has not succeeded",
+      "status": "resolved",
+      "created_at": "2026-08-06T15:25:09.740675+00:00"
+    },
+    {
+      "_id": "6a74a749cd14bb77cc668351",
+      "severity": "P2",
+      "title": "Job pilot_lifecycle_reconcile has not succeeded",
+      "status": "resolved",
+      "created_at": "2026-08-06T15:24:57.376358+00:00"
+    },
+    {
+      "_id": "6a74a3c52dfb5a76b115c685",
+      "severity": "P2",
+      "title": "Job compliance_check_evening overdue at startup",
+      "status": "open",
+      "created_at": "2026-08-06T15:09:57.627405+00:00"
+    },
+    {
+      "_id": "6a74a3c42dfb5a76b115c67b",
+      "severity": "P2",
+      "title": "Job compliance_check_morning overdue at startup",
+      "status": "open",
+      "created_at": "2026-08-06T15:09:56.076260+00:00"
+    }
+  ],
+  "incident_collections": [
+    "security_incidents",
+    "incidents"
+  ]
+}

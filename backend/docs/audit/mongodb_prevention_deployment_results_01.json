@@ -1,0 +1,226 @@
+{
+  "audit_id": "MONGODB-PREVENTION-DEPLOYMENT-AND-RUNTIME-RECOVERY-01",
+  "generated_at": "2026-08-06T17:45:00+00:00",
+  "final_verdict": "PRODUCTION_READY_WITH_CONDITIONS",
+  "previous_deployed_sha": "072b78f38f0a0e3f0bfc3b78fd9c955043d3fa68",
+  "new_deployed_sha": "9b76213eb9d70f999f7581cadbd41c8af88a7c49",
+  "intermediate_deployed_sha": "a5bfccfd8675ec6c66fd0992b1a32d8106d05ece",
+  "branch": "develop",
+  "commit_manifest": {
+    "a5bfccfd": "fix(ops): deploy MongoDB capacity safeguards and scheduler health truth",
+    "9b76213e": "fix(ops): treat contention-only recalc ticks as idle for job_runs skip"
+  },
+  "deployment_timestamps": {
+    "a5bfccfd_version_observed": "2026-08-06T15:xxZ",
+    "9b76213e_version_observed": "2026-08-06T15:19:50+01:00",
+    "scheduler_ready_observed": "2026-08-06T16:26:10+01:00",
+    "health_recheck": "2026-08-06T17:06+00:00"
+  },
+  "environment_and_flags": {
+    "api_environment": "staging",
+    "db_name_expected": "pleerity_staging",
+    "MONGO_OPERATIONAL_RETENTION_PURGE_ENABLED": false,
+    "JOB_RUN_SKIP_IDLE_HIGH_FREQUENCY": "default_on",
+    "production_env_changed": false,
+    "merged_to_main": false,
+    "production_deployed": false
+  },
+  "heartbeat_before_after": {
+    "pre_remediation_stale": "2026-07-16T17:39:33Z",
+    "probe_before": "2026-08-06T15:26:01.651842+00:00",
+    "probe_after": "2026-08-06T15:28:01.655408+00:00",
+    "probe_state": "advancing",
+    "live_recheck": {
+      "last_heartbeat_at": "2026-08-06T17:06:01.887018+00:00",
+      "age_seconds": 12.985977,
+      "reason": "heartbeat_fresh"
+    }
+  },
+  "scheduler_job_inventory": {
+    "ownership": "in_process_AsyncIOScheduler_web_service",
+    "heartbeat_collection": "scheduler_heartbeat",
+    "heartbeat_id": "default",
+    "poll_heartbeats_observed": [
+      "scheduled_admin_communications",
+      "scheduler_heartbeat",
+      "notification_retry_worker",
+      "risk_signal_regen_worker",
+      "compliance_recalc_worker"
+    ],
+    "note": "Full APScheduler next-run inventory not exported; operational proof via heartbeat + poll ticks + scheduled job_runs"
+  },
+  "idle_observation": {
+    "pre_contention_fix_a5bfccfd": {
+      "window_s": 210,
+      "delta_job_runs": 11,
+      "delta_oep": 23,
+      "source": "mongodb_idle_observation_post_deploy_01.json"
+    },
+    "post_contention_fix_9b76213e": {
+      "window_s": 240,
+      "before": {
+        "job_runs": 58,
+        "oep": 261,
+        "oep_exec": 2,
+        "poll_hb": 5,
+        "heartbeat": "2026-08-06T15:32:01.653171+00:00"
+      },
+      "after": {
+        "job_runs": 64,
+        "oep": 273,
+        "oep_exec": 2,
+        "poll_hb": 5,
+        "heartbeat": "2026-08-06T15:36:01.888457+00:00"
+      },
+      "delta": {
+        "job_runs": 6,
+        "oep": 12,
+        "oep_exec": 0,
+        "poll_hb": 0
+      },
+      "source": "mongodb_idle_observation_post_9b76213e.json",
+      "poll_heartbeats": {
+        "notification_retry_worker": {
+          "skipped_persist": true,
+          "idle": true,
+          "tick_count_at_obs": 22
+        },
+        "risk_signal_regen_worker": {
+          "skipped_persist": true,
+          "idle": true,
+          "tick_count_at_obs": 42
+        },
+        "scheduled_admin_communications": {
+          "skipped_persist": true,
+          "idle": true,
+          "tick_count_at_obs": 11
+        },
+        "compliance_recalc_worker": {
+          "skipped_persist": true,
+          "idle": true,
+          "tick_count_at_obs": 68
+        },
+        "scheduler_heartbeat": {
+          "skipped_persist": true,
+          "idle": false
+        }
+      },
+      "later_poll_ticks_recheck": {
+        "compliance_recalc_worker_ticks": 422,
+        "risk_signal_regen_worker_ticks": 215,
+        "notification_retry_worker_ticks": 111
+      }
+    },
+    "heartbeat_probe_flat_job_runs_window": {
+      "before_job_runs": 45,
+      "after_job_runs": 45,
+      "heartbeat_advanced": true
+    }
+  },
+  "genuine_work_execution_evidence": {
+    "recent_job_names_sample": [
+      "sla_watchdog",
+      "notification_failure_spike_monitor",
+      "order_delivery_processing",
+      "mongo_storage_capacity_monitor",
+      "compliance_recalc_sla_monitor",
+      "generation_auto_retry_processing"
+    ],
+    "compliance_recalc_worker_in_latest_30_job_runs": 0,
+    "outcome_kinds_seen": [
+      "SLA_CHECK_COMPLETED",
+      "NO_SPIKE_DETECTED"
+    ]
+  },
+  "threshold_simulation_results": {
+    "46.76": "ok",
+    "10": "ok",
+    "60": "warning",
+    "75": "attention",
+    "85": "critical",
+    "90": "platform_alert",
+    "95": "emergency",
+    "method": "classify_usage_pct_unit_and_local_simulation",
+    "live_db_fill": false,
+    "false_alert_at_current_utilisation": false
+  },
+  "capacity_503_response": {
+    "code": "DATABASE_CAPACITY_EXCEEDED",
+    "retryable": true,
+    "detail": "Database storage capacity exceeded. Writes are temporarily unavailable.",
+    "http_status_expected": 503,
+    "validation": "unit_and_payload_shape",
+    "live_atlas_fill_simulation": false
+  },
+  "frontend_ux_result": {
+    "code_present": true,
+    "user_message": "The service is temporarily unavailable because of a system capacity issue. Please try again shortly.",
+    "jest_p0StagingRuntimeStabilization": "7 passed",
+    "live_vercel_bundle_confirmed": false,
+    "staging_alias": "https://pleerity-enterprise-9jjg.vercel.app",
+    "probed_bundle": "/static/js/main.53b8a4d1.js",
+    "capacity_string_in_alias_bundle": false,
+    "note": "Backend SHA verified; FE alias still serving pre-capacity-UX bundle"
+  },
+  "retention_dry_run_result": {
+    "enabled_flag": false,
+    "dry_run": true,
+    "reminder_evaluation_log_matched": 6372,
+    "deleted_total": 0,
+    "source": "mongodb_retention_dry_run_post_deploy_01.json"
+  },
+  "health_status_across_surfaces": {
+    "api_health": {
+      "status": "healthy",
+      "readiness_stage": "ready",
+      "scheduler_status": "healthy",
+      "scheduler_reason": "heartbeat_fresh"
+    },
+    "health_summary_control_centre": "wired_to_scheduler_health_authority_codepath",
+    "stale_window_during_startup": "status_unhealthy_while_heartbeat_stale_before_ready"
+  },
+  "production_non_touch_confirmation": {
+    "cleanup_pleerity_production": "REFUSED exit=1",
+    "main_merged": false,
+    "production_deploy": false,
+    "additional_deletes_this_exercise": false
+  },
+  "test_results": {
+    "backend_test_mongo_storage_governance_01": "6 passed",
+    "frontend_p0StagingRuntimeStabilization": "7 passed",
+    "heartbeat_probe": "exit 0 advancing",
+    "cleanup_production_refuse": "PASS"
+  },
+  "remaining_conditions": [
+    {
+      "id": "soak_24h",
+      "owner": "ops",
+      "target": "within_48h_of_9b76213e",
+      "detail": "Extended observation incomplete"
+    },
+    {
+      "id": "atlas_cluster_separation",
+      "owner": "infra",
+      "target": "next_capacity_planning_cycle",
+      "detail": "Staging and production still share Flex cluster"
+    },
+    {
+      "id": "retention_live_deferred",
+      "owner": "ops",
+      "target": "explicit_approval_only",
+      "detail": "Flag remains off; dry-run only"
+    },
+    {
+      "id": "frontend_vercel_bundle_confirm",
+      "owner": "frontend",
+      "target": "next_fe_deploy_smoke",
+      "detail": "Capacity UX committed and unit-tested; live staging FE bundle not SHA-verified in this exercise"
+    },
+    {
+      "id": "scheduler_early_start_hardening",
+      "owner": "backend",
+      "target": "follow_up",
+      "detail": "Post-deploy seed path delays scheduler; temporary unhealthy window expected"
+    }
+  ]
+}

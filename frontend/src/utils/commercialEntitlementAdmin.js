@@ -10,6 +10,19 @@ const ACTION_LABELS = {
   revoke_commercial_exception: 'Revoke exception',
 };
 
+/** Backend `_MAX_DURATION_DAYS` — keep UI caps aligned so validation fails in the form, not as a spinner. */
+export const ACTION_DURATION_MAX_DAYS = {
+  grant_grace_period: 30,
+  suspend_billing: 90,
+  grant_sponsored_access: 90,
+  retention_extension: 30,
+  waive_onboarding_fee: 30,
+  apply_recovery_compensation: 30,
+  restrict_entitlement: 30,
+};
+
+export const COMMERCIAL_EXECUTE_TIMEOUT_MS = 60000;
+
 export function commercialActionLabel(action) {
   return ACTION_LABELS[action] || action || '—';
 }

@@ -1,0 +1,68 @@
+{
+  "probe": "mongodb_scheduler_heartbeat_probe_01",
+  "database": "pleerity_staging",
+  "window_seconds": 130,
+  "captured_at": "2026-08-06T15:29:16.863179+00:00",
+  "before": {
+    "last_heartbeat_at": "2026-08-06T15:26:01.651842+00:00",
+    "job_runs": 45
+  },
+  "after": {
+    "last_heartbeat_at": "2026-08-06T15:28:01.655408+00:00",
+    "job_runs": 45
+  },
+  "state": "advancing",
+  "recent_job_runs_sample": [
+    {
+      "job_name": "workflow_nudge_processing",
+      "created_at": "2026-08-06T15:25:16.381806+00:00",
+      "run_type": "schedule"
+    },
+    {
+      "job_name": "pilot_lifecycle_reconcile",
+      "created_at": "2026-08-06T15:25:16.381319+00:00",
+      "run_type": "schedule"
+    },
+    {
+      "job_name": "risk_signal_regen_alert_monitor",
+      "created_at": "2026-08-06T15:25:16.380817+00:00",
+      "run_type": "schedule"
+    },
+    {
+      "job_name": "generation_auto_retry_processing",
+      "created_at": "2026-08-06T15:25:16.380335+00:00",
+      "run_type": "schedule"
+    },
+    {
+      "job_name": "notification_failure_spike_monitor",
+      "created_at": "2026-08-06T15:25:16.379840+00:00",
+      "run_type": "schedule"
+    },
+    {
+      "job_name": "compliance_recalc_sla_monitor",
+      "created_at": "2026-08-06T15:25:16.378538+00:00",
+      "run_type": "schedule"
+    },
+    {
+      "job_name": "order_delivery_processing",
+      "created_at": "2026-08-06T15:25:16.377180+00:00",
+      "run_type": "schedule"
+    },
+    {
+      "job_name": "sla_watchdog",
+      "created_at": "2026-08-06T15:24:15.249140+00:00",
+      "run_type": "startup_recovery"
+    },
+    {
+      "job_name": "mongo_storage_capacity_monitor",
+      "created_at": "2026-08-06T15:15:01.691243+00:00",
+      "run_type": "schedule"
+    },
+    {
+      "job_name": "work_order_contractor_confirmation_timeout_job",
+      "created_at": "2026-08-06T15:15:01.691057+00:00",
+      "run_type": "schedule"
+    }
+  ],
+  "exit_hint": 0
+}

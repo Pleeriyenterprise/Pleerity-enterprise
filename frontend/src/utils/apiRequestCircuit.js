@@ -41,7 +41,22 @@ export function isApiCircuitOpen(url) {
   return true;
 }
 
-export function recordApiCircuitFailure(url, status, detailMessage = '') {
+/** Expected auth challenges — not service instability. Must not trip the circuit. */
+export const EXPECTED_AUTH_CHALLENGE_CODES = new Set(['STEP_UP_REQUIRED']);
+export const CIRCUIT_STEP_UP_CHALLENGE_FINGERPRINT = 'cc-step-up-circuit-fix-04';
+
+export function isExpectedAuthChallenge(status, errorCode) {
+  return status === 403 && EXPECTED_AUTH_CHALLENGE_CODES.has(String(errorCode || ''));
+}
+
+if (typeof window !== 'undefined') {
+  window.__CC_STEP_UP_CIRCUIT_FIX__ = CIRCUIT_STEP_UP_CHALLENGE_FINGERPRINT;
+}
+
+export function recordApiCircuitFailure(url, status, detailMessage = '', errorCode = '') {
+  if (isExpectedAuthChallenge(status, errorCode)) {
+    return;
+  }
   if (status === 429) {
     const isSecurityBlock =
       typeof detailMessage === 'string' &&

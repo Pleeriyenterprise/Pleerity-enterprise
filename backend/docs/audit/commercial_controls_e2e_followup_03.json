@@ -1,0 +1,317 @@
+{
+  "at_utc": "2026-08-15T19:50:28.967160+00:00",
+  "runtime_sha": "7c77391a5ee65f0a85372d9c462448c270b6b066",
+  "cleanup": {
+    "drjpane_before": {
+      "canonical": "ENABLED",
+      "underlying": "ENABLED",
+      "effective": "ENABLED",
+      "plan": "PLAN_1_SOLO",
+      "exception": false,
+      "gov": null,
+      "expiry": null,
+      "notify": null,
+      "stripe_recon": null
+    },
+    "revoke": {
+      "revoked": false
+    },
+    "drjpane_after": {
+      "canonical": "ENABLED",
+      "underlying": "ENABLED",
+      "effective": "ENABLED",
+      "plan": "PLAN_1_SOLO",
+      "exception": false,
+      "gov": null,
+      "expiry": null,
+      "notify": null,
+      "stripe_recon": null
+    }
+  },
+  "probe": [
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "email": "nancy@yopmail.com",
+      "canonical": "ENABLED",
+      "plan": "PLAN_3_PRO",
+      "exception": false,
+      "sub_prefix": "sub_1TI7\u2026",
+      "period_end": "2026-06-03T12:46:30",
+      "period_in_future": false,
+      "has_subscription": true,
+      "subscription_status": "ACTIVE"
+    },
+    {
+      "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+      "email": "pleerityenterprise@gmail.com",
+      "canonical": "ENABLED",
+      "plan": "PLAN_3_PRO",
+      "exception": true,
+      "sub_prefix": "sub_1T53\u2026",
+      "period_end": "2026-05-26T12:30:19",
+      "period_in_future": false,
+      "has_subscription": true,
+      "subscription_status": "ACTIVE"
+    },
+    {
+      "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+      "email": "drjpane@gmail.com",
+      "canonical": "ENABLED",
+      "plan": "PLAN_1_SOLO",
+      "exception": false,
+      "sub_prefix": "sub_1T53\u2026",
+      "period_end": "2026-05-26T12:37:19",
+      "period_in_future": false,
+      "has_subscription": true,
+      "subscription_status": "ACTIVE"
+    },
+    {
+      "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+      "email": "olivia.chen@oxfordlets.co.uk",
+      "canonical": "ENABLED",
+      "plan": "PLAN_1_SOLO",
+      "exception": false,
+      "sub_prefix": "sub_1T3H\u2026",
+      "period_end": "2026-05-21T15:16:41",
+      "period_in_future": false,
+      "has_subscription": true,
+      "subscription_status": "ACTIVE"
+    },
+    {
+      "client_id": "412c72a9-f840-4fb2-9a8d-d04e7ad9d85a",
+      "email": "anya.sharma@gmail.com",
+      "canonical": "ENABLED",
+      "plan": "PLAN_1_SOLO",
+      "exception": false,
+      "sub_prefix": "sub_1T2T\u2026",
+      "period_end": "2026-05-19T09:39:08",
+      "period_in_future": false,
+      "has_subscription": true,
+      "subscription_status": "ACTIVE"
+    },
+    {
+      "client_id": "86fbd659-851d-457e-bcb7-080ef7dfe0c8",
+      "email": "zara.mehta@resonance-ai.co.uk",
+      "canonical": "ENABLED",
+      "plan": "PLAN_1_SOLO",
+      "exception": false,
+      "sub_prefix": "sub_1T2X\u2026",
+      "period_end": "2026-05-19T14:05:39",
+      "period_in_future": false,
+      "has_subscription": true,
+      "subscription_status": "ACTIVE"
+    },
+    {
+      "client_id": "9a7c8f82-7b28-4237-8a30-dc882a94fb5d",
+      "email": "thomasw@gmail.com",
+      "canonical": "ENABLED",
+      "plan": "PLAN_2_PORTFOLIO",
+      "exception": false,
+      "sub_prefix": "sub_1T2c\u2026",
+      "period_end": "2026-05-19T19:13:44",
+      "period_in_future": false,
+      "has_subscription": true,
+      "subscription_status": "ACTIVE"
+    },
+    {
+      "client_id": "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+      "email": "Morobo@gmail.com",
+      "canonical": "ENABLED",
+      "plan": "PLAN_3_PRO",
+      "exception": false,
+      "sub_prefix": "sub_1T32\u2026",
+      "period_end": "2026-05-20T22:48:39",
+      "period_in_future": false,
+      "has_subscription": true,
+      "subscription_status": "ACTIVE"
+    },
+    {
+      "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+      "email": "johnsmith@yahoo.com",
+      "canonical": "ENABLED",
+      "plan": "PLAN_1_SOLO",
+      "exception": false,
+      "sub_prefix": "sub_1T33\u2026",
+      "period_end": "2026-05-21T00:22:42",
+      "period_in_future": false,
+      "has_subscription": true,
+      "subscription_status": "ACTIVE"
+    },
+    {
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "email": "confidence.cvp000011@yopmail.com",
+      "canonical": "ENABLED",
+      "plan": "PLAN_2_PORTFOLIO",
+      "exception": false,
+      "sub_prefix": "sub_1T34\u2026",
+      "period_end": "2026-05-21T01:17:34",
+      "period_in_future": false,
+      "has_subscription": true,
+      "subscription_status": "ACTIVE"
+    },
+    {
+      "client_id": "fc635d44-8d90-41e5-af4c-00866e31b412",
+      "email": "kd@hotmail.com",
+      "canonical": "ENABLED",
+      "plan": "PLAN_3_PRO",
+      "exception": false,
+      "sub_prefix": "sub_1T35\u2026",
+      "period_end": "2026-05-21T01:38:19",
+      "period_in_future": false,
+      "has_subscription": true,
+      "subscription_status": "ACTIVE"
+    },
+    {
+      "client_id": "422e2785-f168-416b-95e8-9149454fbc1c",
+      "email": "adam@yahoo.com",
+      "canonical": "ENABLED",
+      "plan": "PLAN_2_PORTFOLIO",
+      "exception": false,
+      "sub_prefix": "sub_1T35\u2026",
+      "period_end": "2026-05-21T02:20:01",
+      "period_in_future": false,
+      "has_subscription": true,
+      "subscription_status": "ACTIVE"
+    }
+  ],
+  "suspend_active": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "runtime_sha": "7c77391a5ee65f0a85372d9c462448c270b6b066",
+    "before": {
+      "canonical": "ENABLED",
+      "underlying": "ENABLED",
+      "effective": "ENABLED",
+      "plan": "PLAN_3_PRO",
+      "exception": false,
+      "gov": null,
+      "expiry": null,
+      "notify": null,
+      "stripe_recon": null
+    },
+    "after": {
+      "canonical": "ENABLED",
+      "underlying": "ENABLED",
+      "effective": "ENABLED",
+      "plan": "PLAN_3_PRO",
+      "exception": false,
+      "gov": null,
+      "expiry": null,
+      "notify": null,
+      "stripe_recon": null
+    },
+    "api_status": 502,
+    "elapsed_ms": 4761,
+    "error_code": "STRIPE_PAUSE_FAILED",
+    "error_message": "Could not pause Stripe collection. Suspend billing was not applied. Failed to pause Stripe collection: Request req_pxxcqGbarH7bTk: No such subscription: 'sub_1TI77MCF0O5oqdUzdouAN0BF'",
+    "stripe_pause": {
+      "mutation": null,
+      "behavior": null,
+      "reconciliation_status": null,
+      "subscription_status": null,
+      "subscription_id_prefix": null
+    },
+    "email_result": null,
+    "preview": null,
+    "messages": [
+      {
+        "message_id_prefix": "0167f80b\u2026",
+        "status": "BLOCKED_PLAN_GATE",
+        "template_key": "COMPLIANCE_EXPIRY_REMINDER_SMS",
+        "recipient": null,
+        "created_at": "2026-08-15T09:03:29.36900"
+      },
+      {
+        "message_id_prefix": "602971fc\u2026",
+        "status": "BLOCKED_PLAN_GATE",
+        "template_key": "COMPLIANCE_EXPIRY_REMINDER_SMS",
+        "recipient": null,
+        "created_at": "2026-08-15T09:03:28.40600"
+      },
+      {
+        "message_id_prefix": "668cb901\u2026",
+        "status": "DELIVERED",
+        "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+        "recipient": "agent@yopmail.com",
+        "created_at": "2026-08-15T09:03:22.21400"
+      },
+      {
+        "message_id_prefix": "419b1cac\u2026",
+        "status": "DELIVERED",
+        "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+        "recipient": "nancy@yopmail.com",
+        "created_at": "2026-08-15T09:03:17.13500"
+      },
+      {
+        "message_id_prefix": "bdcca9ea\u2026",
+        "status": "BLOCKED_PLAN_GATE",
+        "template_key": "RENT_REMINDER",
+        "recipient": null,
+        "created_at": "2026-08-15T04:50:05.49700"
+      },
+      {
+        "message_id_prefix": "c232fc9e\u2026",
+        "status": "BLOCKED_PLAN_GATE",
+        "template_key": "RENT_REMINDER",
+        "recipient": null,
+        "created_at": "2026-08-15T04:50:03.59600"
+      },
+      {
+        "message_id_prefix": "478cdc02\u2026",
+        "status": "BLOCKED_PLAN_GATE",
+        "template_key": "RENT_REMINDER",
+        "recipient": null,
+        "created_at": "2026-08-15T04:50:01.67600"
+      },
+      {
+        "message_id_prefix": "84c469be\u2026",
+        "status": "BLOCKED_PLAN_GATE",
+        "template_key": "RENT_REMINDER",
+        "recipient": null,
+        "created_at": "2026-08-15T04:49:58.63000"
+      }
+    ],
+    "before_period_end": "2026-06-03T12:46:30",
+    "after_period_end": "2026-06-03T12:46:30",
+    "audit": [
+      {
+        "event_type": "commercial_rejected",
+        "created_at": "2026-08-15T19:51:57.98849"
+      },
+      {
+        "event_type": "commercial_rejected",
+        "created_at": "2026-08-15T19:50:49.19459"
+      }
+    ],
+    "verdict": "FAIL_OR_STALE_STRIPE"
+  },
+  "plan_unresolved": {},
+  "expiry": {},
+  "chosen_active": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "additional_stripe_attempts": [
+    {
+      "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+      "email": "drjpane@gmail.com",
+      "status": 502,
+      "error_code": "STRIPE_PAUSE_FAILED",
+      "message": "Could not pause Stripe collection. Suspend billing was not applied. Failed to pause Stripe collection: Request req_6eZN970Vdj9KQg: No such subscription: 'sub_1T53ojCF0O5oqdUzhvp5mqmm'",
+      "stripe_pause": null
+    },
+    {
+      "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+      "email": "olivia.chen@oxfordlets.co.uk",
+      "status": 502,
+      "error_code": "STRIPE_PAUSE_FAILED",
+      "message": "Could not pause Stripe collection. Suspend billing was not applied. Failed to pause Stripe collection: Request req_77ric2WIh0j9zT: No such subscription: 'sub_1T3HvDCF0O5oqdUzlZ7xCpOv'",
+      "stripe_pause": null
+    },
+    {
+      "client_id": "412c72a9-f840-4fb2-9a8d-d04e7ad9d85a",
+      "email": "anya.sharma@gmail.com",
+      "status": 502,
+      "error_code": "STRIPE_PAUSE_FAILED",
+      "message": "Could not pause Stripe collection. Suspend billing was not applied. Failed to pause Stripe collection: Request req_IDUt8AyUjWfpKC: No such subscription: 'sub_1T2ThSCF0O5oqdUzXBOJTUdS'",
+      "stripe_pause": null
+    }
+  ],
+  "plan_unresolved_candidate": null
+}

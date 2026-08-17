@@ -534,6 +534,34 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
 
     alerts: List[Dict[str, Any]] = []
 
+    mongo_storage = health.get("mongo_storage") or {}
+    if mongo_storage.get("available") and mongo_storage.get("level") not in (None, "ok"):
+        lvl = mongo_storage.get("level")
+        pct = mongo_storage.get("usage_percent")
+        sev = "P0" if lvl in ("emergency", "platform_alert") else "P1" if lvl == "critical" else "P2"
+        alerts.append(
+            {
+                "id": "platform:mongo_storage_capacity",
+                "category": "platform",
+                "severity": sev,
+                "timestamp": mongo_storage.get("captured_at"),
+                "status": "open",
+                "title": f"MongoDB storage {lvl} ({pct}%)",
+                "detail": (
+                    f"Cluster data+indexes at {pct}% of limit "
+                    f"({mongo_storage.get('used_bytes')} / {mongo_storage.get('limit_bytes')} bytes). "
+                    "Purge operational telemetry on staging and enable retention before writes block."
+                ),
+                "required_action": "Review System Health → mongo_storage; run staging Tier-1 cleanup if needed.",
+                "link_path": "/admin/system-health",
+                "metadata": {
+                    "level": lvl,
+                    "usage_percent": pct,
+                    "writes_at_risk": mongo_storage.get("writes_at_risk"),
+                },
+            }
+        )
+
     inc_cursor = (
         db.incidents.find(
             {"status": {"$in": ["open", "acknowledged"]}},
@@ -666,6 +694,182 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
             }
         )
 
+    zoho_health = health.get("zoho_integration_health") or health.get("integrations", {}).get("zoho") or {}
+    if zoho_health.get("overall_status") == "degraded" and zoho_health.get("zoho_integration_enabled"):
+        alerts.append(
+            {
+                "id": "integrations:zoho_degraded",
+                "category": "automation",
+                "severity": "HIGH",
+                "timestamp": now_iso,
+                "status": "open",
+                "title": "Zoho integration layer degraded",
+                "detail": (
+                    f"Queue pending={zoho_health.get('queue_depth_pending', 0)}; "
+                    f"dead letters={zoho_health.get('dead_letter_unresolved', 0)}; "
+                    f"open circuit breakers={zoho_health.get('circuit_breaker_open_count', 0)}."
+                ),
+                "required_action": "Review System Health → Zoho integration health; check /api/admin/integrations/zoho/status.",
+                "link_path": "/admin/system-health",
+                "metadata": {
+                    "signal_tier": "control_centre_summary",
+                    "integration": "zoho",
+                    "zoho_integration_health": zoho_health,
+                },
+            }
+        )
+
+    analytics_ops = zoho_health.get("analytics_ops") or {}
+    policy = analytics_ops.get("incident_policy") or {}
+    policy_level = str(policy.get("level") or "")
+    if policy_level == "incident" and not zoho_health.get("kill_switch_active"):
+        alerts.append(
+            {
+                "id": "integrations:zoho_analytics_schedule_incident",
+                "category": "automation",
+                "severity": "HIGH",
+                "timestamp": now_iso,
+                "status": "open",
+                "title": "Zoho Analytics scheduled export incident",
+                "detail": (
+                    f"reason={policy.get('reason')}; consecutive_failures="
+                    f"{analytics_ops.get('consecutive_failures', 0)}; "
+                    f"dead_letters={analytics_ops.get('dead_letter_count', 0)}."
+                ),
+                "required_action": (
+                    "Inspect Analytics sync runs and dead letters; replay if appropriate; "
+                    "confirm OAuth and target IDs; do not force_reexport unless intentional."
+                ),
+                "link_path": "/admin/system-health",
+                "metadata": {
+                    "signal_tier": "control_centre_summary",
+                    "integration": "analytics",
+                    "incident_policy": policy,
+                    "analytics_ops": analytics_ops,
+                },
+            }
+        )
+    elif policy_level == "degraded" and not zoho_health.get("kill_switch_active"):
+        alerts.append(
+            {
+                "id": "integrations:zoho_analytics_schedule_degraded",
+                "category": "automation",
+                "severity": "HIGH",
+                "timestamp": now_iso,
+                "status": "open",
+                "title": "Zoho Analytics integration degraded (scheduled)",
+                "detail": (
+                    f"Two or more consecutive Analytics export failures "
+                    f"(consecutive_failures={analytics_ops.get('consecutive_failures', 0)})."
+                ),
+                "required_action": "Review last Analytics failure and dead-letter queue before the next 02:15 UTC run.",
+                "link_path": "/admin/system-health",
+                "metadata": {
+                    "signal_tier": "control_centre_summary",
+                    "integration": "analytics",
+                    "incident_policy": policy,
+                },
+            }
+        )
+    elif policy_level == "warning" and not zoho_health.get("kill_switch_active"):
+        alerts.append(
+            {
+                "id": "integrations:zoho_analytics_schedule_warning",
+                "category": "automation",
+                "severity": "MEDIUM",
+                "timestamp": now_iso,
+                "status": "open",
+                "title": "Zoho Analytics scheduled export warning",
+                "detail": (
+                    f"One failed Analytics export run "
+                    f"(consecutive_failures={analytics_ops.get('consecutive_failures', 0)})."
+                ),
+                "required_action": "Monitor Analytics ops; next consecutive failure degrades the integration.",
+                "link_path": "/admin/system-health",
+                "metadata": {
+                    "signal_tier": "control_centre_summary",
+                    "integration": "analytics",
+                    "incident_policy": policy,
+                },
+            }
+        )
+
+    crm_ops = zoho_health.get("crm_ops") or {}
+    crm_policy = crm_ops.get("incident_policy") or {}
+    crm_level = str(crm_policy.get("level") or "")
+    if crm_level == "incident" and not zoho_health.get("kill_switch_active"):
+        alerts.append(
+            {
+                "id": "integrations:zoho_crm_incident",
+                "category": "automation",
+                "severity": "HIGH",
+                "timestamp": now_iso,
+                "status": "open",
+                "title": "Zoho CRM outbound sync incident",
+                "detail": (
+                    f"reason={crm_policy.get('reason')}; consecutive_failures="
+                    f"{crm_ops.get('consecutive_failures', 0)}; "
+                    f"dead_letters={crm_ops.get('dead_letter_count', 0)}; "
+                    f"queue_pending={crm_ops.get('queue_depth_pending', 0)}."
+                ),
+                "required_action": (
+                    "Inspect CRM sync runs and dead letters; replay recoverable failures; "
+                    "confirm OAuth scopes include leads.READ and Pleerity_Lead_ID exists."
+                ),
+                "link_path": "/admin/system-health",
+                "metadata": {
+                    "signal_tier": "control_centre_summary",
+                    "integration": "crm",
+                    "incident_policy": crm_policy,
+                    "crm_ops": crm_ops,
+                },
+            }
+        )
+    elif crm_level == "degraded" and not zoho_health.get("kill_switch_active"):
+        alerts.append(
+            {
+                "id": "integrations:zoho_crm_degraded",
+                "category": "automation",
+                "severity": "HIGH",
+                "timestamp": now_iso,
+                "status": "open",
+                "title": "Zoho CRM integration degraded",
+                "detail": (
+                    f"Two or more consecutive CRM sync failures "
+                    f"(consecutive_failures={crm_ops.get('consecutive_failures', 0)})."
+                ),
+                "required_action": "Review last CRM failure and dead-letter queue before further manual syncs.",
+                "link_path": "/admin/system-health",
+                "metadata": {
+                    "signal_tier": "control_centre_summary",
+                    "integration": "crm",
+                    "incident_policy": crm_policy,
+                },
+            }
+        )
+    elif crm_level == "warning" and not zoho_health.get("kill_switch_active"):
+        alerts.append(
+            {
+                "id": "integrations:zoho_crm_warning",
+                "category": "automation",
+                "severity": "MEDIUM",
+                "timestamp": now_iso,
+                "status": "open",
+                "title": "Zoho CRM outbound sync warning",
+                "detail": (
+                    f"One failed CRM sync run "
+                    f"(consecutive_failures={crm_ops.get('consecutive_failures', 0)})."
+                ),
+                "required_action": "Monitor CRM ops; next consecutive failure degrades the integration.",
+                "link_path": "/admin/system-health",
+                "metadata": {
+                    "signal_tier": "control_centre_summary",
+                    "integration": "crm",
+                    "incident_policy": crm_policy,
+                },
+            }
+        )
+
     alerts.sort(
         key=lambda a: (
             _severity_sort_key(a.get("severity")),
@@ -711,11 +915,16 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
                 "revenue": revenue_breakdown if is_owner else None,
             },
             "observability_db_name": health.get("observability_db_name"),
+            "mongo_storage": health.get("mongo_storage"),
             "revenue_excluded_from_status_when_redacted": not is_owner,
+            "integrations": {
+                "zoho": health.get("zoho_integration_health") or health.get("integrations", {}).get("zoho") or {},
+            },
         },
         "automation": {
             "total_tracked_jobs": len(critical_ids),
             "total_job_runs_recorded": total_job_runs_recorded,
+            "zoho_integration_health": health.get("zoho_integration_health") or {},
             "healthy_critical_jobs": healthy_n,
             "failed_critical_jobs": failed_n,
             "degraded_critical_jobs": degraded_n,

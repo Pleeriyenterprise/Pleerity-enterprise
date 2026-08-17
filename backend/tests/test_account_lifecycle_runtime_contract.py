@@ -306,3 +306,29 @@ def test_api_route_module_exists():
     paths = [getattr(r, "path", "") for r in client_lifecycle_runtime.router.routes]
     assert "/api/client/lifecycle-runtime" in paths
     assert "/api/client/lifecycle-contract" in paths
+
+
+def test_cancelled_with_commercial_overlay_preserves_lifecycle_and_grants_plan_access():
+    client = {
+        "client_id": "c-cancel-overlay",
+        "billing_plan": "PLAN_3_PRO",
+        "commercial_effective_entitlement_state": "ENABLED",
+        "commercial_restored_plan_code": "PLAN_3_PRO",
+        "commercial_governance_id": "gov-suspend-1",
+        "commercial_governance_state": "BILLING_SUSPENDED",
+    }
+    billing = {
+        "subscription_status": "CANCELED",
+        "billing_lifecycle_state": "cancelled",
+        "canonical_entitlement_state": "CANCELLED",
+        "commercial_effective_entitlement_state": "ENABLED",
+        "commercial_restored_plan_code": "PLAN_3_PRO",
+    }
+    payload = _dict(_build(client=client, billing=billing))
+    assert payload["lifecycle_state"] == "CANCELLED_IMMEDIATE"
+    assert payload["portal_mode"] == "FULL_ACCESS"
+    assert payload["commercial_exception"]["active"] is True
+    assert payload["commercial_exception"]["restored_plan_code"] == "PLAN_3_PRO"
+    assert payload["commercial_exception"]["underlying_lifecycle_state"] == "CANCELLED_IMMEDIATE"
+    assert payload["plan"]["plan_code"] == "PLAN_3_PRO"
+    assert payload["capabilities"].get("CAP_PROP_VIEW") != "DENY"

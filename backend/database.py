@@ -915,6 +915,15 @@ class Database:
             await self.db.commercial_entitlement_governance.create_index(
                 [("client_id", 1), ("status", 1)]
             )
+            try:
+                await self.db.commercial_entitlement_governance.create_index(
+                    [("client_id", 1)],
+                    unique=True,
+                    partialFilterExpression={"status": "active"},
+                    name="uniq_client_active_commercial_governance",
+                )
+            except Exception:
+                pass
             await self.db.commercial_entitlement_governance.create_index("entitlement_expiry_at")
             await self.db.commercial_entitlement_governance.create_index("entitlement_review_at")
             try:
@@ -1165,6 +1174,24 @@ class Database:
                 await ensure_default_agreement_assets()
             except Exception as seed_err:
                 logger.warning("Agreement seed skipped or failed: %s", seed_err)
+
+            # Zoho governed integration layer
+            try:
+                await self.db.zoho_sync_runs.create_index("sync_id", unique=True)
+                await self.db.zoho_sync_runs.create_index([("integration", 1), ("created_at", -1)])
+                await self.db.zoho_sync_runs.create_index([("status", 1), ("created_at", -1)])
+                await self.db.zoho_sync_dead_letter.create_index("dead_letter_id", unique=True)
+                await self.db.zoho_sync_dead_letter.create_index([("integration", 1), ("resolved", 1)])
+                await self.db.zoho_sync_queue.create_index("queue_id", unique=True)
+                await self.db.zoho_sync_queue.create_index([("status", 1), ("created_at", 1)])
+                await self.db.zoho_oauth_tokens.create_index(
+                    [("token_id", 1), ("environment", 1)], unique=True
+                )
+                from services.integrations.zoho.sync_store import zoho_sync_store
+
+                await zoho_sync_store.ensure_indexes()
+            except Exception as zoho_idx_err:
+                logger.warning("Zoho integration index creation note: %s", zoho_idx_err)
 
             try:
                 from services.discovery.discovery_indexes import ensure_discovery_indexes

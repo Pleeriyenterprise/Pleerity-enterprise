@@ -21,6 +21,7 @@ EVENT_COMMERCIAL_REVOKED = "commercial_revoked"
 EVENT_COMMERCIAL_EXPIRED = "commercial_expired"
 EVENT_COMMERCIAL_DRIFT_DETECTED = "commercial_drift_detected"
 EVENT_COMMERCIAL_REVIEW_DUE = "commercial_review_due"
+EVENT_COMMERCIAL_REJECTED = "commercial_rejected"
 
 METRIC_KEYS = frozenset(
     {
@@ -109,6 +110,8 @@ async def record_commercial_entitlement_event(
         audit_action = AuditAction.COMMERCIAL_ENTITLEMENT_REVOKED
     elif event_type == EVENT_COMMERCIAL_EXPIRED:
         audit_action = AuditAction.COMMERCIAL_ENTITLEMENT_EXPIRED
+    elif event_type == EVENT_COMMERCIAL_REJECTED:
+        audit_action = AuditAction.COMMERCIAL_ENTITLEMENT_REJECTED
 
     try:
         await create_audit_log(

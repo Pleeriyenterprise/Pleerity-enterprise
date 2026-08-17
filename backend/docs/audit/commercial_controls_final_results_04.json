@@ -1,0 +1,652 @@
+{
+  "programme": "COMMERCIAL-CONTROLS-RUNTIME-CERTIFICATION-CLOSURE-04",
+  "at_utc": "2026-08-15T20:42:30.738796+00:00",
+  "api": "https://pleerity-enterprise.onrender.com/api",
+  "fe": "https://pleerity-enterprise-9jjg.vercel.app",
+  "active_fixture": {
+    "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+    "email": "lere@yopmail.com"
+  },
+  "cancelled_03_preserved": {
+    "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+    "email": "allison@yopmail.com"
+  },
+  "staging_version": {
+    "commit_sha": "7c77391a5ee65f0a85372d9c462448c270b6b066",
+    "environment": "staging"
+  },
+  "production_version": {
+    "commit_sha": "89217062481b4eb858a8b530ec90c83de067a4be",
+    "environment": "production"
+  },
+  "production_untouched": true,
+  "frontend": {
+    "staging": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app",
+      "html_status": 200,
+      "bundle": "/static/js/main.7fd31560.js",
+      "markers": {
+        "commercial-step-up-modal-host": true,
+        "circuit_fingerprint": true,
+        "STEP_UP_REQUIRED_set": true,
+        "staging_api_host": true,
+        "production_api_host": false
+      },
+      "circuit_fix_deployed": true,
+      "points_at_staging_api": true
+    },
+    "production": {
+      "url": "https://pleerityenterprise.co.uk",
+      "html_status": 200,
+      "bundle": "/static/js/main.eac95fab.js",
+      "markers": {
+        "commercial-step-up-modal-host": false,
+        "circuit_fingerprint": false,
+        "STEP_UP_REQUIRED_set": true,
+        "staging_api_host": false,
+        "production_api_host": false
+      },
+      "circuit_fix_deployed": false,
+      "points_at_staging_api": false
+    }
+  },
+  "auth_source": "reused_preflight_token",
+  "step_up_verify": {
+    "ok": true,
+    "status": 200
+  },
+  "circuit_ui": {
+    "pass": true,
+    "fingerprint": "cc-step-up-circuit-fix-04",
+    "method": "playwright_mcp_staging_alias",
+    "local_chromium_launch": "failed_sandbox_cache_not_used",
+    "submit_403_count": 2,
+    "step_up_modal": true,
+    "cancel_then_immediate_retry": true,
+    "circuit_90s_pause": false,
+    "second_stripe_pause_avoided": true
+  },
+  "active_suspend": {
+    "before": {
+      "assessment_ok": true,
+      "found": true,
+      "classification": "ACTIVE",
+      "has_active_exception": false,
+      "access": {
+        "canonical_entitlement_state": "ENABLED",
+        "effective_entitlement_state": "ENABLED",
+        "underlying_canonical_entitlement_state": "ENABLED",
+        "restored_plan_code": "PLAN_2_PORTFOLIO",
+        "restored_plan_source": "client_billing.current_plan_code",
+        "governance_applied": false,
+        "effective_access_reason": null,
+        "access_policy": "full_access"
+      },
+      "active_governance": null,
+      "audit_events": [],
+      "billing": {
+        "subscription_status": "ACTIVE",
+        "entitlement_status": "ENABLED",
+        "plan_code": "PLAN_2_PORTFOLIO",
+        "stripe_subscription_id_prefix": "sub_1Tr2\u2026",
+        "stripe_customer_id_prefix": "cus_UqkF\u2026",
+        "current_period_end": "2026-09-08T21:11:39",
+        "next_billing_date": "2026-09-08T21:11:39+00:00",
+        "latest_invoice_id_prefix": "in_1U2HX\u2026",
+        "open_invoice_id_prefix": null,
+        "open_invoice_status": null,
+        "billing_reconciliation_needed": false,
+        "stripe_subscription_status": "ACTIVE",
+        "pause_collection": null,
+        "stripe_collection_paused": null,
+        "billing_sync_state": "ok",
+        "canonical_entitlement_state": "ENABLED"
+      },
+      "billing_http": 200
+    },
+    "execute": {
+      "status": 200,
+      "ok": true,
+      "error_code": null,
+      "elapsed_ms": 10838,
+      "stripe_pause": {
+        "ok": true,
+        "mutation": "pause_collection",
+        "reconciliation_status": "pause_collection_applied",
+        "subscription_id": "sub_1Tr2\u2026",
+        "subscription_status": "ACTIVE",
+        "behavior": "void"
+      },
+      "email_result": {
+        "email_sent": true,
+        "outcome": "sent",
+        "block_reason": null
+      },
+      "body_keys": [
+        "action",
+        "assessment",
+        "client_id",
+        "email_result",
+        "governance",
+        "impact_preview",
+        "ok",
+        "restored_plan_code",
+        "stripe_pause",
+        "stripe_reconciliation",
+        "underlying_canonical_entitlement_state"
+      ]
+    },
+    "after": {
+      "assessment_ok": true,
+      "found": true,
+      "classification": "BILLING_SUSPENDED",
+      "has_active_exception": true,
+      "access": {
+        "canonical_entitlement_state": "ENABLED",
+        "effective_entitlement_state": "ENABLED",
+        "underlying_canonical_entitlement_state": "ENABLED",
+        "restored_plan_code": "PLAN_2_PORTFOLIO",
+        "restored_plan_source": "client_billing.current_plan_code",
+        "governance_applied": true,
+        "effective_access_reason": "Billing suspended pending review",
+        "access_policy": "full_access"
+      },
+      "active_governance": {
+        "exception_type": "billing_suspension",
+        "status": "active",
+        "entitlement_state": "BILLING_SUSPENDED",
+        "entitlement_expiry_at": "2026-08-15T20:44:37+00:00",
+        "customer_notification_status": "sent",
+        "stripe_reconciliation_status": "reconciled_lightweight",
+        "restored_plan_code": "PLAN_2_PORTFOLIO",
+        "governance_id_prefix": "b48240a7\u2026"
+      },
+      "audit_events": [
+        {
+          "event": "suspend_billing",
+          "at": "2026-08-15T20:43:11.41246"
+        }
+      ],
+      "billing": {
+        "subscription_status": "ACTIVE",
+        "entitlement_status": "ENABLED",
+        "plan_code": "PLAN_2_PORTFOLIO",
+        "stripe_subscription_id_prefix": "sub_1Tr2\u2026",
+        "stripe_customer_id_prefix": "cus_UqkF\u2026",
+        "current_period_end": "2026-09-08T21:11:39",
+        "next_billing_date": "2026-09-08T21:11:39+00:00",
+        "latest_invoice_id_prefix": "in_1U2HX\u2026",
+        "open_invoice_id_prefix": null,
+        "open_invoice_status": null,
+        "billing_reconciliation_needed": false,
+        "stripe_subscription_status": "ACTIVE",
+        "pause_collection": null,
+        "stripe_collection_paused": null,
+        "billing_sync_state": "ok",
+        "canonical_entitlement_state": "ENABLED"
+      },
+      "billing_http": 200
+    },
+    "messages": {
+      "items": [
+        {
+          "message_id": "2c427fc9-5968-46ac-b3bf-9c2c42eb7be0",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "ADMIN_MANUAL",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-08-15T20:43:08.189000",
+          "postmark_message_id": "c5493e21-3fd2-4c6b-ad05-41ecb8a8473b",
+          "provider_message_id": "c5493e21-3fd2-4c6b-ad05-41ecb8a8473b",
+          "sent_at": "2026-08-15T20:43:09.944000",
+          "delivered_at": "2026-08-15T20:43:11Z"
+        },
+        {
+          "message_id": "d64e978b-0608-4568-a45f-aa4c90bcff26",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "SUBSCRIPTION_CONFIRMED",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-07-08T21:11:49.318000",
+          "postmark_message_id": "4d0042f3-f8cf-489c-9a8c-d0e27c2476be",
+          "provider_message_id": "4d0042f3-f8cf-489c-9a8c-d0e27c2476be",
+          "sent_at": "2026-07-08T21:11:51.318000",
+          "delivered_at": "2026-07-08T21:11:53Z"
+        },
+        {
+          "message_id": "a9f11cf0-3fda-44f6-b251-8b125cccfb87",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "WELCOME_EMAIL",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-07-08T21:11:49.211000",
+          "postmark_message_id": "4be179d0-17e9-40ed-92f3-2055c0a977ba",
+          "provider_message_id": "4be179d0-17e9-40ed-92f3-2055c0a977ba",
+          "sent_at": "2026-07-08T21:11:51.235000",
+          "delivered_at": "2026-07-08T21:11:52Z"
+        },
+        {
+          "message_id": "39b6aea2-61ec-4f3b-9859-e715b6685882",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "MONTHLY_DIGEST",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-06-01T10:02:29.321000",
+          "postmark_message_id": "7b4fceff-01dd-4cd0-acb9-2b859a683f01",
+          "provider_message_id": "7b4fceff-01dd-4cd0-acb9-2b859a683f01",
+          "sent_at": "2026-06-01T10:02:30.570000",
+          "delivered_at": "2026-06-01T10:02:32Z"
+        },
+        {
+          "message_id": "53a16f25-933d-4eec-84be-5563d47e6a93",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "SUBSCRIPTION_RENEWAL_REMINDER_3D",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-05-16T09:15:23.321000",
+          "postmark_message_id": "7365c635-719c-4c75-b2c6-d338bfddeed0",
+          "provider_message_id": "7365c635-719c-4c75-b2c6-d338bfddeed0",
+          "sent_at": "2026-05-16T09:15:23.780000",
+          "delivered_at": "2026-05-16T09:15:25Z"
+        },
+        {
+          "message_id": "7fc8f8ae-e626-4f1e-a733-fa4ce9346283",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "SUBSCRIPTION_RENEWAL_REMINDER_7D",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-05-11T09:15:15.684000",
+          "postmark_message_id": "9c986dec-21c8-4b1b-9798-20caba8a1058",
+          "provider_message_id": "9c986dec-21c8-4b1b-9798-20caba8a1058",
+          "sent_at": "2026-05-11T09:15:16.150000",
+          "delivered_at": "2026-05-11T09:15:17Z"
+        },
+        {
+          "message_id": "ff1f9e37-7413-4ff2-9d90-9b2e39795325",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "MONTHLY_DIGEST",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-05-01T10:10:44.492000",
+          "postmark_message_id": "c29cf40e-5930-481e-9779-25b9bf5722d0",
+          "provider_message_id": "c29cf40e-5930-481e-9779-25b9bf5722d0",
+          "sent_at": "2026-05-01T10:10:45.641000",
+          "delivered_at": "2026-05-01T10:10:47Z"
+        },
+        {
+          "message_id": "bff37d93-fe78-46d9-989f-c8eb28395e46",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-04-23T09:03:08.931000",
+          "postmark_message_id": "d519b152-4927-41dd-b894-b2a3a51a7ad3",
+          "provider_message_id": "d519b152-4927-41dd-b894-b2a3a51a7ad3",
+          "sent_at": "2026-04-23T09:03:09.867000",
+          "delivered_at": "2026-04-28T12:15:00Z"
+        },
+        {
+          "message_id": "4b728e4b-94d4-43ff-8918-945b2b91b6ed",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "channel": "EMAIL",
+          "status": "SENT",
+          "attempt_count": 1,
+          "created_at": "2026-04-21T09:03:04.292000",
+          "postmark_message_id": "0cf94319-7e5c-48f8-862d-e3b7fe816b03",
+          "provider_message_id": "0cf94319-7e5c-48f8-862d-e3b7fe816b03",
+          "sent_at": "2026-04-21T09:03:05.705000"
+        },
+        {
+          "message_id": "1d01a034-43d8-4e80-9798-80010fafc972",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "COMPLIANCE_ALERT",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-04-19T18:00:14.346000",
+          "postmark_message_id": "c9ef9449-645e-40e3-84fe-53e2deb5a747",
+          "provider_message_id": "c9ef9449-645e-40e3-84fe-53e2deb5a747",
+          "sent_at": "2026-04-19T18:00:15.432000",
+          "delivered_at": "2026-04-19T18:00:17Z"
+        },
+        {
+          "message_id": "874faea4-f9c5-402b-a82f-0fc2b19b1964",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "LEAD_FOLLOWUP",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-04-19T10:45:02.916000",
+          "postmark_message_id": "d50f2555-d82c-42d1-aa63-661a225cfabc",
+          "provider_message_id": "d50f2555-d82c-42d1-aa63-661a225cfabc",
+          "sent_at": "2026-04-19T10:45:03.534000",
+          "delivered_at": "2026-04-19T10:45:04Z"
+        },
+        {
+          "message_id": "6a2e2db5-d69a-4135-b853-6e1ee4251f87",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "LEAD_FOLLOWUP",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-04-19T10:30:03.260000",
+          "postmark_message_id": "8145f9f9-c113-4d36-9506-be5bed3f5822",
+          "provider_message_id": "8145f9f9-c113-4d36-9506-be5bed3f5822",
+          "sent_at": "2026-04-19T10:30:04.198000",
+          "delivered_at": "2026-04-19T10:30:05Z"
+        },
+        {
+          "message_id": "a2de35fc-6840-4d55-af20-7e9020bd352b",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-04-19T09:02:59.374000",
+          "postmark_message_id": "d485a300-89fd-4f74-ba29-30f7cf3b7c7b",
+          "provider_message_id": "d485a300-89fd-4f74-ba29-30f7cf3b7c7b",
+          "sent_at": "2026-04-19T09:03:00.571000",
+          "delivered_at": "2026-04-19T09:03:02Z"
+        },
+        {
+          "message_id": "4b10592b-b7f4-4533-8efc-938e390d10a1",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-04-17T09:02:59.954000",
+          "postmark_message_id": "978e1f8c-c895-42e6-9199-22a2aa8fb3ce",
+          "provider_message_id": "978e1f8c-c895-42e6-9199-22a2aa8fb3ce",
+          "sent_at": "2026-04-17T09:03:01.423000",
+          "delivered_at": "2026-04-17T09:03:03Z"
+        },
+        {
+          "message_id": "de2f54aa-620c-4c00-9466-cb38287743e1",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-04-15T09:03:16.293000",
+          "postmark_message_id": "ce755362-9864-49ab-98a6-57e4ea2376b1",
+          "provider_message_id": "ce755362-9864-49ab-98a6-57e4ea2376b1",
+          "sent_at": "2026-04-15T09:03:17.333000",
+          "delivered_at": "2026-04-15T09:03:18Z"
+        },
+        {
+          "message_id": "3fb0ece1-c14b-4ed9-9400-05ba03589826",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-04-14T09:02:51.503000",
+          "postmark_message_id": "fb2dac7a-c97e-4afd-996d-3784fce4ca75",
+          "provider_message_id": "fb2dac7a-c97e-4afd-996d-3784fce4ca75",
+          "sent_at": "2026-04-14T09:02:52.423000",
+          "delivered_at": "2026-04-14T09:02:54Z"
+        },
+        {
+          "message_id": "78594756-46d5-48a1-99c1-0a2abd5a7032",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-04-13T09:02:19.603000",
+          "postmark_message_id": "a3575293-0bbc-4cda-998f-90b86e604875",
+          "provider_message_id": "a3575293-0bbc-4cda-998f-90b86e604875",
+          "sent_at": "2026-04-13T09:02:20.545000",
+          "delivered_at": "2026-04-13T09:02:22Z"
+        },
+        {
+          "message_id": "3e18e03e-8076-4539-8b11-ca46b3b26128",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "DASHBOARD_READY",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-04-11T21:49:34.246000",
+          "postmark_message_id": "26ee80df-0ef6-4447-8f28-8707a13439f4",
+          "provider_message_id": "26ee80df-0ef6-4447-8f28-8707a13439f4",
+          "sent_at": "2026-04-11T21:49:35.196000",
+          "delivered_at": "2026-04-11T21:49:36Z"
+        },
+        {
+          "message_id": "9e8dcaf2-56d8-4e08-a4c2-639e6225958f",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-04-11T09:02:41.458000",
+          "postmark_message_id": "550a66c6-d15f-4d1c-a99c-33a93bfa2f7a",
+          "provider_message_id": "550a66c6-d15f-4d1c-a99c-33a93bfa2f7a",
+          "sent_at": "2026-04-11T09:02:42.407000",
+          "delivered_at": "2026-04-11T09:02:43Z"
+        },
+        {
+          "message_id": "73b41807-9012-4c5f-917b-a0550e1c7231",
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "recipient": "lere@yopmail.com",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "channel": "EMAIL",
+          "status": "DELIVERED",
+          "attempt_count": 1,
+          "created_at": "2026-04-09T09:02:54.831000",
+          "postmark_message_id": "0658f122-05eb-41eb-b101-c31772728ed3",
+          "provider_message_id": "0658f122-05eb-41eb-b101-c31772728ed3",
+          "sent_at": "2026-04-09T09:02:55.845000",
+          "delivered_at": "2026-04-09T09:02:57Z"
+        }
+      ],
+      "total": 48,
+      "limit": 20,
+      "offset": 0,
+      "empty_reason": null
+    },
+    "proof": {
+      "exception_persisted": true,
+      "exception_type": "billing_suspension",
+      "canonical_enabled": true,
+      "effective_enabled": true,
+      "plan": "PLAN_2_PORTFOLIO",
+      "stripe_mutation": "pause_collection",
+      "pause_behavior": "void",
+      "billing_paused_flag": null,
+      "period_end": "2026-09-08T21:11:39",
+      "open_invoice_status": null
+    }
+  },
+  "expiry": {
+    "wait_seconds": 100,
+    "started_wait_utc": "2026-08-15T20:43:24.175880+00:00",
+    "ended_wait_utc": "2026-08-15T20:45:04.176316+00:00",
+    "job": {
+      "status": 200,
+      "ok": true,
+      "body": {
+        "success": true,
+        "job": "commercial_entitlement_expiry",
+        "message": "Job commercial_entitlement_expiry completed",
+        "result": {
+          "processed_limit": 200,
+          "expired_count": 1,
+          "expired": [
+            {
+              "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+              "governance_id": "b48240a7-e621-4bce-bf2a-c9f8d2b35c4f",
+              "expired": true
+            }
+          ],
+          "review_due_governance_ids": []
+        },
+        "scope_type": "PORTFOLIO_WIDE",
+        "estimated_impact": {
+          "scope_type": "PORTFOLIO_WIDE",
+          "is_portfolio_wide": true,
+          "clients_affected": 29,
+          "properties_affected": 73,
+          "summary_lines": [
+            "~29 active clients affected",
+            "~73 properties in portfolio",
+            "Job will run for 29 client(s)"
+          ]
+        }
+      }
+    },
+    "after": {
+      "assessment_ok": true,
+      "found": true,
+      "classification": "ACTIVE",
+      "has_active_exception": false,
+      "access": {
+        "canonical_entitlement_state": "ENABLED",
+        "effective_entitlement_state": "ENABLED",
+        "underlying_canonical_entitlement_state": "ENABLED",
+        "restored_plan_code": "PLAN_2_PORTFOLIO",
+        "restored_plan_source": "client_billing.current_plan_code",
+        "governance_applied": false,
+        "effective_access_reason": null,
+        "access_policy": "full_access"
+      },
+      "active_governance": null,
+      "audit_events": [
+        {
+          "event": "revoke_commercial_exception",
+          "at": "2026-08-15T20:45:09.23782",
+          "note": "assessment recent-audit label; observability/UI recorded commercial_expired at the same timestamp"
+        },
+        {
+          "event": "suspend_billing",
+          "at": "2026-08-15T20:43:11.41246"
+        }
+      ],
+      "billing": {
+        "subscription_status": "ACTIVE",
+        "entitlement_status": "ENABLED",
+        "plan_code": "PLAN_2_PORTFOLIO",
+        "stripe_subscription_id_prefix": "sub_1Tr2\u2026",
+        "stripe_customer_id_prefix": "cus_UqkF\u2026",
+        "current_period_end": "2026-09-08T21:11:39",
+        "next_billing_date": "2026-09-08T21:11:39+00:00",
+        "latest_invoice_id_prefix": "in_1U2HX\u2026",
+        "open_invoice_id_prefix": null,
+        "open_invoice_status": null,
+        "billing_reconciliation_needed": false,
+        "stripe_subscription_status": "ACTIVE",
+        "pause_collection": null,
+        "stripe_collection_paused": null,
+        "billing_sync_state": "ok",
+        "canonical_entitlement_state": "ENABLED"
+      },
+      "billing_http": 200
+    }
+  },
+  "plan_unresolved": {
+    "client_id": "cc04-plan-unresolved-c28c510f-f559-4ce2-ae48-223dbb9d1eb4",
+    "execute_status": 409,
+    "error_code": "PLAN_UNRESOLVED",
+    "message": {
+      "error_code": "PLAN_UNRESOLVED",
+      "message": "Cannot determine the customer's last valid subscribed plan. Suspend billing was not applied."
+    },
+    "exception_persisted": false,
+    "pass": true,
+    "observability_status": 200,
+    "archived": true
+  },
+  "shared_path_smoke": {
+    "grant_grace_period": {
+      "status": 200,
+      "ok": true,
+      "error_code": null,
+      "elapsed_ms": 6320,
+      "exception": true,
+      "step_up_required_not_blocking_retry": true
+    },
+    "grant_sponsored_access": {
+      "status": 200,
+      "ok": true,
+      "error_code": null,
+      "elapsed_ms": 5495,
+      "exception": true,
+      "step_up_required_not_blocking_retry": true
+    },
+    "retention_extension": {
+      "status": 200,
+      "ok": true,
+      "error_code": null,
+      "elapsed_ms": 5563,
+      "exception": true,
+      "step_up_required_not_blocking_retry": true
+    },
+    "waive_onboarding_fee": {
+      "status": 200,
+      "ok": true,
+      "error_code": null,
+      "elapsed_ms": 6674,
+      "exception": true,
+      "step_up_required_not_blocking_retry": true
+    },
+    "apply_recovery_compensation": {
+      "status": 200,
+      "ok": true,
+      "error_code": null,
+      "elapsed_ms": 5910,
+      "exception": true,
+      "step_up_required_not_blocking_retry": true
+    },
+    "restrict_entitlement": {
+      "status": 200,
+      "ok": true,
+      "error_code": null,
+      "elapsed_ms": 5561,
+      "exception": true,
+      "step_up_required_not_blocking_retry": true
+    }
+  },
+  "email_inbox_proof": {
+    "recipient": "lere@yopmail.com",
+    "subject": "Billing temporarily paused on your account",
+    "inbox_visible_at_bst": "2026-08-15T21:43:00+01:00",
+    "body_line": "Billing collection is paused until 2026-08-15. You keep Portfolio plan access during this period. This does not change your underlying subscription status.",
+    "mentions_cancellation": false,
+    "postmark_status": "DELIVERED"
+  },
+  "production_nontouch_reconfirm_utc": "2026-08-15T20:58:00+00:00",
+  "circuit_fix_commit": "f88ce26d6711e881fc20cdae148ac8bff4b2f9cb",
+  "circuit_fix_pushed_to_origin_develop": false,
+  "staging_backend_redeployed_this_exercise": false,
+  "mongo_soak_interrupted_by_this_exercise": false,
+  "final_verdict": "COMMERCIAL_CONTROLS_VERIFIED"
+}

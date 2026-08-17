@@ -974,6 +974,37 @@ def build_runtime_contract(
     navigation_policy = resolve_navigation_policy(portal_mode)
     customer_experience = _customer_experience_for_mode(portal_mode, lifecycle_state, facts, now=now)
 
+    commercial_exception = None
+    try:
+        from services.commercial_entitlement_service import (
+            commercial_continuity_overlay_active,
+            commercial_restored_plan_code,
+        )
+
+        if commercial_continuity_overlay_active(client, billing):
+            restored = commercial_restored_plan_code(client, billing)
+            overlay_client = dict(client or {})
+            if restored:
+                overlay_client["billing_plan"] = restored
+            plan = _load_plan_context(overlay_client)
+            portal_mode = PortalMode.FULL_ACCESS.value
+            capabilities = resolve_capabilities("ACTIVE", portal_mode, plan["plan_features"])
+            background_policy = resolve_background_policy("ACTIVE")
+            communication_policy = resolve_communication_policy("ACTIVE", portal_mode)
+            session_policy = resolve_session_policy("ACTIVE", entitlements_version=entitlements_version)
+            customer_experience = _customer_experience_for_mode(portal_mode, "ACTIVE", facts, now=now)
+            commercial_exception = {
+                "active": True,
+                "effective_entitlement_state": "ENABLED",
+                "restored_plan_code": restored,
+                "underlying_lifecycle_state": lifecycle_state,
+                "portal_mode_override": portal_mode,
+                "governance_id": (client or {}).get("commercial_governance_id"),
+                "governance_state": (client or {}).get("commercial_governance_state"),
+            }
+    except Exception:
+        logger.debug("commercial continuity overlay skipped client_id=%s", client_id, exc_info=True)
+
     lifecycle_context = {
         "state_label": customer_experience.get("current_state_label") or lifecycle_state,
         "state_reason": resolution.reason,
@@ -982,6 +1013,7 @@ def build_runtime_contract(
         "last_event_id": None,
         "last_event_type": None,
         "transition_pending": is_stale_scheduled_cancellation_mirror(facts, now=now),
+        "commercial_overlay_active": bool(commercial_exception),
     }
 
     material = {
@@ -997,6 +1029,8 @@ def build_runtime_contract(
         },
         "reactivation_policy": reactivation_policy,
         "navigation_policy": navigation_policy,
+        "commercial_overlay": bool(commercial_exception),
+        "restored_plan_code": (commercial_exception or {}).get("restored_plan_code") if commercial_exception else None,
     }
     runtime_version = _compute_runtime_version(material)
     elapsed_ms = round((time.perf_counter() - started) * 1000, 3)
@@ -1026,6 +1060,7 @@ def build_runtime_contract(
         "navigation_policy": navigation_policy,
         "warnings": list(resolution.warnings),
         "source_facts": facts,
+        "commercial_exception": commercial_exception,
         "resolver_metadata": {
             "policy_version": resolution.policy_version,
             "resolver_version": resolution.resolver_version,

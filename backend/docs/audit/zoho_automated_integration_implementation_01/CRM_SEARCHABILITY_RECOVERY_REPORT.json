@@ -1,0 +1,153 @@
+{
+  "generated_at": "2026-07-14T19:46:16.074986+00:00",
+  "notes": [
+    "analytics_enabled=True (pre-existing; not executed by this run)"
+  ],
+  "recovery_verdict": "PASS",
+  "c12_verdict": "CRM_STAGING_PASS_WITH_CONDITIONS",
+  "combined_verdict": "CRM_STAGING_PASS_WITH_CONDITIONS",
+  "staging_sha": "476b6c970c1a7deecfbcd3963cf3fe5da50f0b5b",
+  "production_sha": "89217062481b4eb858a8b530ec90c83de067a4be",
+  "preflight": {
+    "staging_sha": "476b6c970c1a7deecfbcd3963cf3fe5da50f0b5b",
+    "staging_health": "healthy",
+    "production_sha": "89217062481b4eb858a8b530ec90c83de067a4be",
+    "crm_enabled": true,
+    "legacy_refresh_token_configured": false,
+    "crm_oauth": {
+      "credentials_configured": true,
+      "refresh_token_configured": true,
+      "refresh_token_source": "per_integration",
+      "using_legacy_fallback": false,
+      "oauth_status": null,
+      "expected_scope": "ZohoCRM.modules.leads.CREATE,ZohoCRM.modules.leads.UPDATE,ZohoCRM.modules.leads.READ"
+    },
+    "crm_ops": {
+      "enabled": true,
+      "oauth_status": "cached_expired",
+      "dead_letter_count": 1,
+      "queue_depth_pending": 1,
+      "incident_policy": {
+        "level": "warning",
+        "reason": "consecutive_failures_gte_1",
+        "actionable_incident": false,
+        "consecutive_failures": 1
+      }
+    },
+    "queue_depth_pending": 1,
+    "dead_letter_unresolved": 1,
+    "dead_letter_id": "ZDL-8601BEA054E2",
+    "integrations": {
+      "analytics": true,
+      "crm": true,
+      "campaigns": false,
+      "sign": false,
+      "books": false,
+      "workdrive": false
+    }
+  },
+  "search_probe": {
+    "oauth_refresh_via": "upsert_lead_on_prior_failed_lead",
+    "probe_sync_status": "success",
+    "probe_sync_message": "crm_outbound_create_ok",
+    "probe_sync_external_id": "625014000001936001",
+    "probe_sync_id": "ZSYNC-BAAC8BDFB65D",
+    "token_expires_in_s": 3594.255357503891,
+    "refresh_token_source_cached": "per_integration",
+    "readonly_search": {
+      "metadata_http": 200,
+      "field": {
+        "api_name": "Pleerity_Lead_ID",
+        "display_label": "Pleerity Lead ID",
+        "data_type": "text",
+        "searchable": true,
+        "id": "625014000001931007",
+        "unique": {
+          "case_sensitive": false
+        }
+      },
+      "search_http": 204,
+      "criteria": "(Pleerity_Lead_ID:equals:PLEERITY_SEARCHABILITY_PROBE_NO_MATCH)",
+      "invalid_query": false,
+      "search_body_code": null,
+      "search_message": null,
+      "search_reason": null,
+      "supports_search": true
+    }
+  },
+  "prior_lead_external_id_after_probe": "625014000001936001",
+  "dead_letter_replay": {
+    "success": true,
+    "sync_id": "ZSYNC-DDF009711FF6",
+    "status": "success",
+    "message": "crm_outbound_update_ok",
+    "_http_status": 200
+  },
+  "queue_process": {
+    "processed": 1,
+    "failed": 0,
+    "total": 1,
+    "_http_status": 200
+  },
+  "prior_lead_external_id_final": "625014000001936001",
+  "crm_ops_after_recovery": {
+    "enabled": true,
+    "manual_only": true,
+    "healthy": true,
+    "configuration_complete": true,
+    "configuration_missing": [],
+    "crm_target": {
+      "module": "Leads",
+      "module_configured": true,
+      "oauth_configured": true,
+      "shared_client_configured": true,
+      "api_base": "https://www.zohoapis.eu",
+      "identity_field": "Pleerity_Lead_ID",
+      "identity_resolution_order": [
+        "external_key",
+        "pleerity_lead_id_lookup",
+        "create",
+        "persist_external_key"
+      ],
+      "forbidden_identity_matchers": [
+        "email",
+        "name",
+        "heuristic"
+      ],
+      "expected_scope": "ZohoCRM.modules.leads.CREATE,ZohoCRM.modules.leads.UPDATE,ZohoCRM.modules.leads.READ",
+      "target_complete": true,
+      "missing": []
+    },
+    "oauth_status": "healthy",
+    "last_success_at": "2026-07-14T19:46:41.764996+00:00",
+    "last_success_sync_id": "ZSYNC-4D52DCB8F6C5",
+    "last_failure_at": "2026-07-14T09:06:06.418924+00:00",
+    "last_failure_sync_id": "ZSYNC-361872C6B860",
+    "last_failure_error": "Zoho API 400: {\"code\":\"INVALID_QUERY\",\"details\":{\"reason\":\"the field is not available for search\",\"api_name\":\"Pleerity_Lead_ID\"},\"message\":\"Invalid query formed\",\"status\":\"error\"}\n",
+    "consecutive_failures": 0,
+    "failure_count_24h": 1,
+    "queue_depth_pending": 0,
+    "queue_depth_failed": 0,
+    "duplicate_skips": 0,
+    "dead_letter_count": 0,
+    "replay_count": 0,
+    "next_expected_sync": "manual_only_no_cron",
+    "incident_policy": {
+      "level": "ok",
+      "reason": "healthy",
+      "actionable_incident": false,
+      "consecutive_failures": 0
+    },
+    "identity_resolution_order": [
+      "external_key",
+      "pleerity_lead_id_lookup",
+      "create",
+      "persist_external_key"
+    ]
+  },
+  "c12_lead_id": "LEAD-20260714195426-198E68",
+  "c12_external_id": "625014000001948001",
+  "c12_note": "Dedicated C12 re-run after invalid reuse of recovery lead",
+  "invalid_c12_reuse_superseded": true,
+  "create_via_queue_sync_id": "ZSYNC-2327F1C59A60"
+}
