@@ -304,6 +304,9 @@ async def test_release_and_restart_vacates_email():
     from services.onboarding_recovery_execution_service import execute_release_and_restart
 
     mock_db = MagicMock()
+    mock_db.clients.find_one_and_update = AsyncMock(
+        return_value={"client_id": "c1", "email": "stranded@example.com"}
+    )
     mock_db.clients.update_one = AsyncMock()
     mock_db.clients.find_one = AsyncMock(return_value={"recovery_attempt_count": 0})
     mock_db.portal_users.update_one = AsyncMock()
@@ -337,6 +340,93 @@ async def test_release_and_restart_vacates_email():
     assert result["completion_status"] == "RESTART_RELEASE_COMPLETE"
     assert result["released_canonical_email"] == "stranded@example.com"
     assert result["email_reservation_released"] is True
-    set_payload = mock_db.clients.update_one.await_args_list[0].args[1]["$set"]
+    set_payload = mock_db.clients.find_one_and_update.await_args.args[1]["$set"]
     assert set_payload["onboarding_identity_status"] == "RELEASED_FOR_RESTART"
     assert set_payload["email"] == "released.c1@released.invalid"
+
+
+@pytest.mark.asyncio
+async def test_release_second_call_rejected_already_released():
+    from services.onboarding_recovery_execution_service import (
+        execute_release_and_restart,
+        OnboardingRecoveryExecutionError,
+    )
+
+    mock_db = MagicMock()
+    mock_db.clients.find_one_and_update = AsyncMock(return_value=None)
+    signals = _signals(
+        client={
+            "client_id": "c1",
+            "email": "stranded@example.com",
+            "onboarding_status": OnboardingStatus.INTAKE_PENDING.value,
+        }
+    )
+    with patch("services.onboarding_recovery_execution_service.database.get_db", return_value=mock_db):
+        with patch(
+            "services.stripe_service.stripe_service.expire_checkout_session",
+            new=AsyncMock(),
+        ):
+            with patch(
+                "services.onboarding_continuation_service.expire_old_continuation_tokens",
+                new=AsyncMock(return_value=0),
+            ):
+                with pytest.raises(OnboardingRecoveryExecutionError) as exc:
+                    await execute_release_and_restart(
+                        client_id="c1",
+                        signals=signals,
+                        classification=CLASS_EMAIL_RESERVED_NO_CHECKOUT,
+                        reason="Abandoned unpaid signup, restart allowed.",
+                        actor={"portal_user_id": "admin1", "role": "ROLE_ADMIN"},
+                    )
+    assert exc.value.code == "RELEASE_NOT_ALLOWED"
+    assert "already_released" in exc.value.message
+
+
+@pytest.mark.asyncio
+async def test_regenerate_maps_live_coupon_on_test_mode_to_conflict():
+    from services.onboarding_recovery_execution_service import (
+        execute_regenerate_payment,
+        OnboardingRecoveryExecutionError,
+    )
+
+    signals = _signals(
+        client={
+            "client_id": "c1",
+            "email": "promo@example.com",
+            "onboarding_status": OnboardingStatus.INTAKE_PENDING.value,
+            "billing_plan": "PLAN_1_SOLO",
+        }
+    )
+    mock_db = MagicMock()
+    with patch("services.onboarding_recovery_execution_service.database.get_db", return_value=mock_db):
+        with patch(
+            "services.onboarding_recovery_execution_service.resolve_pilot_invite_for_client",
+            new=AsyncMock(return_value={"code": "PILOTACCESS", "stripe_coupon_id": "85x6smtg"}),
+        ):
+            with patch(
+                "services.stripe_service.stripe_service.expire_checkout_session",
+                new=AsyncMock(),
+            ):
+                with patch(
+                    "services.stripe_service.stripe_service.create_checkout_session",
+                    new=AsyncMock(
+                        side_effect=ValueError(
+                            "No such coupon: '85x6smtg'; a similar object exists in live mode, but a test mode key was used to make this request."
+                        )
+                    ),
+                ):
+                    with pytest.raises(OnboardingRecoveryExecutionError) as exc:
+                        await execute_regenerate_payment(
+                            client_id="c1",
+                            signals=signals,
+                            classification=CLASS_EMAIL_RESERVED_NO_CHECKOUT,
+                            reason="Recovery checkout with existing promo.",
+                            actor={"portal_user_id": "admin1", "role": "ROLE_ADMIN"},
+                            origin_url="https://example.test",
+                            send_customer_email=False,
+                            preserve_promo_eligibility=True,
+                            apply_recovery_waiver=False,
+                            promo_decision="preserve_existing",
+                        )
+    assert exc.value.code == "STRIPE_PROMO_MODE_MISMATCH"
+    assert exc.value.status_code == 409

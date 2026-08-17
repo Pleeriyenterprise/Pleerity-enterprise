@@ -275,7 +275,16 @@ async def execute_regenerate_payment(
     except StripeModeMismatchError as e:
         raise OnboardingRecoveryExecutionError("STRIPE_MODE_MISMATCH", str(e), 400) from e
     except ValueError as e:
-        raise OnboardingRecoveryExecutionError("CHECKOUT_CREATE_FAILED", str(e), 500) from e
+        msg = str(e)
+        lowered = msg.lower()
+        if "live mode" in lowered or "no such coupon" in lowered or "no such promotion code" in lowered:
+            raise OnboardingRecoveryExecutionError(
+                "STRIPE_PROMO_MODE_MISMATCH",
+                "This promotion is not available in the current payment environment. "
+                "Select a staging-valid approved promo or generate a normal paid checkout.",
+                409,
+            ) from e
+        raise OnboardingRecoveryExecutionError("CHECKOUT_CREATE_FAILED", msg, 500) from e
 
     checkout_url = session.get("checkout_url")
     session_id = session.get("session_id")
@@ -307,6 +316,7 @@ async def execute_regenerate_payment(
                     "customer_entered_promo": False,
                 },
                 "last_recovery_checkout_id": session_id,
+                **({"pilot_invite_code": applied_invite_code} if applied_invite_code else {}),
             }
         },
     )
@@ -639,7 +649,18 @@ async def execute_release_and_restart(
     if contact and canonical_client_email(contact) == canonical:
         set_fields["contact_email"] = vacated_email
 
-    await db.clients.update_one({"client_id": client_id}, {"$set": set_fields})
+    released = await db.clients.find_one_and_update(
+        {
+            "client_id": client_id,
+            "onboarding_identity_status": {"$ne": ONBOARDING_IDENTITY_RELEASED},
+        },
+        {"$set": set_fields},
+    )
+    if not released:
+        raise OnboardingRecoveryExecutionError(
+            "RELEASE_NOT_ALLOWED",
+            "This onboarding cannot be released: already_released. Use payment or account recovery instead.",
+        )
     await _record_recovery_client_update(
         db,
         client_id=client_id,
@@ -715,6 +736,7 @@ async def list_approved_recovery_promos(*, limit: int = 50) -> list[Dict[str, An
                 "remaining_uses": remaining,
                 "discount_percent": row.get("discount_percent"),
                 "applies_to_plan_codes": row.get("applies_to_plan_codes") or [],
+                "stripe_coupon_id": row.get("stripe_coupon_id"),
             }
         )
     return out
