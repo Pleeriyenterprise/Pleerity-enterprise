@@ -198,9 +198,17 @@ def test_recommendation_copy_is_customer_safe():
     assert "ple-cvp-2026-000099" in copy["blockage_summary"].lower()
 
 
-def test_recovery_already_active_not_eligible():
+def test_recovery_already_active_allows_release_not_regenerate():
     eligibility = validate_recovery_eligibility(CLASS_RECOVERY_ALREADY_ACTIVE, _signals())
-    assert eligibility["eligible"] is False
+    assert eligibility["eligible"] is True
+    assert eligibility.get("regenerate_blocked") is True
+    strategy = derive_recovery_strategy(CLASS_RECOVERY_ALREADY_ACTIVE, _signals())
+    assert MODE_RELEASE_AND_RESTART in strategy["available_modes"]
+    assert MODE_REGENERATE_PAYMENT not in (strategy.get("available_modes") or [])
+    validate_mode_for_classification(MODE_RELEASE_AND_RESTART, CLASS_RECOVERY_ALREADY_ACTIVE)
+    with pytest.raises(OnboardingRecoveryExecutionError) as exc:
+        validate_mode_for_classification(MODE_REGENERATE_PAYMENT, CLASS_RECOVERY_ALREADY_ACTIVE)
+    assert exc.value.code == "MODE_CLASSIFICATION_MISMATCH"
 
 
 @pytest.mark.asyncio

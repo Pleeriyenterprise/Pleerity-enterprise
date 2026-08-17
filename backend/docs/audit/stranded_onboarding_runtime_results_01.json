@@ -1,15 +1,15 @@
 {
   "programme": "STRANDED-ONBOARDING-RUNTIME-01",
-  "started_at": "2026-08-17T16:34:01.516347+00:00",
+  "started_at": "2026-08-17T17:08:47.972183+00:00",
   "api": "https://pleerity-enterprise.onrender.com/api",
   "frontend": "https://pleerity-enterprise-9jjg.vercel.app",
   "production_touched": false,
-  "committed_sha_expected": "7f3ba4fcc2b733e0d41ced95d5646f5cb3e41ac9",
+  "committed_sha_expected": "d6779809a3cd276e4bc41828d57e29e1490ebd18",
   "paths": {
     "grant_promo_exception": {
       "status": 200,
       "ok": true,
-      "invite_code": "PILOTACCESS"
+      "invite_code": "STAGINGSO01"
     },
     "existing_promo_controls": {
       "grant_promo_eligibility_bypass": {
@@ -21,13 +21,13 @@
         "ok": true
       }
     },
-    "journey_1_recovery_promo": {
-      "email": "so.promo.202608171634@yopmail.com",
-      "client_id": "780c70e0-ab03-4b45-b69a-64b814537a75",
+    "journey_2_release_restart": {
+      "email": "so.release.202608171708@yopmail.com",
+      "client_id": "40a3f8d3-d5df-417b-9a29-32f806c776e6",
       "before": {
-        "client_id": "780c70e0-ab03-4b45-b69a-64b814537a75",
-        "email": "so.promo.202608171634@yopmail.com",
-        "customer_reference": "PLE-CVP-2026-000063",
+        "client_id": "40a3f8d3-d5df-417b-9a29-32f806c776e6",
+        "email": "so.release.202608171708@yopmail.com",
+        "customer_reference": "PLE-CVP-2026-000069",
         "onboarding_status": "INTAKE_PENDING",
         "onboarding_identity_status": "ACTIVE",
         "latest_checkout_session_id": null,
@@ -42,46 +42,157 @@
       "in_pending_before": true,
       "identities_before": [
         {
-          "client_id": "780c70e0-ab03-4b45-b69a-64b814537a75",
-          "email": "so.promo.202608171634@yopmail.com",
+          "client_id": "40a3f8d3-d5df-417b-9a29-32f806c776e6",
+          "email": "so.release.202608171708@yopmail.com",
           "onboarding_status": "INTAKE_PENDING",
           "onboarding_identity_status": "ACTIVE",
           "restarted_from_client_id": null,
           "released_canonical_email": null
         }
       ],
-      "assessment_before": "EMAIL_RESERVED_NO_CHECKOUT",
-      "first_checkout": {
-        "status": 409,
-        "ok": false,
+      "check_email_before": {
+        "status": 200,
+        "ok": true,
         "body": {
-          "detail": {
-            "error_code": "STRIPE_PROMO_MODE_MISMATCH",
-            "message": "This promotion is not available in the current payment environment. Select a staging-valid approved promo or generate a normal paid checkout."
-          }
+          "available": false,
+          "normalized_email": "so.release.202608171708@yopmail.com",
+          "reason_code": "EMAIL_TAKEN"
         }
       },
-      "old_session_id": null,
-      "freshness_wait": {
-        "ready": false,
-        "skipped": true,
-        "first_checkout_failed": true
+      "pre_release_checkout": {
+        "status": 200,
+        "ok": true,
+        "session_id": "cs_test_b1laUYIYuYXFN98VzR0GtW0bDAQ1Dog3IUIpFWADhJk8kIj2R3FKxPO6iM"
       },
-      "replacement": {
-        "status": 409,
-        "ok": false,
-        "execution": null
+      "pre_release_checkout_inspect": {
+        "ok": true,
+        "url_host": "checkout.stripe.com",
+        "expired": false,
+        "amount_shown": "\u00a368.00",
+        "customer_entered_promo_ui_count": 0,
+        "text_preview": "Back\nPleerity Enterprise Ltd\nSandbox\nSubscribe to Compliance Vault Pro \u2013 Solo Landlord\n\u00a368.00\nThen \u00a319.00 per month\nCompliance Vault Pro \u2013 Solo Landlord\nCompliance dashboard and reminders for DIY landlords managing up to 2 properties.\nBilled monthly\n\u00a319.00\nCompliance Vault Pro \u2013 Onboarding (Solo)\n\u00a349.00\n\nOR\n\nContact information\nEmail\nso.release.202608171708@yopmail.com\nPayment method\nCard\nKlarna\nRevolut Pay\nSave my information for faster checkout\nPay securely at Pleerity Enterprise Ltd and everywhere Onelink is accepted.\nPay and subscribe\nProcessing\nBy subscribing, you authorise Pleerity Enterprise Ltd to charge you according to the terms until you cancel.\nI am an AI agent acting on behalf of someone else\nPowered by \nTerms\nPrivacy",
+        "screenshot": "j2_checkout_before_release.png"
       },
-      "new_session_id": null,
-      "prior_session_superseded": null,
-      "promo_preserved": null,
-      "applied_invite_code": null,
-      "email_sent": null,
-      "email_result": null,
-      "after": {
-        "client_id": "780c70e0-ab03-4b45-b69a-64b814537a75",
-        "email": "so.promo.202608171634@yopmail.com",
-        "customer_reference": "PLE-CVP-2026-000063",
+      "concurrent_release": [
+        {
+          "status": 400,
+          "ok": false,
+          "error": {
+            "error_code": "NOT_ELIGIBLE",
+            "message": "A recovery checkout link is still active. Customer should use the existing link first."
+          }
+        },
+        {
+          "status": 400,
+          "ok": false,
+          "error": {
+            "error_code": "NOT_ELIGIBLE",
+            "message": "A recovery checkout link is still active. Customer should use the existing link first."
+          }
+        }
+      ],
+      "release_success_count": 0,
+      "after_release": {
+        "client_id": "40a3f8d3-d5df-417b-9a29-32f806c776e6",
+        "email": "so.release.202608171708@yopmail.com",
+        "customer_reference": "PLE-CVP-2026-000069",
+        "onboarding_status": "INTAKE_PENDING",
+        "onboarding_identity_status": "ACTIVE",
+        "latest_checkout_session_id": "cs_test_b1laUYIYuYXFN98VzR0GtW0bDAQ1Dog3IUIpFWADhJk8kIj2R3FKxPO6iM",
+        "recovery_checkout_context": {
+          "classification": "EMAIL_RESERVED_NO_CHECKOUT",
+          "promo_decision": "none",
+          "preserve_promo": false,
+          "applied_invite_code": null,
+          "prior_session_id": null,
+          "prior_session_superseded": false,
+          "customer_entered_promo": false
+        },
+        "pilot_invite_code": null,
+        "restarted_from_client_id": null,
+        "released_canonical_email": null,
+        "subscription_status": "PENDING",
+        "stripe_subscription_id": null,
+        "stripe_customer_id": null
+      },
+      "in_pending_after_release": true,
+      "check_email_after": {
+        "status": 200,
+        "ok": true,
+        "body": {
+          "available": false,
+          "normalized_email": "so.release.202608171708@yopmail.com",
+          "reason_code": "EMAIL_TAKEN"
+        }
+      },
+      "stale_checkout": {
+        "ok": true,
+        "url_host": "checkout.stripe.com",
+        "expired": false,
+        "amount_shown": "\u00a368.00",
+        "customer_entered_promo_ui_count": 0,
+        "text_preview": "Back\nPleerity Enterprise Ltd\nSandbox\nSubscribe to Compliance Vault Pro \u2013 Solo Landlord\n\u00a368.00\nThen \u00a319.00 per month\nCompliance Vault Pro \u2013 Solo Landlord\nCompliance dashboard and reminders for DIY landlords managing up to 2 properties.\nBilled monthly\n\u00a319.00\nCompliance Vault Pro \u2013 Onboarding (Solo)\n\u00a349.00\n\nOR\n\nContact information\nEmail\nso.release.202608171708@yopmail.com\nPayment method\nCard\nKlarna\nRevolut Pay\nSave my information for faster checkout\nPay securely at Pleerity Enterprise Ltd and everywhere Onelink is accepted.\nPay and subscribe\nProcessing\nBy subscribing, you authorise Pleerity Enterprise Ltd to charge you according to the terms until you cancel.\nI am an AI agent acting on behalf of someone else\nPowered by \nTerms\nPrivacy",
+        "screenshot": "j2_stale_checkout.png"
+      },
+      "audit": [
+        {
+          "action": "ONBOARDING_RECOVERY_CONTINUATION_RECORDED",
+          "created_at": "2026-08-17T17:10:55.253959+00:00",
+          "resource_id": "40a3f8d3-d5df-417b-9a29-32f806c776e6"
+        },
+        {
+          "action": "NOTIFICATION_BLOCKED_PROVISIONING_INCOMPLETE",
+          "created_at": "2026-08-17T17:09:59.136003+00:00",
+          "resource_id": null
+        },
+        {
+          "action": "INTAKE_SUBMITTED",
+          "created_at": "2026-08-17T17:09:56.863949+00:00",
+          "resource_id": null
+        },
+        {
+          "action": "INTAKE_PROPERTY_ADDED",
+          "created_at": "2026-08-17T17:09:56.624647+00:00",
+          "resource_id": "70a8bce4-047f-48d4-b4a6-936884a30ddf"
+        }
+      ],
+      "concurrent_register": [
+        {
+          "status": 400,
+          "ok": false,
+          "client_id": null,
+          "restarted_from_client_id": null,
+          "detail": "An account with this email already exists"
+        },
+        {
+          "status": 400,
+          "ok": false,
+          "client_id": null,
+          "restarted_from_client_id": null,
+          "detail": "An account with this email already exists"
+        }
+      ],
+      "register_success_count": 0,
+      "new_client_id": null,
+      "identities_after": [
+        {
+          "client_id": "40a3f8d3-d5df-417b-9a29-32f806c776e6",
+          "email": "so.release.202608171708@yopmail.com",
+          "onboarding_status": "INTAKE_PENDING",
+          "onboarding_identity_status": "ACTIVE",
+          "restarted_from_client_id": null,
+          "released_canonical_email": null
+        }
+      ],
+      "passed": false
+    },
+    "journey_1_recovery_promo": {
+      "email": "so.promo.202608171708@yopmail.com",
+      "client_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5",
+      "before": {
+        "client_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5",
+        "email": "so.promo.202608171708@yopmail.com",
+        "customer_reference": "PLE-CVP-2026-000068",
         "onboarding_status": "INTAKE_PENDING",
         "onboarding_identity_status": "ACTIVE",
         "latest_checkout_session_id": null,
@@ -93,38 +204,355 @@
         "stripe_subscription_id": null,
         "stripe_customer_id": null
       },
-      "in_pending_after": true,
-      "identities_after": [
+      "in_pending_before": true,
+      "identities_before": [
         {
-          "client_id": "780c70e0-ab03-4b45-b69a-64b814537a75",
-          "email": "so.promo.202608171634@yopmail.com",
+          "client_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5",
+          "email": "so.promo.202608171708@yopmail.com",
           "onboarding_status": "INTAKE_PENDING",
           "onboarding_identity_status": "ACTIVE",
           "restarted_from_client_id": null,
           "released_canonical_email": null
         }
       ],
-      "messages": [],
+      "assessment_before": "EMAIL_RESERVED_NO_CHECKOUT",
+      "first_checkout": {
+        "status": 200,
+        "ok": true,
+        "body": {
+          "ok": true,
+          "client_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5",
+          "classification": "EMAIL_RESERVED_NO_CHECKOUT",
+          "execution": {
+            "mode": "regenerate_payment",
+            "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_a14AF4omAyYAiBwauUmAanzJTorIZzaL4Ywt9eV8Yqt2MtZT53AK3XJs3E#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5acWB2cVowNFdrN19gRkM1SjBqdGFQfzc3d3Zsc2tWbVRuS3JzSX83RkloR0g9ZzNiT3A9UGFdMm5OY05ObF1gNjd1aFdMVFRAXEx8UzZtSmlEaE4wVlxmR0ZmS04wfTU1MDRIUTZpVTQnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBoJyknYGtkZ2lgVWlkZmBtamlhYHd2Jz9xd3BgeCUl",
+            "session_id": "cs_test_a14AF4omAyYAiBwauUmAanzJTorIZzaL4Ywt9eV8Yqt2MtZT53AK3XJs3E",
+            "email_sent": false,
+            "email_result": {},
+            "waiver_applied": false,
+            "waiver_override_id": null,
+            "promo_preserved": true,
+            "promo_decision": "preserve_existing",
+            "applied_invite_code": "STAGINGSO01",
+            "prior_session_id": null,
+            "prior_session_superseded": false,
+            "continuation_delivered": true,
+            "completion_status": "CHECKOUT_RECOVERY_COMPLETE"
+          },
+          "assessment": {
+            "client_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5",
+            "found": true,
+            "is_stranded": true,
+            "classification": "RECOVERY_ALREADY_ACTIVE",
+            "risk": "low",
+            "strategy": {
+              "recommended_mode": null,
+              "available_modes": [],
+              "execution_available": false,
+              "phase": 2,
+              "note": "A recovery checkout link was sent recently. Wait for customer action or allow the link to expire before regenerating.",
+              "executable_modes": []
+            },
+            "customer_continuation_mode": null,
+            "eligibility": {
+              "eligible": false,
+              "reason": "A recovery checkout link is still active. Customer should use the existing link first."
+            },
+            "recommendation": {
+              "blockage_summary": "A recovery checkout link was sent recently and may still be valid.",
+              "recommended_action": "Wait for customer action or confirm the prior link expired before regenerating.",
+              "expected_customer_outcome": "Customer should use the existing payment link if still valid.",
+              "operational_impact": "Avoid stacking multiple active checkout sessions."
+            },
+            "diagnostic": {
+              "last_successful_stage": "CHECKOUT_CREATED",
+              "next_required_stage": "PAYMENT_COMPLETED",
+              "blocking_reason": "RECOVERY_ALREADY_ACTIVE",
+              "recoverability": "WAIT_EXISTING_LINK",
+              "payment_state": "CHECKOUT_FRESH",
+              "promo_state": "VALIDATED",
+              "email_identity_state": "ACTIVE_OR_VALID_ONBOARDING_IDENTITY",
+              "provisioning_state": "INTAKE_PENDING",
+              "password_state": "NOT_STARTED",
+              "recommended_recovery": null,
+              "blockage_summary": "A recovery checkout link was sent recently and may still be valid.",
+              "customer_entered_promo_supported": false
+            },
+            "promo_recovery": {
+              "has_validated_promo": true,
+              "invite_code": "STAGINGSO01",
+              "customer_entered_promo_supported": false,
+              "preserve_existing_available": true
+            },
+            "state_summary": {
+              "customer_reference": "PLE-CVP-2026-000068",
+              "onboarding_status": "INTAKE_PENDING",
+              "provisioning_status": null,
+              "subscription_status": "PENDING",
+              "lifecycle_status": "pending_payment",
+              "billing_lifecycle_state": null,
+              "password_set": null,
+              "checkout_link_sent_at": "2026-08-17T17:12:16.158000",
+              "checkout_fresh": true,
+              "paid_or_active": false,
+              "activation_email_sent": false,
+              "onboarding_identity_status": "ACTIVE",
+              "released_canonical_email": null
+            },
+            "recovery_history": {
+              "attempts": [
+                {
+                  "type": "checkout_link_sent",
+                  "at": "2026-08-17T17:12:16.158000",
+                  "session_id": "cs_test_a14AF4omAyYAiBwauUmAanzJTorIZzaL4Ywt9eV8Yqt2MtZT53AK3XJs3E",
+                  "fresh": true
+                }
+              ],
+              "recovery_attempt_count": 1,
+              "last_checkout_sent_at": "2026-08-17T17:12:16.158000",
+              "last_recovery_checkout_id": "cs_test_a14AF4omAyYAiBwauUmAanzJTorIZzaL4Ywt9eV8Yqt2MtZT53AK3XJs3E"
+            },
+            "indicators": {
+              "stranded_onboarding": true,
+              "payment_failed": false,
+              "provisioning_failed": false,
+              "incomplete_redemption": false,
+              "retry_blocked": false,
+              "override_active": true,
+              "first_time_consumed": false,
+              "badges": [
+                "override_active",
+                "intake_pending"
+              ],
+              "recoverable_count": 0,
+              "first_time_bypass_active": false
+            },
+            "completion_rule": "Recovery is complete only when the customer has a valid, observable continuation path \u2014 not when internal state mutation succeeds.",
+            "phase": 2,
+            "execution_available": false,
+            "executable_modes": [],
+            "observability": {
+              "found": true,
+              "client_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5",
+              "completion": {
+                "status": "recovery_in_progress",
+                "message": "Recovery was initiated; continuation outcome not yet confirmed.",
+                "paid_or_active": false,
+                "password_set": false,
+                "continuation_delivered_at": null,
+                "last_recovery_at": "2026-08-17T17:12:16.284000",
+                "last_recovery_mode": "regenerate_payment"
+              },
+              "events": [
+                {
+                  "event_id": "fdd2cc68-3dae-415c-8aae-43ed2d596919",
+                  "event_type": "continuation_delivered",
+                  "client_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5",
+                  "mode": "regenerate_payment",
+                  "classification": "EMAIL_RESERVED_NO_CHECKOUT",
+                  "actor_id": "3c6f1491-33d6-4827-87d3-ab28e3aa7079",
+                  "continuation_delivered": true,
+                  "email_sent": false,
+                  "created_at": "2026-08-17T17:12:16.526782+00:00",
+                  "metadata": {
+                    "action_id": "onboarding_recovery_execute",
+                    "reason_preview": "STRANDED-ONBOARDING-RUNTIME-01 governed staging certification execute",
+                    "ip_address": "188.29.111.60",
+                    "execution_summary": {
+                      "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_a14AF4omAyYAiBwauUmAanzJTorIZzaL4Ywt9eV8Yqt2MtZT53AK3XJs3E#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5acWB2cVowNFdrN19gRkM1SjBqdGFQfzc3d3Zsc2tWbVRuS3JzSX83RkloR0g9ZzNiT3A9UGFdMm5OY05ObF1gNjd1aFdMVFRAXEx8UzZtSmlEaE4wVlxmR0ZmS04wfTU1MDRIUTZpVTQnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBoJyknYGtkZ2lgVWlkZmBtamlhYHd2Jz9xd3BgeCUl",
+                      "session_id": "cs_test_a14AF4omAyYAiBwauUmAanzJTorIZzaL4Ywt9eV8Yqt2MtZT53AK3XJs3E",
+                      "waiver_applied": false,
+                      "promo_preserved": true,
+                      "promo_decision": "preserve_existing",
+                      "applied_invite_code": "STAGINGSO01",
+                      "completion_status": "CHECKOUT_RECOVERY_COMPLETE"
+                    }
+                  }
+                }
+              ],
+              "delivery": {
+                "continuation_delivered_at": null,
+                "last_recovery_at": "2026-08-17T17:12:16.284000",
+                "last_recovery_mode": "regenerate_payment",
+                "last_recovery_classification": "EMAIL_RESERVED_NO_CHECKOUT",
+                "recovery_attempt_count": 1,
+                "last_recovery_checkout_id": "cs_test_a14AF4omAyYAiBwauUmAanzJTorIZzaL4Ywt9eV8Yqt2MtZT53AK3XJs3E"
+              }
+            }
+          }
+        }
+      },
+      "old_session_id": "cs_test_a14AF4omAyYAiBwauUmAanzJTorIZzaL4Ywt9eV8Yqt2MtZT53AK3XJs3E",
+      "old_checkout_inspect": {
+        "ok": true,
+        "url_host": "checkout.stripe.com",
+        "expired": false,
+        "amount_shown": "\u00a30.00",
+        "customer_entered_promo_ui_count": 0,
+        "text_preview": "Back\nPleerity Enterprise Ltd\nSandbox\nSubscribe to Compliance Vault Pro \u2013 Solo Landlord\n\u00a30.00\nper month\nuntil coupon expires\nCompliance Vault Pro \u2013 Solo Landlord\nCompliance dashboard and reminders for DIY landlords managing up to 2 properties.\nBilled monthly\n\u00a319.00\nSubtotal\n\u00a319.00\nStaging stranded-onboarding cert\n-\u00a319.00\n100% off for 2 months\nTotal due today\n\u00a30.00\n\nOR\n\nContact information\nEmail\nso.promo.202608171708@yopmail.com\nPayment method\nCard\nKlarna\nRevolut Pay\nSave my information for faster checkout\nPay securely at Pleerity Enterprise Ltd and everywhere Onelink is accepted.\nPay and subscribe\nProcessing\nBy subscribing, you authorise Pleerity Enterprise Ltd to charge you according to the terms until you cancel.\nI am an AI agent acting on behalf of someone else\nPowered by \nTerms\nPrivacy",
+        "screenshot": "j1_old_checkout.png"
+      },
+      "freshness_wait": {
+        "classification": "EXPIRED_CHECKOUT",
+        "checkout_fresh": false,
+        "checked_at": "2026-08-17T17:42:31.139443+00:00",
+        "ready": true
+      },
+      "replacement": {
+        "status": 200,
+        "ok": true,
+        "execution": {
+          "mode": "regenerate_payment",
+          "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_a1bF7GMuG1AbxCkHpIMUtnhJPKQoy0ARUd2KnHH9375JdOSLhBxiczhChK#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5acWB2cVowNFdrN19gRkM1SjBqdGFQfzc3d3Zsc2tWbVRuS3JzSX83RkloR0g9ZzNiT3A9UGFdMm5OY05ObF1gNjd1aFdMVFRAXEx8UzZtSmlEaE4wVlxmR0ZmS04wfTU1MDRIUTZpVTQnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBoJyknYGtkZ2lgVWlkZmBtamlhYHd2Jz9xd3BgeCUl",
+          "session_id": "cs_test_a1bF7GMuG1AbxCkHpIMUtnhJPKQoy0ARUd2KnHH9375JdOSLhBxiczhChK",
+          "email_sent": true,
+          "email_result": {
+            "email_sent": true,
+            "outcome": "sent",
+            "block_reason": null,
+            "message_id": "7f993db3-a299-4253-b0e2-a5efa6f01697"
+          },
+          "waiver_applied": false,
+          "waiver_override_id": null,
+          "promo_preserved": true,
+          "promo_decision": "preserve_existing",
+          "applied_invite_code": "STAGINGSO01",
+          "prior_session_id": "cs_test_a14AF4omAyYAiBwauUmAanzJTorIZzaL4Ywt9eV8Yqt2MtZT53AK3XJs3E",
+          "prior_session_superseded": true,
+          "continuation_delivered": true,
+          "completion_status": "CHECKOUT_RECOVERY_COMPLETE"
+        }
+      },
+      "new_session_id": "cs_test_a1bF7GMuG1AbxCkHpIMUtnhJPKQoy0ARUd2KnHH9375JdOSLhBxiczhChK",
+      "prior_session_superseded": true,
+      "promo_preserved": true,
+      "applied_invite_code": "STAGINGSO01",
+      "email_sent": true,
+      "email_result": {
+        "email_sent": true,
+        "outcome": "sent",
+        "block_reason": null,
+        "message_id": "7f993db3-a299-4253-b0e2-a5efa6f01697"
+      },
+      "old_after_supersede": {
+        "ok": true,
+        "url_host": "checkout.stripe.com",
+        "expired": false,
+        "amount_shown": null,
+        "customer_entered_promo_ui_count": 0,
+        "text_preview": "You're all done here\n\nYou've either completed your payment or this checkout session has timed out.",
+        "screenshot": "j1_old_expired.png"
+      },
+      "new_checkout_inspect": {
+        "ok": true,
+        "url_host": "checkout.stripe.com",
+        "expired": false,
+        "amount_shown": "\u00a30.00",
+        "customer_entered_promo_ui_count": 0,
+        "text_preview": "Back\nPleerity Enterprise Ltd\nSandbox\nSubscribe to Compliance Vault Pro \u2013 Solo Landlord\n\u00a30.00\nper month\nuntil coupon expires\nCompliance Vault Pro \u2013 Solo Landlord\nCompliance dashboard and reminders for DIY landlords managing up to 2 properties.\nBilled monthly\n\u00a319.00\nSubtotal\n\u00a319.00\nStaging stranded-onboarding cert\n-\u00a319.00\n100% off for 2 months\nTotal due today\n\u00a30.00\n\nOR\n\nContact information\nEmail\nso.promo.202608171708@yopmail.com\nPayment method\nCard\nKlarna\nRevolut Pay\nSave my information for faster checkout\nPay securely at Pleerity Enterprise Ltd and everywhere Onelink is accepted.\nPay and subscribe\nProcessing\nBy subscribing, you authorise Pleerity Enterprise Ltd to charge you according to the terms until you cancel.\nI am an AI agent acting on behalf of someone else\nPowered by \nTerms\nPrivacy",
+        "screenshot": "j1_new_checkout.png"
+      },
+      "customer_pay": {
+        "ok": false,
+        "clicked_pay": true,
+        "filled_card": false,
+        "final_url": "https://checkout.stripe.com/c/pay/cs_test_a1bF7GMuG1AbxCkHpIMUtnhJPKQoy0ARUd2KnHH9375JdOSLhBxiczhChK#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5acWB2cVowNFdrN19gRkM1SjBqdGFQfzc3d3Zsc2tWbVRuS3JzSX83RkloR0g9ZzNiT3A9UGFdMm5OY05ObF1gNjd1aFdMVFRAXEx8UzZtSmlEaE4wVlxmR0ZmS04wfTU1MDRIUTZpVTQnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBoJyknYGtkZ2lgVWlkZmBtamlhYHd2Jz9xd3BgeCUl",
+        "text_preview": "Back\nPleerity Enterprise Ltd\nSandbox\nSubscribe to Compliance Vault Pro \u2013 Solo Landlord\n\u00a30.00\nper month\nuntil coupon expires\nCompliance Vault Pro \u2013 Solo Landlord\nCompliance dashboard and reminders for DIY landlords managing up to 2 properties.\nBilled monthly\n\u00a319.00\nSubtotal\n\u00a319.00\nStaging stranded-onboarding cert\n-\u00a319.00\n100% off for 2 months\nTotal due today\n\u00a30.00\n\nOR\n\nContact information\nEmail\nso.promo.202608171708@yopmail.com\nPayment method\nCard\nKlarna\nRevolut Pay\nPAYMENT METHOD REQUIRED\nSave my information for faster checkout\nPay securely at Pleerity Enterprise Ltd and everywhere Onelink is accepted.\nPay and subscribe\nProcessing\nBy subscribing, you authorise Pleerity Enterprise Ltd to charge you according to the terms until you cancel.\nI am an AI agent acting on behalf of someone else\nPowered by \nTerms\nPrivacy",
+        "screenshot": "j1_paid.png",
+        "pre_pay_preview": "Back\nPleerity Enterprise Ltd\nSandbox\nSubscribe to Compliance Vault Pro \u2013 Solo Landlord\n\u00a30.00\nper month\nuntil coupon expires\nCompliance Vault Pro \u2013 Solo Landlord\nCompliance dashboard and reminders for DIY landlords managing up to 2 properties.\nBilled monthly\n\u00a319.00\nSubtotal\n\u00a319.00\nStaging stranded-onboarding cert\n-\u00a319.00\n100% off for 2 months\nTotal due today\n\u00a30.00\n\nOR\n\nContact information\nEmail\nso.promo.202608171708@yopmail.com\nPayment method\nCard\nKlarna\nRevolut Pay\nSave my information for faster checkout\nPay securely at Pleerity Enterprise Ltd and everywhere Onelink is accepted.\nPay and subscribe\nProcessing\nBy subscribing, you authorise Pleerity Enterprise Ltd to charge you according to the terms until you cancel.\nI am an AI agent acting on behalf of someone else\nPowered by \nTerms\nPrivacy"
+      },
+      "provisioning": {
+        "onboarding_status": "INTAKE_PENDING",
+        "subscription_status": "PENDING",
+        "stripe_subscription_id": null,
+        "stripe_customer_id": null,
+        "in_pending_setup": true,
+        "ready": false
+      },
+      "after": {
+        "client_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5",
+        "email": "so.promo.202608171708@yopmail.com",
+        "customer_reference": "PLE-CVP-2026-000068",
+        "onboarding_status": "INTAKE_PENDING",
+        "onboarding_identity_status": "ACTIVE",
+        "latest_checkout_session_id": "cs_test_a1bF7GMuG1AbxCkHpIMUtnhJPKQoy0ARUd2KnHH9375JdOSLhBxiczhChK",
+        "recovery_checkout_context": {
+          "classification": "EXPIRED_CHECKOUT",
+          "promo_decision": "preserve_existing",
+          "preserve_promo": true,
+          "applied_invite_code": "STAGINGSO01",
+          "prior_session_id": "cs_test_a14AF4omAyYAiBwauUmAanzJTorIZzaL4Ywt9eV8Yqt2MtZT53AK3XJs3E",
+          "prior_session_superseded": true,
+          "customer_entered_promo": false
+        },
+        "pilot_invite_code": "STAGINGSO01",
+        "restarted_from_client_id": null,
+        "released_canonical_email": null,
+        "subscription_status": "PENDING",
+        "stripe_subscription_id": null,
+        "stripe_customer_id": null
+      },
+      "in_pending_after": true,
+      "identities_after": [
+        {
+          "client_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5",
+          "email": "so.promo.202608171708@yopmail.com",
+          "onboarding_status": "INTAKE_PENDING",
+          "onboarding_identity_status": "ACTIVE",
+          "restarted_from_client_id": null,
+          "released_canonical_email": null
+        }
+      ],
+      "messages": [
+        {
+          "template_key": "ADMIN_MANUAL",
+          "event_type": null,
+          "status": "DELIVERED",
+          "provider_message_id": "4db14f3c\u2026",
+          "created_at": "2026-08-17T17:42:40.283000"
+        }
+      ],
       "audit": [
         {
+          "action": "EMAIL_DELIVERED",
+          "created_at": "2026-08-17T17:42:44.797087+00:00",
+          "resource_id": null
+        },
+        {
+          "action": "ONBOARDING_RECOVERY_CONTINUATION_RECORDED",
+          "created_at": "2026-08-17T17:42:43.758601+00:00",
+          "resource_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5"
+        },
+        {
+          "action": "EMAIL_SENT",
+          "created_at": "2026-08-17T17:42:42.062589+00:00",
+          "resource_id": null
+        },
+        {
+          "action": "ONBOARDING_RECOVERY_CONTINUATION_RECORDED",
+          "created_at": "2026-08-17T17:12:16.897521+00:00",
+          "resource_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5"
+        },
+        {
           "action": "NOTIFICATION_BLOCKED_PROVISIONING_INCOMPLETE",
-          "created_at": "2026-08-17T16:42:09.733748+00:00",
+          "created_at": "2026-08-17T17:09:52.453633+00:00",
           "resource_id": null
         },
         {
           "action": "INTAKE_SUBMITTED",
-          "created_at": "2026-08-17T16:42:06.933257+00:00",
+          "created_at": "2026-08-17T17:09:50.127030+00:00",
           "resource_id": null
         },
         {
           "action": "INTAKE_PROPERTY_ADDED",
-          "created_at": "2026-08-17T16:42:06.692945+00:00",
-          "resource_id": "d5eb27ec-2859-403b-a5e3-7c201ef488fe"
+          "created_at": "2026-08-17T17:09:49.884629+00:00",
+          "resource_id": "3f1382f2-52ba-435d-853d-5b7bdbdeb5f4"
         }
       ],
       "admin_ui": {
         "ok": true,
-        "url": "https://pleerity-enterprise-9jjg.vercel.app/admin/clients/780c70e0-ab03-4b45-b69a-64b814537a75",
+        "url": "https://pleerity-enterprise-9jjg.vercel.app/admin/clients/718fae2d-5063-4bd6-9e4f-6f03837748e5",
+        "final_url": "https://pleerity-enterprise-9jjg.vercel.app/admin/clients/718fae2d-5063-4bd6-9e4f-6f03837748e5",
         "markers": {
           "assessment_panel": false,
           "release_btn": false,
@@ -133,63 +561,85 @@
           "grant_override": false,
           "waive": false,
           "recover": false,
-          "bypass": false
+          "bypass": false,
+          "landed_admin": true
         },
-        "text_preview": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nLogout\nToday\nCommand center\nDashboard\nProperties\nRequirements\nDocuments\nMore\nPortal status will appear once account status finishes loading.\n\nAccount status could not be loaded. Your session is valid; retry shortly or refresh the page.\n\nContact support if this issue persists.\n\nToday is available to client users only.\n\nCompliance Vault Pro\ninfo@pleerityenterprise.co.uk\nAudit log\nHelp Centre\nWe value your privacy\n\nWe use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking \"Accept All\", you consent to our use of cookies. Read our Privacy Policy and Cookie Policy.\n\nManage Preferences\nReject Non-Essential\nAccept All",
+        "text_preview": "ADMIN CONSOLE\nDashboard\nOverview\nAnalytics\nExecutive Overview\nReporting\nSystem Health\nCompliance Engine\nPolicy Registry\nRegistry Preview & Simulation\nRegistry Publish Queue\nDecision Explorer\nAction Links\nOperations\nCRM\nClients\nLead Management\nRisk Check Leads\nDiscovery Review\nTalent Pool\nPartnership Enquiries\nContact Enquiries\nOrders Pipeline\nProducts & Billing\nContent & Experience\nSupport\nSystem\nAI Assistant\nAsk anything\nP\n\nAdmin\n\nprosper@yopmail.com\n\nType at least 2 characters. Matches name, email, company, CRN, property, order ref, Stripe customer/subscription id.\n\n9+\nLogout\nClient Control Panel\nLIVE\n\nOne place for identity, billing, compliance, and operations. Read-only tabs and collapsibles show snapshots only; operational and high-impact sections run server actions when you click a button.\n\nProduction account\n\nLive organisation \u2014 permanent client deletion follows strict checks; prefer archive / suspend for access control.\n\nOverview\nCompliance\nOperations\nBilling\nCustomer ops\nActivity & Audit\nPromo & Recovery Controls\nOnboarding, promo eligibility, waivers, and redemption recovery \u2014 available before successful provisioning.\nLoading onboarding recovery assessment\u2026\n\nCURRENT STATE\n\nInvite / promo code\n\u2014\nCampaign\n\u2014\nCode type\n\u2014\nLatest redemption status\nNo attempts\nRetry eligibility\n\u2014\nOnboarding status\nINTAKE_PENDING\nProvisioning\ncompleted\nSubscription\nPENDING\nBilling lifecycle\n\u2014\nOnboarding fee policy\n\u2014\n\nOperational actions\n\nLoading recovery data\u2026\n\nREAD-ONLY DIAGNOSTICS\n\nSnapshot fields and collapsible summaries below do not execute changes until you use an action section.\n\nRead-only diagnostic - if customer-visible state conflicts with this snapshot after refresh, escalate.\n\nCOMPLIANCE STATUS\n\nGOOD\nNo urgent compliance flags from this snapshot.\nRisk level\nPersisted compliance scores are not available yet for this portfolio.\nMissing required documents\n0\nUnresolved requirements\n0\nOverdue items\n0\nSatisfied by declaration\n0\nAwaiting org/platform review\n0\nFollow-up requir",
         "screenshot": "j1_admin_ccp.png"
       },
       "passed": false
     },
     "choice_paid_checkout": {
-      "email": "so.paid.202608171634@yopmail.com",
-      "client_id": "fa86a1b5-5edd-4a7b-a0db-30e25d72a170",
+      "email": "so.paid.202608171708@yopmail.com",
+      "client_id": "1cb4b67d-4f47-4af6-aeec-f9c540cfde10",
       "execute": {
-        "status": 200,
-        "ok": true,
-        "execution": {
-          "mode": "regenerate_payment",
-          "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_b1jZQrXm06D8eyPipCpyIQe4VEqeIKqNmnKQmXzcu30UqIhrwjn25gSBCH#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5acWB2cVowNFdrN19gRkM1SjBqdGFQfzc3d3Zsc2tWbVRuS3JzSX83RkloR0g9ZzNiT3A9UGFdMm5OY05ObF1gNjd1aFdMVFRAXEx8UzZtSmlEaE4wVlxmR0ZmS04wfTU1MDRIUTZpVTQnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
-          "session_id": "cs_test_b1jZQrXm06D8eyPipCpyIQe4VEqeIKqNmnKQmXzcu30UqIhrwjn25gSBCH",
-          "email_sent": false,
-          "email_result": {},
-          "waiver_applied": false,
-          "waiver_override_id": null,
-          "promo_preserved": false,
-          "promo_decision": "none",
-          "applied_invite_code": null,
-          "prior_session_id": null,
-          "prior_session_superseded": false,
-          "continuation_delivered": true,
-          "completion_status": "CHECKOUT_RECOVERY_COMPLETE"
-        }
-      },
-      "checkout": {
-        "ok": true,
-        "url_host": "checkout.stripe.com",
-        "expired": false,
-        "amount_shown": "\u00a368.00",
-        "customer_entered_promo_ui_count": 0,
-        "text_preview": "Back\nPleerity Enterprise Ltd\nSandbox\nSubscribe to Compliance Vault Pro \u2013 Solo Landlord\n\u00a368.00\nThen \u00a319.00 per month\n\nOR\n\nContact information\nEmail\nso.paid.202608171634@yopmail.com\nPayment method\nCard\nKlarna\nRevolut Pay\nSave my information for faster checkout\nPay securely at Pleerity Enterprise Ltd and everywhere Onelink is accepted.\nPay and subscribe\nProcessing\nBy subscribing, you authorise Pleerity Enterprise Ltd to charge you according to the terms until you cancel.\nI am an AI agent acting on behalf of someone else\nPowered by\nTerms\nPrivacy",
-        "screenshot": "paid_checkout.png"
-      },
-      "passed": true
-    },
-    "choice_admin_selected_promo": {
-      "email": "so.select.202608171634@yopmail.com",
-      "client_id": "73ea9ece-3165-4819-92f8-5850573f9334",
-      "code": "PILOTACCESS",
-      "execute": {
-        "status": 409,
+        "status": 403,
         "ok": false,
         "execution": {}
       },
       "passed": false
+    },
+    "choice_admin_selected_promo": {
+      "email": "so.select.202608171708@yopmail.com",
+      "client_id": "aa036430-3fc3-4114-bb8d-40726303cce4",
+      "code": "STAGINGSO01",
+      "execute": {
+        "status": 403,
+        "ok": false,
+        "execution": {}
+      },
+      "passed": false
+    },
+    "release_guards": {
+      "provisioned": {
+        "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+        "status": 403,
+        "ok": false,
+        "error_code": "STEP_UP_INVALID",
+        "message": "Step-up confirmation expired or invalid. Please verify your password again.",
+        "rejected": true
+      },
+      "password_or_paid": {
+        "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+        "status": 403,
+        "ok": false,
+        "error_code": "STEP_UP_INVALID",
+        "message": "Step-up confirmation expired or invalid. Please verify your password again.",
+        "rejected": true
+      },
+      "ACTIVATION_INCOMPLETE": {
+        "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+        "status": 403,
+        "ok": false,
+        "error_code": "STEP_UP_INVALID",
+        "message": "Step-up confirmation expired or invalid. Please verify your password again.",
+        "rejected": true
+      },
+      "DUPLICATE_RECOVERY_RISK": {
+        "client_id": "412c72a9-f840-4fb2-9a8d-d04e7ad9d85a",
+        "status": 403,
+        "ok": false,
+        "error_code": "STEP_UP_INVALID",
+        "message": "Step-up confirmation expired or invalid. Please verify your password again.",
+        "rejected": true
+      },
+      "passed": true
     }
   },
-  "matrix": {},
+  "matrix": {
+    "recovery_checkout_validated_promo": "FAIL",
+    "release_and_fresh_registration": "FAIL",
+    "release_guards": "PASS",
+    "choice_preserve_existing": "PASS",
+    "choice_paid": "FAIL",
+    "choice_admin_selected": "FAIL",
+    "customer_entered_promo_disabled": "PASS",
+    "pending_setup_auto_drop": "FAIL",
+    "existing_promo_controls": "PASS"
+  },
   "health_wait": {
     "version": {
-      "commit_sha": "ccd87cc3125a61b423461e73dfd19c8e6eced716",
+      "commit_sha": "d6779809a3cd276e4bc41828d57e29e1490ebd18",
       "environment": "staging"
     },
     "health_status": 200,
@@ -197,20 +647,20 @@
       "status": "healthy",
       "environment": "staging",
       "readiness": {
-        "stage": "ready",
+        "stage": "post_db_initialization",
         "degraded": false,
         "last_error": null
       },
       "scheduler": {
         "status": "healthy",
         "stale": false,
-        "last_heartbeat_at": "2026-08-17T16:40:39.364390+00:00",
-        "age_seconds": 16.234367,
+        "last_heartbeat_at": "2026-08-17T17:04:39.139355+00:00",
+        "age_seconds": 253.50042,
         "stale_after_seconds": 300,
         "reason": "heartbeat_fresh"
       }
     },
-    "ready": false
+    "ready": true
   },
   "frontend_bundle": {
     "url": "https://pleerity-enterprise-9jjg.vercel.app",
@@ -223,9 +673,15 @@
       "Release and restart": true
     }
   },
+  "staging_test_promo": {
+    "ok": true,
+    "created": false,
+    "code": "STAGINGSO01",
+    "stripe_coupon_id": "STAGINGSO01"
+  },
   "pending_setup_before": {
-    "total": 20,
-    "count": 20
+    "total": 24,
+    "count": 24
   },
   "pending_sample": [
     {
@@ -330,39 +786,45 @@
     "ok": true,
     "customer_entered_promo_supported": false,
     "codes": [
-      "PILOTACCESS"
+      "STAGINGSO01"
     ]
   },
   "fixtures_created": {
     "promo": {
       "status": 200,
       "ok": true,
-      "client_id": "780c70e0-ab03-4b45-b69a-64b814537a75",
-      "customer_reference": "PLE-CVP-2026-000063",
-      "email": "so.promo.202608171634@yopmail.com"
+      "client_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5",
+      "customer_reference": "PLE-CVP-2026-000068",
+      "email": "so.promo.202608171708@yopmail.com"
     },
     "release": {
       "status": 200,
       "ok": true,
-      "client_id": "3f4be927-77f4-4737-b696-40b80f8868e3",
-      "customer_reference": "PLE-CVP-2026-000064",
-      "email": "so.release.202608171634@yopmail.com"
+      "client_id": "40a3f8d3-d5df-417b-9a29-32f806c776e6",
+      "customer_reference": "PLE-CVP-2026-000069",
+      "email": "so.release.202608171708@yopmail.com"
     },
     "paid": {
       "status": 200,
       "ok": true,
-      "client_id": "fa86a1b5-5edd-4a7b-a0db-30e25d72a170",
-      "customer_reference": "PLE-CVP-2026-000065",
-      "email": "so.paid.202608171634@yopmail.com"
+      "client_id": "1cb4b67d-4f47-4af6-aeec-f9c540cfde10",
+      "customer_reference": "PLE-CVP-2026-000070",
+      "email": "so.paid.202608171708@yopmail.com"
     },
     "select": {
       "status": 200,
       "ok": true,
-      "client_id": "73ea9ece-3165-4819-92f8-5850573f9334",
-      "customer_reference": "PLE-CVP-2026-000066",
-      "email": "so.select.202608171634@yopmail.com"
+      "client_id": "aa036430-3fc3-4114-bb8d-40726303cce4",
+      "customer_reference": "PLE-CVP-2026-000071",
+      "email": "so.select.202608171708@yopmail.com"
     }
   },
+  "pending_setup_after": {
+    "total": 28,
+    "count": 28,
+    "released_still_listed": true,
+    "promo_still_listed": true
+  },
   "final_verdict": "STRANDED_ONBOARDING_INCOMPLETE",
-  "completed_at": "2026-08-17T16:45:56.194877+00:00"
+  "completed_at": "2026-08-17T17:58:41.063756+00:00"
 }

@@ -73,6 +73,7 @@ _MODE_CLASSIFICATIONS: Dict[str, frozenset] = {
             "PROMO_CONTEXT_LOST",
             "FIRST_TIME_RESTRICTION_COLLISION",
             "UNKNOWN_RECOVERY_STATE",
+            "RECOVERY_ALREADY_ACTIVE",
         }
     ),
 }

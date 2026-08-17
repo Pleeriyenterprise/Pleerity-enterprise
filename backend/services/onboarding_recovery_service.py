@@ -79,6 +79,7 @@ _RELEASE_ELIGIBLE_CLASSES = frozenset(
         CLASS_PROMO_CONTEXT_LOST,
         CLASS_FIRST_TIME_RESTRICTION_COLLISION,
         CLASS_UNKNOWN_RECOVERY_STATE,
+        CLASS_RECOVERY_ALREADY_ACTIVE,
     }
 )
 
@@ -313,17 +314,20 @@ def derive_recovery_strategy(
         CLASS_PASSWORD_SETUP_PENDING: (MODE_RESEND_ACTIVATION, [MODE_RESEND_ACTIVATION]),
         CLASS_SUBSCRIPTION_DRIFT: (MODE_MANUAL_ESCALATION, [MODE_MANUAL_ESCALATION]),
         CLASS_DUPLICATE_RECOVERY_RISK: (MODE_MANUAL_ESCALATION, [MODE_MANUAL_ESCALATION]),
-        CLASS_RECOVERY_ALREADY_ACTIVE: (None, []),
+        CLASS_RECOVERY_ALREADY_ACTIVE: (
+            None,
+            [MODE_RELEASE_AND_RESTART],
+        ),
         CLASS_UNKNOWN_RECOVERY_STATE: (MODE_MANUAL_ESCALATION, [MODE_MANUAL_ESCALATION, MODE_RELEASE_AND_RESTART]),
     }
     recommended, available = mode_map.get(classification, (MODE_MANUAL_ESCALATION, [MODE_MANUAL_ESCALATION]))
     if classification == CLASS_RECOVERY_ALREADY_ACTIVE:
         return {
             "recommended_mode": None,
-            "available_modes": [],
+            "available_modes": [MODE_RELEASE_AND_RESTART],
             "execution_available": False,
             "phase": 2,
-            "note": "A recovery checkout link was sent recently. Wait for customer action or allow the link to expire before regenerating.",
+            "note": "A recovery checkout link was sent recently. Wait for the customer to pay, or Release and restart if this unpaid attempt should be abandoned.",
         }
     return {
         "recommended_mode": recommended,
@@ -371,8 +375,13 @@ def validate_recovery_eligibility(
         return {"eligible": False, "reason": "No stranded onboarding detected for this account."}
     if classification == CLASS_RECOVERY_ALREADY_ACTIVE:
         return {
-            "eligible": False,
-            "reason": "A recovery checkout link is still active. Customer should use the existing link first.",
+            "eligible": True,
+            "reason": None,
+            "regenerate_blocked": True,
+            "regenerate_block_reason": (
+                "A recovery checkout link is still active. Use the existing link, "
+                "wait for it to expire before regenerating, or Release and restart this unpaid attempt."
+            ),
         }
     if classification == CLASS_DUPLICATE_RECOVERY_RISK:
         return {
@@ -465,9 +474,9 @@ def derive_recovery_recommendation_copy(
         },
         CLASS_RECOVERY_ALREADY_ACTIVE: {
             "blockage_summary": "A recovery checkout link was sent recently and may still be valid.",
-            "recommended_action": "Wait for customer action or confirm the prior link expired before regenerating.",
-            "expected_customer_outcome": "Customer should use the existing payment link if still valid.",
-            "operational_impact": "Avoid stacking multiple active checkout sessions.",
+            "recommended_action": "Ask the customer to complete the existing payment link, or Release and restart if this unpaid attempt should be abandoned. Do not regenerate checkout while the current link is still fresh.",
+            "expected_customer_outcome": "Either they pay on the existing link, or the email becomes available for a fresh signup after release.",
+            "operational_impact": "Avoid stacking multiple active checkout sessions. Release remains available because the attempt is still unpaid.",
         },
         CLASS_UNKNOWN_RECOVERY_STATE: {
             "blockage_summary": "Onboarding appears stranded but the blockage could not be classified confidently.",

@@ -272,7 +272,10 @@ def _execute(
     promo_decision: str = "none",
     selected_invite_code: Optional[str] = None,
     preserve: bool = False,
+    password: Optional[str] = None,
 ) -> Dict[str, Any]:
+    if password:
+        step_up = _step_up(token, password)
     conf = _confirm(token, client_id)
     payload = {
         "mode": mode,
@@ -454,32 +457,87 @@ def _pay_checkout(url: str, email: str, shot_name: str) -> Dict[str, Any]:
                         em.fill(email)
             except Exception:
                 pass
+            try:
+                for card_tab in (
+                    page.get_by_role("radio", name=re.compile(r"^Card$", re.I)),
+                    page.get_by_role("button", name=re.compile(r"^Card$", re.I)),
+                    page.locator('[data-testid="card-accordion-item"]'),
+                ):
+                    try:
+                        if card_tab.count() and card_tab.first.is_visible():
+                            card_tab.first.click(timeout=3000)
+                            page.wait_for_timeout(800)
+                            break
+                    except Exception:
+                        continue
+            except Exception:
+                pass
             filled_card = False
+            number_selectors = (
+                'input[name="cardnumber"]',
+                'input[name="number"]',
+                'input[autocomplete="cc-number"]',
+                'input[placeholder*="1234"]',
+                'input[aria-label*="Card number" i]',
+            )
             try:
                 for fr in page.frames:
-                    loc = fr.locator(
-                        'input[name="cardnumber"], input[name="cardNumber"], input[placeholder*="1234"]'
-                    )
-                    if loc.count():
-                        loc.first.fill("4242424242424242")
-                        filled_card = True
-                        exp = fr.locator(
-                            'input[name="exp-date"], input[name="expiryDate"], input[placeholder*="MM"]'
-                        )
-                        if exp.count():
-                            exp.first.fill("1234")
-                        cvc = fr.locator('input[name="cvc"], input[placeholder*="CVC"]')
-                        if cvc.count():
-                            cvc.first.fill("123")
+                    for sel in number_selectors:
+                        loc = fr.locator(sel)
+                        if loc.count():
+                            loc.first.click(timeout=3000)
+                            loc.first.fill("4242424242424242")
+                            filled_card = True
+                            for exp_sel in (
+                                'input[name="exp-date"]',
+                                'input[name="expiry"]',
+                                'input[autocomplete="cc-exp"]',
+                                'input[placeholder*="MM"]',
+                                'input[aria-label*="Expir" i]',
+                            ):
+                                exp = fr.locator(exp_sel)
+                                if exp.count():
+                                    exp.first.fill("1230")
+                                    break
+                            for cvc_sel in (
+                                'input[name="cvc"]',
+                                'input[autocomplete="cc-csc"]',
+                                'input[placeholder*="CVC"]',
+                                'input[aria-label*="CVC" i]',
+                            ):
+                                cvc = fr.locator(cvc_sel)
+                                if cvc.count():
+                                    cvc.first.fill("123")
+                                    break
+                            break
+                    if filled_card:
                         break
             except Exception:
                 pass
             if not filled_card:
                 try:
-                    page.get_by_placeholder(re.compile(r"1234|card", re.I)).first.fill(
-                        "4242424242424242", timeout=4000
+                    page.locator('iframe[title*="payment" i], iframe[name^="__privateStripeFrame"]').first.wait_for(
+                        timeout=8000
+                    )
+                    frame = page.frame_locator(
+                        'iframe[title*="payment" i], iframe[title*="card" i], iframe[name^="__privateStripeFrame"]'
+                    ).first
+                    frame.locator('input[name="number"], input[placeholder*="1234"], input[autocomplete="cc-number"]').first.fill(
+                        "4242424242424242", timeout=8000
                     )
                     filled_card = True
+                    try:
+                        frame.locator(
+                            'input[name="expiry"], input[autocomplete="cc-exp"], input[placeholder*="MM"]'
+                        ).first.fill("1230", timeout=4000)
+                    except Exception:
+                        pass
+                    try:
+                        frame.locator(
+                            'input[name="cvc"], input[autocomplete="cc-csc"], input[placeholder*="CVC"]'
+                        ).first.fill("123", timeout=4000)
+                    except Exception:
+                        pass
                 except Exception:
                     pass
             try:
@@ -569,6 +627,13 @@ def _admin_panel(admin_email: str, admin_password: str, client_id: str, shot_nam
             try:
                 page.locator('[data-testid="client-promo-recovery-controls"]').click(timeout=8000)
                 page.wait_for_timeout(1500)
+            except Exception:
+                pass
+            try:
+                page.wait_for_selector(
+                    '[data-testid="onboarding-recovery-assessment-panel"], [data-testid="recovery-execute-btn-regenerate_payment"]',
+                    timeout=25000,
+                )
             except Exception:
                 pass
             text = page.inner_text("body")[:5000]
@@ -875,7 +940,7 @@ def main() -> int:
         j2["identities_before"] = _identities_for_email(token, release_email)
         j2["check_email_before"] = _public_post("/intake/check-email", {"email": release_email})
         pre_co = _execute(
-            token, step, release_id, "regenerate_payment", send_email=False, promo_decision="none"
+            token, step, release_id, "regenerate_payment", send_email=False, promo_decision="none", password=password
         )
         pre_ex = ((pre_co.get("body") or {}).get("execution") or {}) if pre_co.get("ok") else {}
         j2["pre_release_checkout"] = {
@@ -891,7 +956,7 @@ def main() -> int:
         results["paths"]["journey_2_release_restart"] = j2
         # Concurrent release
         def _rel():
-            return _execute(token, step, release_id, "release_and_restart", send_email=False)
+            return _execute(token, step, release_id, "release_and_restart", send_email=False, password=password)
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             futs = [pool.submit(_rel), pool.submit(_rel)]
@@ -993,6 +1058,7 @@ def main() -> int:
             send_email=False,
             promo_decision="preserve_existing",
             preserve=True,
+            password=password,
         )
         j1["first_checkout"] = {
             "status": first.get("status"),
@@ -1019,6 +1085,7 @@ def main() -> int:
             send_email=True,
             promo_decision="preserve_existing",
             preserve=True,
+            password=password,
         )
         j1["replacement"] = {
             "status": second.get("status"),
@@ -1071,7 +1138,7 @@ def main() -> int:
     j_paid: Dict[str, Any] = {"email": paid_email, "client_id": paid_id}
     if paid_id:
         exec_p = _execute(
-            token, step, paid_id, "regenerate_payment", send_email=False, promo_decision="none"
+            token, step, paid_id, "regenerate_payment", send_email=False, promo_decision="none", password=password
         )
         ex_p = (exec_p.get("body") or {}).get("execution") or {}
         j_paid["execute"] = {"status": exec_p.get("status"), "ok": exec_p.get("ok"), "execution": ex_p}
@@ -1091,6 +1158,7 @@ def main() -> int:
             send_email=False,
             promo_decision="apply_selected",
             selected_invite_code=selected_code,
+            password=password,
         )
         ex_s = (exec_s.get("body") or {}).get("execution") or {}
         j_sel["execute"] = {"status": exec_s.get("status"), "ok": exec_s.get("ok"), "execution": ex_s}
@@ -1126,7 +1194,7 @@ def main() -> int:
         if not cid:
             guards[label] = {"skipped": True}
             continue
-        res = _execute(token, step, cid, "release_and_restart", send_email=False)
+        res = _execute(token, step, cid, "release_and_restart", send_email=False, password=password)
         detail = res.get("body") or {}
         err = detail.get("detail") if isinstance(detail, dict) else {}
         guards[label] = {
@@ -1135,11 +1203,13 @@ def main() -> int:
             "ok": res.get("ok"),
             "error_code": err.get("error_code") if isinstance(err, dict) else None,
             "message": err.get("message") if isinstance(err, dict) else None,
-            "rejected": (not res.get("ok")) and res.get("status") in (400, 403),
+            "rejected": (not res.get("ok"))
+            and (err.get("error_code") if isinstance(err, dict) else None)
+            in {"NOT_ELIGIBLE", "MODE_CLASSIFICATION_MISMATCH", "RELEASE_NOT_ALLOWED"},
         }
     # also try release on the now-paid journey-1 client if provisioned
     if promo_id and (j1.get("provisioning") or {}).get("ready"):
-        res = _execute(token, step, promo_id, "release_and_restart", send_email=False)
+        res = _execute(token, step, promo_id, "release_and_restart", send_email=False, password=password)
         detail = res.get("body") or {}
         err = detail.get("detail") if isinstance(detail, dict) else {}
         guards["paid_after_journey_1"] = {
