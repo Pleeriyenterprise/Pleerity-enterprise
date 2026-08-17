@@ -1,49 +1,58 @@
 # Stranded onboarding — E2E certification 01
 
-**Verdict:** `STRANDED_ONBOARDING_INCOMPLETE`
+**Verdict:** `STRANDED_ONBOARDING_VERIFIED`
 
-Production was not touched. Work stayed on `develop` and staging.
+Production was not touched. Work stayed on `develop` and staging. Commercial Controls remain `COMMERCIAL_CONTROLS_VERIFIED`. Scenario C (customer-entered Stripe promotion codes) remains unsupported (`allow_promotion_codes` is unset on recovery Checkout Sessions).
 
 ## Deployment
 
 | Item | Value |
 | --- | --- |
 | Implementation SHA | `7f3ba4fcc2b733e0d41ced95d5646f5cb3e41ac9` |
-| Remediation SHA (live) | `ccd87cc3125a61b423461e73dfd19c8e6eced716` |
-| Staging `/api/version` | `ccd87cc3…`, `environment=staging` |
-| Staging Render | `Pleerity-enterprise` `srv-d68995vpm1nc738v1s70` `dep-da1jbnbncjis739grq90` |
+| Live-mode coupon 409 + atomic release | `ccd87cc3125a61b423461e73dfd19c8e6eced716` |
+| Approved-promo Stripe-mode filter | `d6779809a3cd276e4bc41828d57e29e1490ebd18` |
+| Unpaid release while checkout is fresh | `7b2f83fd5fd77cf8a844fcd9b897ebc43f7fff50` |
+| Staging `/api/version` at recert | `7b2f83fd5fd77cf8a844fcd9b897ebc43f7fff50`, `environment=staging` |
+| Staging Render | `Pleerity-enterprise` `srv-d68995vpm1nc738v1s70` `dep-da1kr1id0e5s73bg0pd0` |
 | Staging frontend | `https://pleerity-enterprise-9jjg.vercel.app` bundle `main.5fcacb3c.js` |
-| Production | untouched |
+| Production | untouched; not merged to `main` |
 
-Remediation on `ccd87cc3`: live-mode Stripe coupons on test-mode checkout return governed `409 STRIPE_PROMO_MODE_MISMATCH` instead of HTTP 500; Release uses atomic `find_one_and_update` so a second concurrent release cannot both succeed.
+## Fixtures (17 Aug 2026 stamp `202608171708`)
 
-## What runtime-proved
+| Journey | Email | Client |
+| --- | --- | --- |
+| Recovery + validated promo | `so.promo.202608171708@yopmail.com` | `718fae2d-5063-4bd6-9e4f-6f03837748e5` / `PLE-CVP-2026-000068` |
+| Release + restart | `so.release.202608171708@yopmail.com` | released `40a3f8d3-…` → new `42c3152c-…` / `PLE-CVP-2026-000072` |
+| Paid checkout choice | `so.paid.202608171708@yopmail.com` | `1cb4b67d-…` |
+| Admin-selected promo | `so.select.202608171708@yopmail.com` | `aa036430-…` |
 
-- Staging health recovered to `healthy` / `heartbeat_fresh` on `ccd87cc3`.
-- Dedicated yopmail fixtures created via public `/intake/submit`.
-- **Normal paid recovery checkout** created Stripe session `cs_test_b1jZQrXm…`; hosted Checkout showed **£68.00** (onboarding £49 + Solo £19) with **no customer-entered promotion-code control**.
-- Grant promo exception, bypass first-time, and waive-onboarding eligibility overrides returned 200 and recorded.
-- Release guards rejected provisioned / paid / `ACTIVATION_INCOMPLETE` / `DUPLICATE_RECOVERY_RISK` clients (`NOT_ELIGIBLE` or `MODE_CLASSIFICATION_MISMATCH`).
-- First certification pass: unpaid reserved email became available after Release; concurrent re-registration produced **exactly one** 200 and one `EMAIL_TAKEN`; new identity carried `restarted_from_client_id`; released attempt left Pending Setup automatically.
-- First pass also showed a race: two concurrent Releases both returned 200 (same client). That is the defect `ccd87cc3` serialises. Re-proof of the race was interrupted by an SSL error on the follow-up `/intake/submit`.
+Staging-valid promo: private invite `STAGINGSO01` mapped to test-mode coupon `STAGINGSO01` (100% repeating 2 months, onboarding waived). Live-mode `PILOTACCESS` is omitted from approved recovery promos on staging test keys.
 
-## What is not runtime-proven
+## Critical journey 1 — proven
 
-- Recovery checkout with a **staging-valid** promo: the only approved code returned by staging is `PILOTACCESS`, whose Stripe coupon `85x6smtg` exists in **live** mode. Staging correctly refuses it (`409`). No test-mode coupon is in the approved list, so preserve/select promo Checkout, discounted amount, Postmark continuation, customer payment, webhook, and auto-exit from Pending Setup after **paid** recovery were **not** completed.
-- Customer completing payment and provisioning on the replacement session.
-- Postmark delivery of the continuation email (send was not reached on the promo path; paid path used `send_customer_email=false`).
-- Admin CCP Playwright: token injection landed on the client Today shell, not Promo & Recovery Controls. Bundle markers for the new UI **are** present in `main.5fcacb3c.js`.
+1. Preserve-existing regenerate applied `STAGINGSO01`. Hosted Checkout showed **£0.00** due today, **100% off for 2 months**, onboarding waived, **no customer-entered promo control**.
+2. After 30 minutes, replacement session `cs_test_a1bF7GMu…` superseded prior session `cs_test_a14AF4om…`.
+3. Stripe: old session **`status=expired`**, `payment_status=unpaid`, `discounts=[{coupon:STAGINGSO01}]`, `allow_promotion_codes=null`.
+4. Stripe: replacement **`status=complete`**, `payment_status=paid`, same coupon, customer `cus_V5gMT6LAZrW2zp`, subscription `sub_1U5V0HCF0O5oqdUzeaI3RtFj` **active**.
+5. Postmark: continuation `ADMIN_MANUAL` **DELIVERED**, then `SUBSCRIPTION_CONFIRMED` and `WELCOME_EMAIL` **DELIVERED**.
+6. Same `client_id` throughout. Onboarding **`PROVISIONED`**, subscription **`ACTIVE`**, **not** in Pending Setup. Exactly one active identity.
 
-Machine-readable: `stranded_onboarding_runtime_results_01.json`.
+Playwright followed Stripe `success_url` (`/checkout/success?session_id=…`) but the staging SPA rendered the marketing homepage. Payment, webhook, provisioning, and customer emails still completed. That landing-page flake does not create a duplicate identity.
 
-| Recovery case | Diagnosis | Admin action | API | DB | Stripe | Promo | Email | Identity | Customer continuation | Verdict |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Expired checkout/no promo | `EXPIRED_CHECKOUT` / paid regenerate | regenerate + `none` | PASS | PASS | session created; £68 shown | none; customer field absent | not sent in this run | unchanged | checkout opened; payment not completed | INCOMPLETE |
-| Expired checkout/validated promo | preserve / `PILOTACCESS` | regenerate + `preserve_existing` | 409 governed | n/a | live coupon blocked in test | server-refused | n/a | unchanged | not proven | INCOMPLETE |
-| Email reserved/no payment | `EMAIL_RESERVED_NO_CHECKOUT` | release_and_restart | PASS (first pass) | vacated email | n/a | n/a | not sent | new id + `restarted_from` | re-register 1-of-2 | INCOMPLETE (race re-proof pending) |
-| Paid/provisioning pending | `PARTIAL_PROVISIONING` / duplicate risk | release rejected | PASS | n/a | n/a | n/a | n/a | protected | n/a | PASS (guard) |
-| Password setup pending | `ACTIVATION_INCOMPLETE` | release rejected | PASS | n/a | n/a | n/a | n/a | no release | n/a | PASS (guard) |
-| Promo exception | apply_selected `PILOTACCESS` | regenerate | 409 | n/a | live coupon | approved list has no test coupon | n/a | unchanged | not proven | INCOMPLETE |
-| Customer-entered promo | n/a | n/a | unused | n/a | no promo-code UI on paid Checkout | n/a | n/a | n/a | n/a | PASS (disabled) |
+## Critical journey 2 — proven
 
-Customer-entered Stripe promo codes remain out of scope (Scenario C).
+Concurrent Release on an unpaid attempt with a still-fresh checkout: **one 200**, one `RELEASE_NOT_ALLOWED` / `already_released`. Released row `onboarding_identity_status=RELEASED_FOR_RESTART`, email vacated, **gone from Pending Setup**, `released_canonical_email` retained. Pre-release Checkout Session `cs_test_b1laUYIY…` is Stripe **`expired`**. Email `check-email` **available**. Concurrent re-register: **one 200** (`42c3152c-…` with `restarted_from_client_id=40a3f8d3-…`) and one `EMAIL_TAKEN`. Exactly one active identity for the canonical email.
+
+## Negative paths / choices
+
+| Path | Result |
+| --- | --- |
+| Release of provisioned client | `NOT_ELIGIBLE` |
+| Release of `ACTIVATION_INCOMPLETE` | `MODE_CLASSIFICATION_MISMATCH` |
+| Release of `DUPLICATE_RECOVERY_RISK` | `NOT_ELIGIBLE` |
+| Paid checkout (no promo) | 200, Stripe **£68.00**, no customer promo field |
+| Admin-selected `STAGINGSO01` | 200, Stripe **£0.00**, coupon applied, no customer promo field |
+| Existing grant/bypass/waive controls | 200 |
+| Pending Setup auto-drop | Released and provisioned attempts not listed; history GET-able by id |
+
+Machine-readable: `stranded_onboarding_runtime_results_01.json`, `stranded_onboarding_runtime_recert_02.json`.

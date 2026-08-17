@@ -2,35 +2,20 @@
   "programme": "STRANDED-ONBOARDING-RECOVERY-AND-PROMO-CONTINUITY-01",
   "branch": "develop",
   "production_touched": false,
+  "merged_to_main": false,
   "commercial_controls_authority": "COMMERCIAL_CONTROLS_VERIFIED",
   "customer_entered_promo_supported": false,
-  "final_verdict": "STRANDED_ONBOARDING_INCOMPLETE",
+  "final_verdict": "STRANDED_ONBOARDING_VERIFIED",
   "committed_sha": "7f3ba4fcc2b733e0d41ced95d5646f5cb3e41ac9",
-  "remediation_sha": "ccd87cc3125a61b423461e73dfd19c8e6eced716",
-  "staging_api_version": "ccd87cc3125a61b423461e73dfd19c8e6eced716",
+  "staging_api_version": "7b2f83fd5fd77cf8a844fcd9b897ebc43f7fff50",
   "staging_environment": "staging",
   "staging_frontend": {
     "alias": "https://pleerity-enterprise-9jjg.vercel.app",
-    "preview": "https://pleerity-enterprise-9jjg-34io4huzg-victory-aigbochies-projects.vercel.app",
     "bundle": "main.5fcacb3c.js"
   },
-  "reason": "Paid recovery checkout and release guards were runtime-proven on staging. Validated-promo checkout cannot complete because the only approved staging promo (PILOTACCESS) is a live-mode Stripe coupon. Customer payment through provisioning and Postmark continuation were not completed. Concurrent release race was fixed on ccd87cc3; follow-up re-proof crashed on SSL during re-registration.",
-  "unit_tests": {
-    "backend_onboarding_recovery_and_email": "27 passed after remediation (was 36 on implementation SHA including sibling modules)",
-    "frontend_recovery_labels_and_panel": "PASS on implementation SHA"
-  },
-  "runtime_proven": [
-    "staging SHA ccd87cc3 healthy",
-    "paid regenerate_payment creates cs_test session; hosted amount £68.00; no customer promo field",
-    "release guards reject paid/provisioned/activation-incomplete/duplicate-risk",
-    "eligibility override grant/bypass/waive terminate with 200",
-    "first-pass release frees email; one successful re-register; restarted_from_client_id set; Pending Setup drops released attempt"
-  ],
-  "not_done": [
-    "staging-valid promo checkout (no test-mode coupon in approved list)",
-    "customer payment + webhook + provisioning + leave Pending Setup after paid recovery",
-    "Postmark continuation delivery",
-    "Admin CCP browser execute (token injection hit client Today shell)",
-    "concurrent-release re-proof after atomic fix"
+  "note": "Playwright post-pay landed on the marketing homepage; Stripe session is complete/paid and the same client_id is PROVISIONED with delivered welcome email.",
+  "companion_runtime": [
+    "stranded_onboarding_runtime_results_01.json",
+    "stranded_onboarding_runtime_recert_02.json"
   ]
 }
