@@ -41,12 +41,25 @@ export const ONBOARDING_RECOVERY_CLASSIFICATIONS = {
     label: 'Unknown recovery state',
     description: 'Onboarding appears stranded but requires manual review.',
   },
+  EMAIL_RESERVED_NO_CHECKOUT: {
+    label: 'Email reserved, no checkout',
+    description: 'Signup started and the email is reserved, but payment was never started.',
+  },
+  PROMO_CONTEXT_LOST: {
+    label: 'Promo context lost',
+    description: 'A promotion was expected but cannot be resolved for this recovery checkout.',
+  },
+  PASSWORD_SETUP_PENDING: {
+    label: 'Password setup pending',
+    description: 'The account is provisioned but the customer has not set a password.',
+  },
 };
 
 export const RECOVERY_MODE_LABELS = {
   resume_onboarding: 'Resume onboarding',
   regenerate_payment: 'Generate recovery checkout',
   resend_activation: 'Resend activation',
+  release_and_restart: 'Release and restart onboarding',
   manual_escalation: 'Manual escalation',
 };
 

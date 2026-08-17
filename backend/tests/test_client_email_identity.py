@@ -24,6 +24,7 @@ async def test_client_email_taken_hits_exact_canonical_index_path():
         raise AssertionError("unexpected filter")
 
     db.clients.find_one = AsyncMock(side_effect=find_one)
+    db.portal_users.find_one = AsyncMock(return_value=None)
     assert await client_email_taken(db, "User@Example.COM") is True
 
 
@@ -41,6 +42,7 @@ async def test_client_email_taken_falls_back_to_expr_for_legacy_casing():
         return None
 
     db.clients.find_one = AsyncMock(side_effect=find_one)
+    db.portal_users.find_one = AsyncMock(return_value=None)
     assert await client_email_taken(db, "user@example.com") is True
     assert len(calls) == 2
 
@@ -49,6 +51,7 @@ async def test_client_email_taken_falls_back_to_expr_for_legacy_casing():
 async def test_client_email_taken_false_when_no_match():
     db = MagicMock()
     db.clients.find_one = AsyncMock(return_value=None)
+    db.portal_users.find_one = AsyncMock(return_value=None)
     assert await client_email_taken(db, "new@example.com") is False
     assert db.clients.find_one.call_count == 2
 

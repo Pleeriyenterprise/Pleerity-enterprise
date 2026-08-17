@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
@@ -16,6 +17,7 @@ from services.admin_action_governance import enforce_governed_admin_action
 from services.onboarding_recovery_execution_service import (
     OnboardingRecoveryExecutionError,
     execute_onboarding_recovery,
+    list_approved_recovery_promos,
 )
 from services.onboarding_recovery_service import build_onboarding_recovery_assessment
 
@@ -29,11 +31,23 @@ router = APIRouter(
 
 
 class OnboardingRecoveryExecuteBody(BaseModel):
-    mode: str = Field(..., description="resume_onboarding | regenerate_payment | resend_activation")
+    mode: str = Field(..., description="resume_onboarding | regenerate_payment | resend_activation | release_and_restart")
     reason: str = Field(..., min_length=10)
     send_customer_email: bool = True
     preserve_promo_eligibility: bool = True
     apply_recovery_waiver: bool = False
+    promo_decision: Optional[str] = Field(
+        default=None,
+        description="none | preserve_existing | apply_selected. Customer-entered Stripe codes are not supported.",
+    )
+    selected_invite_code: Optional[str] = None
+
+
+@router.get("/onboarding-recovery/approved-promos", dependencies=[Depends(require_owner_or_admin)])
+async def get_approved_recovery_promos() -> dict:
+    """Active governed promotions eligible for admin-selected recovery checkout."""
+    promos = await list_approved_recovery_promos()
+    return {"promos": promos, "customer_entered_promo_supported": False}
 
 
 @router.get("/onboarding-recovery/fleet-metrics", dependencies=[Depends(require_owner_or_admin)])
@@ -104,6 +118,8 @@ async def execute_onboarding_recovery_route(
             send_customer_email=body.send_customer_email,
             preserve_promo_eligibility=body.preserve_promo_eligibility,
             apply_recovery_waiver=body.apply_recovery_waiver,
+            promo_decision=body.promo_decision,
+            selected_invite_code=body.selected_invite_code,
             actor_id=user.get("portal_user_id"),
             ip_address=ip_address,
         )

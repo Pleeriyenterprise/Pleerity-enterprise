@@ -126,7 +126,10 @@ def should_skip_persist_operational_lifecycle(doc: Optional[Dict[str, Any]]) -> 
     if doc.get("is_deleted"):
         return True
     st = (doc.get("client_lifecycle_status") or "").strip().upper()
-    return st in (ClientLifecycleStatus.ARCHIVED.value, ClientLifecycleStatus.PURGE_ELIGIBLE.value)
+    if st in (ClientLifecycleStatus.ARCHIVED.value, ClientLifecycleStatus.PURGE_ELIGIBLE.value):
+        return True
+    identity = (doc.get("onboarding_identity_status") or "").strip().upper()
+    return identity == "RELEASED_FOR_RESTART"
 
 
 def operational_client_lifecycle_to_persist(doc: Dict[str, Any]) -> str:

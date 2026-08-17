@@ -19,6 +19,7 @@ describe('onboardingRecoveryAdmin', () => {
 
   it('maps recovery modes', () => {
     expect(recoveryModeLabel('regenerate_payment')).toBe('Generate recovery checkout');
+    expect(recoveryModeLabel('release_and_restart')).toBe('Release and restart onboarding');
   });
 
   it('shows assessment when stranded', () => {

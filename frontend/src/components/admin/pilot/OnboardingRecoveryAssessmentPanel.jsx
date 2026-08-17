@@ -123,6 +123,18 @@ export default function OnboardingRecoveryAssessmentPanel({
             </div>
 
             <div className="rounded-md border border-slate-200 bg-white p-3 space-y-0">
+              <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">Diagnosis</p>
+              <SummaryRow label="Last successful step" value={assessment.diagnostic?.last_successful_stage} testId="recovery-last-stage" />
+              <SummaryRow label="Next required step" value={assessment.diagnostic?.next_required_stage} testId="recovery-next-stage" />
+              <SummaryRow label="Blocking reason" value={assessment.diagnostic?.blocking_reason || classification} testId="recovery-blocking-reason" />
+              <SummaryRow label="Payment" value={assessment.diagnostic?.payment_state} testId="recovery-diag-payment" />
+              <SummaryRow label="Promo" value={assessment.diagnostic?.promo_state} testId="recovery-diag-promo" />
+              <SummaryRow label="Email" value={assessment.diagnostic?.email_identity_state} testId="recovery-diag-email" />
+              <SummaryRow label="Provisioning" value={assessment.diagnostic?.provisioning_state} testId="recovery-diag-provisioning" />
+              <SummaryRow label="Password" value={assessment.diagnostic?.password_state} testId="recovery-diag-password" />
+            </div>
+
+            <div className="rounded-md border border-slate-200 bg-white p-3 space-y-0">
               <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">Recommended recovery</p>
               <SummaryRow label="Recommended action" value={recommendation.recommended_action} testId="recovery-recommended-action" />
               <SummaryRow label="Recovery mode" value={recoveryModeLabel(strategy.recommended_mode)} testId="recovery-recommended-mode" />
@@ -219,6 +231,7 @@ export default function OnboardingRecoveryAssessmentPanel({
           clientId={clientId}
           mode={executeMode}
           classification={classification}
+          assessment={assessment}
           onSubmit={handleExecute}
         />
       )}

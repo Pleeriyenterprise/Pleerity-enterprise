@@ -1,0 +1,27 @@
+{
+  "programme": "STRANDED-ONBOARDING-RECOVERY-AND-PROMO-CONTINUITY-01",
+  "branch": "develop",
+  "production_touched": false,
+  "commercial_controls_authority": "COMMERCIAL_CONTROLS_VERIFIED",
+  "customer_entered_promo_supported": false,
+  "final_verdict": "STRANDED_ONBOARDING_INCOMPLETE",
+  "reason": "Implementation and unit tests landed on develop. Staging Stripe/Postmark/customer-observable continuation and re-registration were not runtime-certified in this session.",
+  "unit_tests": {
+    "backend_onboarding_recovery_and_email": "36 passed",
+    "frontend_recovery_labels_and_panel": "PASS"
+  },
+  "implemented": [
+    "dropout diagnostic ladder",
+    "EMAIL_RESERVED_NO_CHECKOUT and PROMO_CONTEXT_LOST",
+    "release_and_restart with uniqueness vacation",
+    "pending_setup excludes RELEASED_FOR_RESTART",
+    "expire prior Stripe checkout on regenerate",
+    "server-governed promo preserve vs paid vs select approved",
+    "restarted_from_client_id on fresh intake"
+  ],
+  "not_done": [
+    "staging Scenario A-H runtime certification",
+    "production deploy",
+    "customer-entered Stripe promotion codes"
+  ]
+}

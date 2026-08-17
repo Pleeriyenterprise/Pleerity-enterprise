@@ -1320,6 +1320,7 @@ export const adminAPI = {
     apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/redemptions`, { params }),
   getOnboardingRecoveryAssessment: (clientId) =>
     apiClient.get(`/admin/clients/${encodeURIComponent(clientId)}/onboarding-recovery/assessment`),
+  getApprovedRecoveryPromos: () => apiClient.get('/admin/clients/onboarding-recovery/approved-promos'),
   executeOnboardingRecovery: (clientId, body, config = {}) =>
     apiClient.post(
       `/admin/clients/${encodeURIComponent(clientId)}/onboarding-recovery/execute`,

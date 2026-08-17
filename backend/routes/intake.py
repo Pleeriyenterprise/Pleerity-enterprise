@@ -53,9 +53,11 @@ from pymongo.errors import DuplicateKeyError
 from utils.request_ip import get_client_ip
 from utils.client_email import (
     INTAKE_EMAIL_ALREADY_EXISTS_MESSAGE,
+    ONBOARDING_IDENTITY_ACTIVE,
     canonical_client_email,
     client_email_taken,
     classify_clients_duplicate_key_error,
+    find_latest_released_attempt_for_email,
 )
 
 logger = logging.getLogger(__name__)
@@ -1078,6 +1080,10 @@ async def submit_intake(request: Request, data: IntakeFormData):
         )
         
         client_doc = client.model_dump()
+        client_doc["onboarding_identity_status"] = ONBOARDING_IDENTITY_ACTIVE
+        released_prior = await find_latest_released_attempt_for_email(db, intake_email)
+        if released_prior and released_prior.get("client_id"):
+            client_doc["restarted_from_client_id"] = released_prior["client_id"]
         for key in ["created_at", "updated_at"]:
             if client_doc.get(key):
                 client_doc[key] = client_doc[key].isoformat()

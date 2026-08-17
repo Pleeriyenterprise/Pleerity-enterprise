@@ -14,6 +14,7 @@ from services.onboarding_recovery_execution_service import (
 )
 from services.onboarding_recovery_service import (
     CLASS_ACTIVATION_INCOMPLETE,
+    CLASS_EMAIL_RESERVED_NO_CHECKOUT,
     CLASS_EXPIRED_CHECKOUT,
     CLASS_FIRST_TIME_RESTRICTION_COLLISION,
     CLASS_PAYMENT_ABANDONED,
@@ -21,6 +22,7 @@ from services.onboarding_recovery_service import (
     CLASS_RECOVERY_ALREADY_ACTIVE,
     CLASS_UNKNOWN_RECOVERY_STATE,
     MODE_REGENERATE_PAYMENT,
+    MODE_RELEASE_AND_RESTART,
     MODE_RESEND_ACTIVATION,
     build_onboarding_recovery_assessment,
     classify_recovery_state,
@@ -60,11 +62,27 @@ def test_classify_payment_abandoned():
                 "customer_reference": "PLE-CVP-2026-000001",
                 "onboarding_status": OnboardingStatus.INTAKE_PENDING.value,
                 "lifecycle_status": "pending_payment",
+                "latest_checkout_url": "https://checkout.stripe.com/c",
+                "latest_checkout_session_id": "cs_x",
+                "checkout_link_sent_at": (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat(),
             },
             indicators={"stranded_onboarding": True},
         )
     )
-    assert classification == CLASS_PAYMENT_ABANDONED
+    assert classification == CLASS_EXPIRED_CHECKOUT
+
+
+def test_classify_email_reserved_no_checkout():
+    classification = classify_recovery_state(
+        _signals(
+            client={
+                "email": "stranded@example.com",
+                "onboarding_status": OnboardingStatus.INTAKE_PENDING.value,
+            },
+            indicators={"stranded_onboarding": True},
+        )
+    )
+    assert classification == CLASS_EMAIL_RESERVED_NO_CHECKOUT
 
 
 def test_classify_expired_checkout():
@@ -189,6 +207,7 @@ def test_recovery_already_active_not_eligible():
 async def test_build_assessment_integrates_promo_context():
     mock_client = {
         "client_id": "c1",
+        "email": "pending@example.com",
         "customer_reference": "PLE-CVP-2026-000001",
         "onboarding_status": OnboardingStatus.INTAKE_PENDING.value,
         "lifecycle_status": "pending_payment",
@@ -228,8 +247,96 @@ async def test_build_assessment_integrates_promo_context():
             ):
                 assessment = await build_onboarding_recovery_assessment("c1")
     assert assessment["found"] is True
-    assert assessment["classification"] == CLASS_PAYMENT_ABANDONED
-    assert assessment["strategy"]["recommended_mode"] == MODE_REGENERATE_PAYMENT
+    assert assessment["classification"] == CLASS_EMAIL_RESERVED_NO_CHECKOUT
+    assert assessment["strategy"]["recommended_mode"] == MODE_RELEASE_AND_RESTART
     assert assessment["execution_available"] is True
-    assert MODE_REGENERATE_PAYMENT in assessment["strategy"]["executable_modes"]
+    assert MODE_RELEASE_AND_RESTART in assessment["strategy"]["executable_modes"]
+    assert assessment["diagnostic"]["last_successful_stage"]
+    assert assessment["diagnostic"]["email_identity_state"] == "ACTIVE_OR_VALID_ONBOARDING_IDENTITY"
+    assert assessment["promo_recovery"]["customer_entered_promo_supported"] is False
     assert "blockage_summary" in assessment["recommendation"]
+
+
+@pytest.mark.asyncio
+async def test_client_email_taken_ignores_released_identity():
+    from utils.client_email import client_email_taken
+
+    db = MagicMock()
+    db.clients.find_one = AsyncMock(
+        side_effect=[
+            {"_id": "x", "onboarding_identity_status": "RELEASED_FOR_RESTART"},
+            None,
+        ]
+    )
+    db.portal_users.find_one = AsyncMock(return_value=None)
+    assert await client_email_taken(db, "user@example.com") is False
+
+
+@pytest.mark.asyncio
+async def test_release_rejected_when_paid():
+    from services.onboarding_recovery_execution_service import (
+        execute_release_and_restart,
+        OnboardingRecoveryExecutionError,
+    )
+
+    signals = _signals(
+        client={
+            "client_id": "c1",
+            "email": "paid@example.com",
+            "onboarding_status": OnboardingStatus.INTAKE_PENDING.value,
+            "subscription_status": "active",
+            "stripe_subscription_id": "sub_1",
+        }
+    )
+    with pytest.raises(OnboardingRecoveryExecutionError) as exc:
+        await execute_release_and_restart(
+            client_id="c1",
+            signals=signals,
+            classification=CLASS_EMAIL_RESERVED_NO_CHECKOUT,
+            reason="Customer asked to restart signup.",
+            actor={"portal_user_id": "admin1", "role": "ROLE_ADMIN"},
+        )
+    assert exc.value.code == "RELEASE_NOT_ALLOWED"
+
+
+@pytest.mark.asyncio
+async def test_release_and_restart_vacates_email():
+    from services.onboarding_recovery_execution_service import execute_release_and_restart
+
+    mock_db = MagicMock()
+    mock_db.clients.update_one = AsyncMock()
+    mock_db.clients.find_one = AsyncMock(return_value={"recovery_attempt_count": 0})
+    mock_db.portal_users.update_one = AsyncMock()
+    signals = _signals(
+        client={
+            "client_id": "c1",
+            "email": "stranded@example.com",
+            "onboarding_status": OnboardingStatus.INTAKE_PENDING.value,
+        }
+    )
+    with patch("services.onboarding_recovery_execution_service.database.get_db", return_value=mock_db):
+        with patch(
+            "services.stripe_service.stripe_service.expire_checkout_session",
+            new=AsyncMock(),
+        ):
+            with patch(
+                "services.onboarding_continuation_service.expire_old_continuation_tokens",
+                new=AsyncMock(return_value=1),
+            ):
+                with patch(
+                    "services.onboarding_recovery_execution_service.create_audit_log",
+                    new=AsyncMock(),
+                ):
+                    result = await execute_release_and_restart(
+                        client_id="c1",
+                        signals=signals,
+                        classification=CLASS_EMAIL_RESERVED_NO_CHECKOUT,
+                        reason="Abandoned unpaid signup, restart allowed.",
+                        actor={"portal_user_id": "admin1", "email": "ops@example.com", "role": "ROLE_ADMIN"},
+                    )
+    assert result["completion_status"] == "RESTART_RELEASE_COMPLETE"
+    assert result["released_canonical_email"] == "stranded@example.com"
+    assert result["email_reservation_released"] is True
+    set_payload = mock_db.clients.update_one.await_args_list[0].args[1]["$set"]
+    assert set_payload["onboarding_identity_status"] == "RELEASED_FOR_RESTART"
+    assert set_payload["email"] == "released.c1@released.invalid"
