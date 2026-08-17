@@ -1,0 +1,463 @@
+{
+  "captured_at": "2026-08-17T06:10:36.939694+00:00",
+  "soak_start": "2026-08-15T21:19:51.151684+00:00",
+  "staging_db_only": true,
+  "risk_signal_recent": {
+    "http": 200,
+    "items": [
+      {
+        "created_at": "2026-08-17T05:58:38.101453+00:00",
+        "status": "success",
+        "run_type": "schedule",
+        "outcome_status": "conditional_no_output",
+        "idle": null,
+        "skipped_persist": null,
+        "count": null,
+        "message": "",
+        "outcome_kind": "BLOCKED",
+        "attempted_count": 2,
+        "regenerated_count": 0,
+        "processed": null,
+        "queue_empty": false,
+        "batch_size": null,
+        "claim_skipped": null,
+        "outcome_metric_keys": [
+          "attempted_count",
+          "failed_count",
+          "outcome_kind",
+          "queue_empty",
+          "regenerated_count",
+          "skipped_feature_flag_count"
+        ]
+      },
+      {
+        "created_at": "2026-08-17T05:58:07.887280+00:00",
+        "status": "success",
+        "run_type": "schedule",
+        "outcome_status": "conditional_no_output",
+        "idle": null,
+        "skipped_persist": null,
+        "count": null,
+        "message": "",
+        "outcome_kind": "BLOCKED",
+        "attempted_count": 2,
+        "regenerated_count": 0,
+        "processed": null,
+        "queue_empty": false,
+        "batch_size": null,
+        "claim_skipped": null,
+        "outcome_metric_keys": [
+          "attempted_count",
+          "failed_count",
+          "outcome_kind",
+          "queue_empty",
+          "regenerated_count",
+          "skipped_feature_flag_count"
+        ]
+      },
+      {
+        "created_at": "2026-08-17T05:56:38.024655+00:00",
+        "status": "success",
+        "run_type": "schedule",
+        "outcome_status": "conditional_no_output",
+        "idle": null,
+        "skipped_persist": null,
+        "count": null,
+        "message": "",
+        "outcome_kind": "BLOCKED",
+        "attempted_count": 2,
+        "regenerated_count": 0,
+        "processed": null,
+        "queue_empty": false,
+        "batch_size": null,
+        "claim_skipped": null,
+        "outcome_metric_keys": [
+          "attempted_count",
+          "failed_count",
+          "outcome_kind",
+          "queue_empty",
+          "regenerated_count",
+          "skipped_feature_flag_count"
+        ]
+      },
+      {
+        "created_at": "2026-08-17T05:55:37.387279+00:00",
+        "status": "success",
+        "run_type": "schedule",
+        "outcome_status": "conditional_no_output",
+        "idle": null,
+        "skipped_persist": null,
+        "count": null,
+        "message": "",
+        "outcome_kind": "BLOCKED",
+        "attempted_count": 1,
+        "regenerated_count": 0,
+        "processed": null,
+        "queue_empty": false,
+        "batch_size": null,
+        "claim_skipped": null,
+        "outcome_metric_keys": [
+          "attempted_count",
+          "failed_count",
+          "outcome_kind",
+          "queue_empty",
+          "regenerated_count",
+          "skipped_feature_flag_count"
+        ]
+      },
+      {
+        "created_at": "2026-08-17T05:55:07.211469+00:00",
+        "status": "success",
+        "run_type": "schedule",
+        "outcome_status": "conditional_no_output",
+        "idle": null,
+        "skipped_persist": null,
+        "count": null,
+        "message": "",
+        "outcome_kind": "BLOCKED",
+        "attempted_count": 1,
+        "regenerated_count": 0,
+        "processed": null,
+        "queue_empty": false,
+        "batch_size": null,
+        "claim_skipped": null,
+        "outcome_metric_keys": [
+          "attempted_count",
+          "failed_count",
+          "outcome_kind",
+          "queue_empty",
+          "regenerated_count",
+          "skipped_feature_flag_count"
+        ]
+      }
+    ]
+  },
+  "compliance_recalc_recent": [
+    {
+      "created_at": "2026-08-17T03:35:59.284330+00:00",
+      "status": "success",
+      "idle": null,
+      "outcome_kind": "WORK_PERFORMED",
+      "count": null,
+      "message": ""
+    },
+    {
+      "created_at": "2026-08-17T03:35:10.208873+00:00",
+      "status": "success",
+      "idle": null,
+      "outcome_kind": "WORK_PERFORMED",
+      "count": null,
+      "message": ""
+    },
+    {
+      "created_at": "2026-08-17T03:33:01.197688+00:00",
+      "status": "success",
+      "idle": null,
+      "outcome_kind": "WORK_PERFORMED",
+      "count": null,
+      "message": ""
+    }
+  ],
+  "oep_retention_stats": {
+    "http": 404,
+    "body": "{\"detail\":\"Not Found\"}"
+  },
+  "job_states_idle": {
+    "compliance_recalc_worker": {
+      "state": null,
+      "last_success": "2026-08-17T03:35:59.646413+00:00",
+      "last_completed": "2026-08-17T06:10:40.684591+00:00",
+      "poll_heartbeat": null
+    },
+    "risk_signal_regen_worker": {
+      "state": null,
+      "last_success": "2026-08-17T05:58:38.465777+00:00",
+      "last_completed": "2026-08-17T06:10:36.556774+00:00",
+      "poll_heartbeat": null
+    },
+    "notification_retry_worker": {
+      "state": null,
+      "last_success": null,
+      "last_completed": "2026-08-17T06:10:01.316658+00:00",
+      "poll_heartbeat": null
+    },
+    "scheduler_heartbeat": {
+      "state": null,
+      "last_success": null,
+      "last_completed": "2026-08-17T06:10:36.234317+00:00",
+      "poll_heartbeat": null
+    },
+    "scheduled_admin_communications": {
+      "state": null,
+      "last_success": null,
+      "last_completed": "2026-08-17T06:10:01.316848+00:00",
+      "poll_heartbeat": null
+    },
+    "mongo_storage_capacity_monitor": {
+      "state": null,
+      "last_success": null,
+      "last_completed": null,
+      "poll_heartbeat": null
+    },
+    "daily_reminders": {
+      "state": null,
+      "last_success": null,
+      "last_completed": "2026-08-16T09:02:27.103890+00:00",
+      "poll_heartbeat": null
+    }
+  },
+  "job_states_keys_count": 51,
+  "scheduler_runtime": {
+    "available": true,
+    "registered_jobs_count": 54
+  },
+  "open_p0_p1_count": 0,
+  "overall_health": "degraded",
+  "storage_like_incidents_first_page": [],
+  "mongo_connect": {
+    "uri_present": true,
+    "env_db_name": "pleerity_staging",
+    "forced_db": "pleerity_staging",
+    "env_db_is_staging": true
+  },
+  "collections": {
+    "job_runs": {
+      "name": "job_runs",
+      "count": 30266,
+      "size": 14943005,
+      "storageSize": 2875392,
+      "totalIndexSize": 6438912,
+      "nindexes": 6
+    },
+    "operational_evidence_events": {
+      "name": "operational_evidence_events",
+      "count": 91717,
+      "size": 177621197,
+      "storageSize": 32538624,
+      "totalIndexSize": 63934464,
+      "nindexes": 21
+    },
+    "operational_evidence_executions": {
+      "name": "operational_evidence_executions",
+      "count": 36,
+      "size": 18074,
+      "storageSize": 45056,
+      "totalIndexSize": 110592,
+      "nindexes": 3
+    },
+    "job_poll_heartbeats": {
+      "name": "job_poll_heartbeats",
+      "count": 5,
+      "size": 1512,
+      "storageSize": 36864,
+      "totalIndexSize": 36864,
+      "nindexes": 1
+    },
+    "scheduler_heartbeat": {
+      "name": "scheduler_heartbeat",
+      "count": 2,
+      "size": 282,
+      "storageSize": 36864,
+      "totalIndexSize": 36864,
+      "nindexes": 1
+    }
+  },
+  "job_runs_since_soak": {
+    "created_at_gte": 3902,
+    "started_at_gte": 3902
+  },
+  "idle_job_runs_since_soak": {
+    "compliance_recalc_worker": 28,
+    "risk_signal_regen_worker": 622,
+    "notification_retry_worker": 0,
+    "scheduler_heartbeat": 0,
+    "scheduled_admin_communications": 0,
+    "mongo_storage_capacity_monitor": 131
+  },
+  "top_collections": [
+    {
+      "name": "operational_evidence_events",
+      "count": 91717,
+      "size": 177621197,
+      "storageSize": 32538624,
+      "totalIndexSize": 63950848,
+      "nindexes": 21,
+      "size_plus_index": 241572045
+    },
+    {
+      "name": "audit_logs",
+      "count": 232241,
+      "size": 118185488,
+      "storageSize": 33873920,
+      "totalIndexSize": 31346688,
+      "nindexes": 5,
+      "size_plus_index": 149532176
+    },
+    {
+      "name": "message_logs",
+      "count": 23737,
+      "size": 117365268,
+      "storageSize": 23261184,
+      "totalIndexSize": 5828608,
+      "nindexes": 9,
+      "size_plus_index": 123193876
+    },
+    {
+      "name": "security_events",
+      "count": 129699,
+      "size": 44250008,
+      "storageSize": 17534976,
+      "totalIndexSize": 33779712,
+      "nindexes": 6,
+      "size_plus_index": 78029720
+    },
+    {
+      "name": "compliance_decisions",
+      "count": 16188,
+      "size": 36582912,
+      "storageSize": 9175040,
+      "totalIndexSize": 8028160,
+      "nindexes": 10,
+      "size_plus_index": 44611072
+    },
+    {
+      "name": "compliance_evidence_nodes",
+      "count": 32374,
+      "size": 25777705,
+      "storageSize": 6701056,
+      "totalIndexSize": 16187392,
+      "nindexes": 10,
+      "size_plus_index": 41965097
+    },
+    {
+      "name": "compliance_decision_snapshots",
+      "count": 16187,
+      "size": 32882558,
+      "storageSize": 8540160,
+      "totalIndexSize": 7340032,
+      "nindexes": 6,
+      "size_plus_index": 40222590
+    },
+    {
+      "name": "lead_events",
+      "count": 46844,
+      "size": 20830324,
+      "storageSize": 6918144,
+      "totalIndexSize": 15613952,
+      "nindexes": 6,
+      "size_plus_index": 36444276
+    },
+    {
+      "name": "compliance_evidence_edges",
+      "count": 16187,
+      "size": 15455452,
+      "storageSize": 5132288,
+      "totalIndexSize": 12115968,
+      "nindexes": 8,
+      "size_plus_index": 27571420
+    },
+    {
+      "name": "job_runs",
+      "count": 30266,
+      "size": 14943005,
+      "storageSize": 2875392,
+      "totalIndexSize": 6410240,
+      "nindexes": 6,
+      "size_plus_index": 21353245
+    },
+    {
+      "name": "workflow_nudge_audit",
+      "count": 54664,
+      "size": 20092007,
+      "storageSize": 2768896,
+      "totalIndexSize": 913408,
+      "nindexes": 1,
+      "size_plus_index": 21005415
+    },
+    {
+      "name": "score_ledger_events",
+      "count": 14189,
+      "size": 12706129,
+      "storageSize": 2605056,
+      "totalIndexSize": 4038656,
+      "nindexes": 5,
+      "size_plus_index": 16744785
+    },
+    {
+      "name": "reminder_evaluation_log",
+      "count": 19905,
+      "size": 11445939,
+      "storageSize": 2658304,
+      "totalIndexSize": 2953216,
+      "nindexes": 4,
+      "size_plus_index": 14399155
+    },
+    {
+      "name": "workflow_recovery_audit",
+      "count": 32966,
+      "size": 10813881,
+      "storageSize": 2084864,
+      "totalIndexSize": 585728,
+      "nindexes": 1,
+      "size_plus_index": 11399609
+    },
+    {
+      "name": "compliance_recalc_queue",
+      "count": 14170,
+      "size": 8567041,
+      "storageSize": 1970176,
+      "totalIndexSize": 2084864,
+      "nindexes": 5,
+      "size_plus_index": 10651905
+    }
+  ],
+  "oep_since_soak": {
+    "events_created_at": 0,
+    "events_occurred_at": 12564,
+    "executions_created_at": 0
+  },
+  "poll_heartbeats": [
+    {
+      "_id": "scheduled_admin_communications",
+      "idle": true,
+      "job_name": "scheduled_admin_communications",
+      "last_tick_at": "2026-08-17T06:10:01.316848+00:00",
+      "skipped_persist": true,
+      "tick_count": 7630
+    },
+    {
+      "_id": "scheduler_heartbeat",
+      "idle": false,
+      "job_name": "scheduler_heartbeat",
+      "last_tick_at": "2026-08-17T06:10:36.234317+00:00",
+      "skipped_persist": true,
+      "tick_count": 7628
+    },
+    {
+      "_id": "notification_retry_worker",
+      "idle": true,
+      "job_name": "notification_retry_worker",
+      "last_tick_at": "2026-08-17T06:11:00.473757+00:00",
+      "skipped_persist": true,
+      "tick_count": 15259
+    },
+    {
+      "_id": "risk_signal_regen_worker",
+      "idle": true,
+      "job_name": "risk_signal_regen_worker",
+      "last_tick_at": "2026-08-17T06:11:06.435465+00:00",
+      "skipped_persist": true,
+      "tick_count": 25452
+    },
+    {
+      "_id": "compliance_recalc_worker",
+      "idle": true,
+      "job_name": "compliance_recalc_worker",
+      "last_tick_at": "2026-08-17T06:11:24.524212+00:00",
+      "skipped_persist": true,
+      "tick_count": 59657
+    }
+  ],
+  "scheduler_leases": [],
+  "production_db_touched": false
+}

@@ -1,0 +1,151 @@
+{
+  "programme": "MONGODB-24H-SOAK-CLOSURE-AND-PROMOTION-GATE-06",
+  "at_utc": "2026-08-17T06:11:00+00:00",
+  "commercial_controls_verdict": "COMMERCIAL_CONTROLS_VERIFIED",
+  "platform_promotion_gate": "GO_FOR_PRODUCTION_PROMOTION_WITH_ACCEPTED_CONDITIONS",
+  "soak_window": "PASS",
+  "production_deployed": false,
+  "main_merged": false,
+  "git": {
+    "branch": "develop",
+    "local_head": "fb138ae5b8234d9e354f6f5175c2fd02b1f944c7",
+    "origin_develop": "fb138ae5b8234d9e354f6f5175c2fd02b1f944c7",
+    "origin_main": "89217062481b4eb858a8b530ec90c83de067a4be"
+  },
+  "deployment": {
+    "staging_backend_sha": "fb138ae5b8234d9e354f6f5175c2fd02b1f944c7",
+    "staging_backend_environment": "staging",
+    "staging_frontend_bundle": "main.7fd31560.js",
+    "circuit_fingerprint": "cc-step-up-circuit-fix-04",
+    "circuit_fingerprint_present": true,
+    "commercial_step_up_modal_host_present": true,
+    "production_backend_sha": "89217062481b4eb858a8b530ec90c83de067a4be",
+    "production_backend_environment": "production",
+    "production_frontend_bundle": "main.eac95fab.js",
+    "render_deploy_id": "dep-da0dekm1egvs739e9dog",
+    "render_finished_at": "2026-08-15T21:19:51.151684Z",
+    "later_backend_deploy": false
+  },
+  "soak": {
+    "baseline_utc": "2026-08-15T21:19:51.151684Z",
+    "scheduler_healthy_from_utc": "2026-08-15T21:26:36.127493+00:00",
+    "observation_utc": "2026-08-17T06:05:37.680199+00:00",
+    "elapsed_hours": 32.76,
+    "required_hours": 24,
+    "status": "PASS",
+    "instance_count_hourly": 1,
+    "startup_logs_after_baseline": false,
+    "scheduler_status": "healthy",
+    "scheduler_reason": "heartbeat_fresh",
+    "last_heartbeat_at": "2026-08-17T06:04:36.113594+00:00"
+  },
+  "mongo_storage": {
+    "start_captured_at": "2026-08-15T21:13:38.743613+00:00",
+    "start_used_bytes": 2854065854,
+    "start_usage_percent": 53.16,
+    "end_captured_at": "2026-08-17T06:05:37.680199+00:00",
+    "end_used_bytes": 2906243948,
+    "end_usage_percent": 54.13,
+    "absolute_growth_bytes": 52178094,
+    "percentage_point_growth": 0.97,
+    "estimated_daily_growth_bytes": 38100000,
+    "level": "ok",
+    "writes_at_risk": false,
+    "incident_recommended": false,
+    "write_block_event": false,
+    "database_capacity_exceeded_event": false,
+    "shared_atlas_staging_and_production": true
+  },
+  "collections_staging": {
+    "job_runs_total": 30266,
+    "job_runs_since_soak": 3902,
+    "operational_evidence_events_total": 91717,
+    "operational_evidence_events_since_soak_occurred_at": 12564,
+    "operational_evidence_executions_total": 36,
+    "job_poll_heartbeats_docs": 5,
+    "production_db_touched": false
+  },
+  "idle_skip": {
+    "compliance_recalc_worker_job_runs_since_soak": 28,
+    "risk_signal_regen_worker_job_runs_since_soak": 622,
+    "notification_retry_worker_job_runs_since_soak": 0,
+    "scheduler_heartbeat_job_runs_since_soak": 0,
+    "poll_heartbeat_upserts": 5,
+    "risk_signal_recent_outcome_kind": "BLOCKED",
+    "pre_remediation_job_runs_approx": 1940000
+  },
+  "scheduler": {
+    "registered_jobs_count": 54,
+    "duplicate_scheduler": false,
+    "stale_leases": false,
+    "failed_runs_24h": 1,
+    "degraded_runs_24h": 3
+  },
+  "incidents": {
+    "open_p0_p1_count": 0,
+    "open_incidents_count": 2,
+    "during_soak_count": 5,
+    "during_soak_severity": {"P0": 3, "P1": 1, "P2": 1},
+    "during_soak_lifecycle": {"RESOLVED": 5},
+    "after_scheduler_recovery_p0_p1": 0,
+    "false_storage_incident": false,
+    "open_now": [
+      {
+        "title": "Job daily_reminders last run was degraded",
+        "severity": "P2",
+        "status": "open",
+        "lifecycle_state": "RECOVERED",
+        "created_at": "2026-08-09T09:10:20.566048+00:00"
+      },
+      {
+        "title": "Delivery unknown unresolved",
+        "severity": "P2",
+        "status": "open",
+        "lifecycle_state": "DEGRADED",
+        "created_at": "2026-08-06T21:10:19.139293+00:00"
+      }
+    ]
+  },
+  "observability": {
+    "api_health": "healthy",
+    "overall_health": "degraded",
+    "material_authority_drift": false
+  },
+  "commercial_controls_smoke": {
+    "http": 200,
+    "found": true,
+    "cc04_repeated": false
+  },
+  "production_non_touch": {
+    "origin_main_unchanged": true,
+    "production_backend_unchanged": true,
+    "production_frontend_unchanged": true,
+    "production_mongo_mutation": false,
+    "production_stripe_operation": false,
+    "production_postmark_test": false,
+    "production_deployment": false
+  },
+  "accepted_conditions": [
+    "shared_atlas_flex_staging_and_production",
+    "live_retention_not_enabled",
+    "storage_budgeting_roadmap",
+    "periodic_staging_stripe_reconciliation",
+    "pentest_roadmap",
+    "two_open_p2_incidents",
+    "risk_signal_blocked_job_run_persist",
+    "customer_journeys_scorecard_2026_07_09_not_rerun"
+  ],
+  "gate_matrix": [
+    {"domain": "MongoDB capacity", "status": "PASS_WITH_CONDITION", "blocking": false},
+    {"domain": "MongoDB 24h soak", "status": "PASS", "blocking": false},
+    {"domain": "scheduler", "status": "PASS", "blocking": false},
+    {"domain": "incidents", "status": "PASS_WITH_CONDITION", "blocking": false},
+    {"domain": "observability", "status": "PASS_WITH_CONDITION", "blocking": false},
+    {"domain": "Commercial Controls", "status": "PASS", "blocking": false},
+    {"domain": "subscription lifecycle", "status": "PASS", "blocking": false},
+    {"domain": "authentication", "status": "PASS", "blocking": false},
+    {"domain": "payments/Stripe", "status": "PASS_WITH_CONDITION", "blocking": false},
+    {"domain": "Postmark/email", "status": "PASS", "blocking": false},
+    {"domain": "production non-touch", "status": "PASS", "blocking": false}
+  ]
+}
