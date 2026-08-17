@@ -19,3 +19,7 @@ If none exists:
 - Yes — select from **active approved** invite codes (`list_invite_codes` status `active`, remaining uses > 0). Reason still required by governance.
 
 Do not grant a promo because the customer claims they had one. Do not accept a free-typed discount.
+
+## Staging note
+
+`GET /onboarding-recovery/approved-promos` omits coupons that are invalid in the current Stripe mode (for example a live-mode coupon while staging uses test keys). Staging recovery uses private invite `STAGINGSO01` mapped to test-mode coupon `STAGINGSO01` (100% repeating 2 months, onboarding waived). Customer-entered Stripe promotion codes remain disabled.

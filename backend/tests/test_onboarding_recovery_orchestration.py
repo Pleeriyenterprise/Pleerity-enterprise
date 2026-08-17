@@ -430,3 +430,57 @@ async def test_regenerate_maps_live_coupon_on_test_mode_to_conflict():
                         )
     assert exc.value.code == "STRIPE_PROMO_MODE_MISMATCH"
     assert exc.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_list_approved_recovery_promos_skips_incompatible_stripe_mode():
+    from services.onboarding_recovery_execution_service import list_approved_recovery_promos
+
+    rows = [
+        {
+            "code": "PILOTACCESS",
+            "campaign_name": "Live coupon",
+            "effective_status": "active",
+            "remaining_uses": 10,
+            "discount_percent": 100,
+            "discount_duration": "repeating",
+            "discount_duration_in_months": 2,
+            "applies_to_plan_codes": ["PLAN_1_SOLO"],
+            "stripe_coupon_id": "85x6smtg",
+        },
+        {
+            "code": "STAGINGSO01",
+            "campaign_name": "Staging cert",
+            "effective_status": "active",
+            "remaining_uses": 8,
+            "discount_percent": 100,
+            "discount_duration": "repeating",
+            "discount_duration_in_months": 2,
+            "applies_to_plan_codes": ["PLAN_1_SOLO"],
+            "stripe_coupon_id": "STAGINGSO01",
+        },
+        {
+            "code": "NOPAYLOAD",
+            "effective_status": "active",
+            "remaining_uses": 5,
+            "discount_percent": 100,
+            "stripe_coupon_id": None,
+        },
+    ]
+
+    async def _preview(fields):
+        cid = fields.get("stripe_coupon_id")
+        if cid == "STAGINGSO01":
+            return {"valid": True}
+        return {"valid": False, "message": "live mode mismatch"}
+
+    with patch(
+        "services.pilot_invite_service.list_invite_codes",
+        new=AsyncMock(return_value=rows),
+    ):
+        with patch(
+            "services.pilot_invite_service.preview_stripe_coupon_validation",
+            new=AsyncMock(side_effect=_preview),
+        ):
+            out = await list_approved_recovery_promos()
+    assert [p["code"] for p in out] == ["STAGINGSO01"]

@@ -719,6 +719,28 @@ async def execute_release_and_restart(
     }
 
 
+async def _invite_usable_in_current_stripe_mode(row: Dict[str, Any]) -> bool:
+    """Recovery checkout can only apply coupons that exist in the current Stripe mode."""
+    coupon_id = (row.get("stripe_coupon_id") or "").strip()
+    promo_id = (row.get("stripe_promotion_code_id") or "").strip()
+    if not coupon_id and not promo_id:
+        return False
+    from services.pilot_invite_service import preview_stripe_coupon_validation
+
+    preview = await preview_stripe_coupon_validation(
+        {
+            "stripe_coupon_id": coupon_id or None,
+            "stripe_promotion_code_id": promo_id or None,
+            "discount_mode": row.get("discount_mode") or "coupon",
+            "discount_percent": row.get("discount_percent"),
+            "discount_duration": row.get("discount_duration"),
+            "discount_duration_in_months": row.get("discount_duration_in_months"),
+            "discount_type": row.get("discount_type") or "percent",
+        }
+    )
+    return bool(preview.get("valid"))
+
+
 async def list_approved_recovery_promos(*, limit: int = 50) -> list[Dict[str, Any]]:
     from services.pilot_invite_service import list_invite_codes
 
@@ -727,6 +749,8 @@ async def list_approved_recovery_promos(*, limit: int = 50) -> list[Dict[str, An
     for row in rows:
         remaining = row.get("remaining_uses")
         if remaining is not None and int(remaining) <= 0:
+            continue
+        if not await _invite_usable_in_current_stripe_mode(row):
             continue
         out.append(
             {

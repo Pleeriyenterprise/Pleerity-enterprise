@@ -18,3 +18,9 @@ The attempt remains queryable by `client_id`. It leaves Pending Setup automatica
 ## Re-registration
 
 `client_email_taken` ignores released identity. Fresh intake creates a **new** `client_id` and may set `restarted_from_client_id` to the latest released attempt. Duplicate protection remains for any **active** client or portal user.
+
+## Staging runtime (01)
+
+First certification pass: unpaid fixture `so.release.202608171609@yopmail.com` was released, email became `available`, concurrent `/intake/submit` produced one 200 (`b18f9b75-…`) with `restarted_from_client_id=78a9f1dc-…` and one `EMAIL_TAKEN`. The released row left Pending Setup automatically.
+
+The same pass showed two concurrent Releases both returning 200. `ccd87cc3` makes release atomic (`find_one_and_update` on `onboarding_identity_status != RELEASED_FOR_RESTART`). Follow-up re-proof did not finish (SSL error on concurrent submit).

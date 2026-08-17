@@ -5,23 +5,32 @@
   "commercial_controls_authority": "COMMERCIAL_CONTROLS_VERIFIED",
   "customer_entered_promo_supported": false,
   "final_verdict": "STRANDED_ONBOARDING_INCOMPLETE",
-  "reason": "Implementation and unit tests landed on develop. Staging Stripe/Postmark/customer-observable continuation and re-registration were not runtime-certified in this session.",
-  "unit_tests": {
-    "backend_onboarding_recovery_and_email": "36 passed",
-    "frontend_recovery_labels_and_panel": "PASS"
+  "committed_sha": "7f3ba4fcc2b733e0d41ced95d5646f5cb3e41ac9",
+  "remediation_sha": "ccd87cc3125a61b423461e73dfd19c8e6eced716",
+  "staging_api_version": "ccd87cc3125a61b423461e73dfd19c8e6eced716",
+  "staging_environment": "staging",
+  "staging_frontend": {
+    "alias": "https://pleerity-enterprise-9jjg.vercel.app",
+    "preview": "https://pleerity-enterprise-9jjg-34io4huzg-victory-aigbochies-projects.vercel.app",
+    "bundle": "main.5fcacb3c.js"
   },
-  "implemented": [
-    "dropout diagnostic ladder",
-    "EMAIL_RESERVED_NO_CHECKOUT and PROMO_CONTEXT_LOST",
-    "release_and_restart with uniqueness vacation",
-    "pending_setup excludes RELEASED_FOR_RESTART",
-    "expire prior Stripe checkout on regenerate",
-    "server-governed promo preserve vs paid vs select approved",
-    "restarted_from_client_id on fresh intake"
+  "reason": "Paid recovery checkout and release guards were runtime-proven on staging. Validated-promo checkout cannot complete because the only approved staging promo (PILOTACCESS) is a live-mode Stripe coupon. Customer payment through provisioning and Postmark continuation were not completed. Concurrent release race was fixed on ccd87cc3; follow-up re-proof crashed on SSL during re-registration.",
+  "unit_tests": {
+    "backend_onboarding_recovery_and_email": "27 passed after remediation (was 36 on implementation SHA including sibling modules)",
+    "frontend_recovery_labels_and_panel": "PASS on implementation SHA"
+  },
+  "runtime_proven": [
+    "staging SHA ccd87cc3 healthy",
+    "paid regenerate_payment creates cs_test session; hosted amount £68.00; no customer promo field",
+    "release guards reject paid/provisioned/activation-incomplete/duplicate-risk",
+    "eligibility override grant/bypass/waive terminate with 200",
+    "first-pass release frees email; one successful re-register; restarted_from_client_id set; Pending Setup drops released attempt"
   ],
   "not_done": [
-    "staging Scenario A-H runtime certification",
-    "production deploy",
-    "customer-entered Stripe promotion codes"
+    "staging-valid promo checkout (no test-mode coupon in approved list)",
+    "customer payment + webhook + provisioning + leave Pending Setup after paid recovery",
+    "Postmark continuation delivery",
+    "Admin CCP browser execute (token injection hit client Today shell)",
+    "concurrent-release re-proof after atomic fix"
   ]
 }

@@ -47,7 +47,7 @@ def _mask(value: Optional[str], keep: int = 8) -> Optional[str]:
 
 
 def _load_admin() -> Tuple[str, str]:
-    email = (os.getenv("STAGING_ADMIN_EMAIL") or "").strip()
+    email = (os.getenv("STAGING_ADMIN_EMAIL") or "prosper@yopmail.com").strip()
     pw = (os.getenv("STAGING_ADMIN_PASSWORD") or "").strip()
     if not pw:
         for rel in (
@@ -120,8 +120,22 @@ def _confirm(token: str, client_id: str, action_id: str = "onboarding_recovery_e
     return r.json()["token"]
 
 
+def _http_call(fn, *, attempts: int = 4) -> Any:
+    last: Optional[Exception] = None
+    for i in range(attempts):
+        try:
+            return fn()
+        except (httpx.ConnectError, httpx.ReadError, httpx.WriteError, httpx.TimeoutException) as exc:
+            last = exc
+            time.sleep(min(2 ** i, 12))
+    raise last  # type: ignore[misc]
+
+
 def _get(path: str, token: str, **kwargs: Any) -> Dict[str, Any]:
-    r = httpx.get(f"{API}{path}", headers=_headers(token), timeout=kwargs.get("timeout", 120))
+    def _do():
+        return httpx.get(f"{API}{path}", headers=_headers(token), timeout=kwargs.get("timeout", 120))
+
+    r = _http_call(_do)
     try:
         body = r.json()
     except Exception:
@@ -130,12 +144,15 @@ def _get(path: str, token: str, **kwargs: Any) -> Dict[str, Any]:
 
 
 def _post(path: str, token: str, payload: dict, *, step_up: str = "", confirmation: str = "") -> Dict[str, Any]:
-    r = httpx.post(
-        f"{API}{path}",
-        json=payload,
-        headers=_headers(token, step_up=step_up, confirmation=confirmation),
-        timeout=180,
-    )
+    def _do():
+        return httpx.post(
+            f"{API}{path}",
+            json=payload,
+            headers=_headers(token, step_up=step_up, confirmation=confirmation),
+            timeout=180,
+        )
+
+    r = _http_call(_do)
     try:
         body = r.json()
     except Exception:
@@ -188,12 +205,15 @@ def _intake_payload(email: str, *, name: str) -> dict:
 
 
 def _public_post(path: str, payload: dict) -> Dict[str, Any]:
-    r = httpx.post(
-        f"{API}{path}",
-        json=payload,
-        headers={"Content-Type": "application/json", "Origin": ORIGIN},
-        timeout=180,
-    )
+    def _do():
+        return httpx.post(
+            f"{API}{path}",
+            json=payload,
+            headers={"Content-Type": "application/json", "Origin": ORIGIN},
+            timeout=180,
+        )
+
+    r = _http_call(_do)
     try:
         body = r.json()
     except Exception:
@@ -310,7 +330,7 @@ def _messages(token: str, email: str) -> List[Dict[str, Any]]:
     return out[:8]
 
 
-def _wait_health(timeout_s: int = 420) -> Dict[str, Any]:
+def _wait_health(expected_prefix: str = "", timeout_s: int = 420) -> Dict[str, Any]:
     deadline = time.time() + timeout_s
     last: Dict[str, Any] = {}
     while time.time() < deadline:
@@ -323,11 +343,9 @@ def _wait_health(timeout_s: int = 420) -> Dict[str, Any]:
                 health = {"raw": h.text[:400]}
             last = {"version": ver, "health_status": h.status_code, "health": health}
             sched = (health.get("scheduler") or {}) if isinstance(health, dict) else {}
-            if (
-                ver.get("commit_sha", "").startswith("7f3ba4fc")
-                and ver.get("environment") == "staging"
-                and not sched.get("stale", True)
-            ):
+            sha = ver.get("commit_sha") or ""
+            sha_ok = True if not expected_prefix else sha.startswith(expected_prefix)
+            if sha_ok and ver.get("environment") == "staging" and not sched.get("stale", True):
                 last["ready"] = True
                 return last
         except Exception as exc:
@@ -511,7 +529,19 @@ def _pay_checkout(url: str, email: str, shot_name: str) -> Dict[str, Any]:
         return {"ok": False, "error": str(exc)}
 
 
-def _admin_panel(token: str, user: dict, client_id: str, shot_name: str) -> Dict[str, Any]:
+def _dismiss_cookies(page) -> None:
+    for label in ("Accept All", "Accept all", "Allow all"):
+        try:
+            btn = page.get_by_role("button", name=re.compile(label, re.I))
+            if btn.count():
+                btn.first.click(timeout=2000)
+                page.wait_for_timeout(500)
+                return
+        except Exception:
+            continue
+
+
+def _admin_panel(admin_email: str, admin_password: str, client_id: str, shot_name: str) -> Dict[str, Any]:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
@@ -523,17 +553,21 @@ def _admin_panel(token: str, user: dict, client_id: str, shot_name: str) -> Dict
             browser = _launch_browser(p)
             page = browser.new_page(viewport={"width": 1400, "height": 1100})
             page.goto(f"{FE}/login/admin", wait_until="domcontentloaded", timeout=120000)
-            page.evaluate(
-                """([tok, userJson]) => {
-                    localStorage.setItem('auth_token', tok);
-                    localStorage.setItem('user', userJson);
-                }""",
-                [token, json.dumps(user)],
-            )
-            page.goto(panel, wait_until="networkidle", timeout=120000)
-            page.wait_for_timeout(3500)
+            page.wait_for_timeout(1500)
+            _dismiss_cookies(page)
+            page.fill("#email", admin_email)
+            page.fill("#password", admin_password)
+            page.locator('button[type="submit"]').first.click()
             try:
-                page.locator('[data-testid="client-promo-recovery-controls"]').click(timeout=4000)
+                page.wait_for_url(re.compile(r"/admin/"), timeout=90000)
+            except Exception:
+                pass
+            _dismiss_cookies(page)
+            page.goto(panel, wait_until="domcontentloaded", timeout=120000)
+            page.wait_for_timeout(4000)
+            _dismiss_cookies(page)
+            try:
+                page.locator('[data-testid="client-promo-recovery-controls"]').click(timeout=8000)
                 page.wait_for_timeout(1500)
             except Exception:
                 pass
@@ -548,102 +582,19 @@ def _admin_panel(token: str, user: dict, client_id: str, shot_name: str) -> Dict
                 "waive": page.locator('[data-testid="waive-onboarding-btn"]').count() > 0,
                 "recover": page.locator('[data-testid="recover-onboarding-btn"]').count() > 0,
                 "bypass": page.locator('[data-testid="bypass-first-time-btn"]').count() > 0,
+                "landed_admin": "/admin/clients/" in page.url and "Today is available to client users only" not in text,
             }
             browser.close()
-        return {"ok": True, "url": panel, "markers": markers, "text_preview": text[:2000], "screenshot": shot_name}
-    except Exception as exc:
-        return {"ok": False, "error": str(exc), "url": panel}
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        return {"ok": False, "error": "playwright not installed"}
-    SHOTS.mkdir(parents=True, exist_ok=True)
-    try:
-        with sync_playwright() as p:
-            browser = _launch_browser(p)
-            page = browser.new_page(viewport={"width": 1280, "height": 900})
-            page.goto(url, wait_until="domcontentloaded", timeout=120000)
-            page.wait_for_timeout(3500)
-            before = page.inner_text("body")[:2500]
-        if any(w in before.lower() for w in ("expired", "no longer valid")):
-            page.screenshot(path=str(SHOTS / shot_name), full_page=True)
-            browser.close()
-            return {"ok": False, "expired": True, "text_preview": before, "screenshot": shot_name}
-        try:
-            em = page.locator("#email, input[type='email']").first
-            if em.count() and em.is_visible():
-                val = em.input_value() if em.evaluate("el => 'value' in el") else ""
-                if not val:
-                    em.fill(email)
-        except Exception:
-            pass
-        filled_card = False
-        try:
-            frames = page.frames
-            for fr in frames:
-                loc = fr.locator('input[name="cardnumber"], input[name="cardNumber"], input[placeholder*="1234"]')
-                if loc.count():
-                    loc.first.fill("4242424242424242")
-                    filled_card = True
-                    exp = fr.locator('input[name="exp-date"], input[name="expiryDate"], input[placeholder*="MM"]')
-                    if exp.count():
-                        exp.first.fill("1234")
-                    cvc = fr.locator('input[name="cvc"], input[placeholder*="CVC"]')
-                    if cvc.count():
-                        cvc.first.fill("123")
-                    break
-        except Exception:
-            pass
-        if not filled_card:
-            try:
-                page.get_by_placeholder(re.compile(r"1234|card", re.I)).first.fill("4242424242424242", timeout=4000)
-                filled_card = True
-            except Exception:
-                pass
-        # Billing name / postcode if present
-        try:
-            name = page.locator('input[name="billingName"], input[placeholder*="Full name"]')
-            if name.count() and name.first.is_visible():
-                name.first.fill("Staging Cert")
-        except Exception:
-            pass
-        try:
-            pc = page.locator('input[name="billingPostalCode"], input[placeholder*="Postcode"], input[placeholder*="ZIP"]')
-            if pc.count() and pc.first.is_visible():
-                pc.first.fill("SW1A1AA")
-        except Exception:
-            pass
-        clicked = False
-        for label in ("Subscribe", "Pay", "Start trial", "Complete order", "Pay and subscribe"):
-            try:
-                btn = page.get_by_role("button", name=re.compile(label, re.I))
-                if btn.count():
-                    btn.first.click(timeout=5000)
-                    clicked = True
-                    break
-            except Exception:
-                continue
-        page.wait_for_timeout(8000)
-        try:
-            page.wait_for_url(re.compile(r"checkout/success|session_id="), timeout=90000)
-        except Exception:
-            pass
-        final_url = page.url
-        text = page.inner_text("body")[:2500]
-        page.screenshot(path=str(SHOTS / shot_name), full_page=True)
-        browser.close()
-        success = "checkout/success" in final_url or "session_id=" in final_url
         return {
-            "ok": success,
-            "clicked_pay": clicked,
-            "filled_card": filled_card,
-            "final_url": final_url,
-            "text_preview": text,
+            "ok": bool(markers["landed_admin"]),
+            "url": panel,
+            "final_url": panel,
+            "markers": markers,
+            "text_preview": text[:2000],
             "screenshot": shot_name,
-            "pre_pay_preview": before[:800],
         }
     except Exception as exc:
-        return {"ok": False, "error": str(exc)}
+        return {"ok": False, "error": str(exc), "url": panel}
 
 
 def _wait_not_fresh(token: str, client_id: str, timeout_s: int = 2100) -> Dict[str, Any]:
@@ -715,6 +666,42 @@ def _slim_client(body: dict) -> dict:
     }
 
 
+def _ensure_staging_test_promo(token: str) -> Dict[str, Any]:
+    code = "STAGINGSO01"
+    existing = _get(f"/admin/pilot-invites/{code}", token)
+    invite = (existing.get("body") or {}).get("invite_code") if existing.get("ok") else None
+    if invite:
+        return {"ok": True, "created": False, "code": code, "stripe_coupon_id": invite.get("stripe_coupon_id")}
+    created = _post(
+        "/admin/pilot-invites",
+        token,
+        {
+            "code": code,
+            "code_type": "private_invite",
+            "campaign_name": "Stranded onboarding staging cert",
+            "max_uses": 20,
+            "stripe_coupon_id": code,
+            "discount_mode": "coupon",
+            "discount_percent": 100,
+            "discount_duration": "repeating",
+            "discount_duration_in_months": 2,
+            "waive_onboarding_fee": True,
+            "onboarding_fee_policy": "waived",
+            "applies_to_plan_codes": ["PLAN_1_SOLO", "PLAN_2_PORTFOLIO", "PLAN_3_PRO"],
+            "first_time_customer_only": False,
+            "is_publicly_enterable": False,
+            "public_entry_enabled": False,
+        },
+    )
+    return {
+        "ok": created.get("ok"),
+        "created": True,
+        "code": code,
+        "status": created.get("status"),
+        "detail": created.get("body"),
+    }
+
+
 def main() -> int:
     email, password = _load_admin()
     results: Dict[str, Any] = {
@@ -723,7 +710,7 @@ def main() -> int:
         "api": API,
         "frontend": FE,
         "production_touched": False,
-        "committed_sha_expected": "7f3ba4fcc2b733e0d41ced95d5646f5cb3e41ac9",
+        "committed_sha_expected": (os.getenv("STAGING_EXPECTED_SHA") or "").strip() or None,
         "paths": {},
         "matrix": {},
     }
@@ -736,7 +723,8 @@ def main() -> int:
 
     atexit.register(_flush)
     print("health wait", flush=True)
-    results["health_wait"] = _wait_health()
+    expected = results.get("committed_sha_expected") or ""
+    results["health_wait"] = _wait_health(expected[:12] if expected else "", timeout_s=600)
     print("health", (results["health_wait"].get("health") or {}).get("status"), flush=True)
     try:
         results["frontend_bundle"] = _frontend_bundle()
@@ -746,8 +734,7 @@ def main() -> int:
     token = _login(email, password)
     print("admin login ok", flush=True)
     step = _step_up(token, password)
-    me = _get("/auth/me", token)
-    user = me.get("body") if isinstance(me.get("body"), dict) else {"email": email, "role": "ROLE_ADMIN"}
+    results["staging_test_promo"] = _ensure_staging_test_promo(token)
 
     pending_before = _pending_setup(token)
     pb = pending_before.get("body") or {}
@@ -786,7 +773,11 @@ def main() -> int:
         "codes": [p.get("code") for p in promo_rows[:8]],
     }
     codes = [p.get("code") for p in promo_rows if p.get("code")]
-    selected_code = "LAUNCH2026" if "LAUNCH2026" in codes else (codes[0] if codes else None)
+    selected_code = "STAGINGSO01" if "STAGINGSO01" in codes else (
+        "LAUNCH2026" if "LAUNCH2026" in codes else (codes[0] if codes else None)
+    )
+    if not selected_code and (results.get("staging_test_promo") or {}).get("ok"):
+        selected_code = "STAGINGSO01"
 
     # ---- Create dedicated fixtures ----
     promo_email = f"so.promo.{STAMP}@yopmail.com"
@@ -876,6 +867,117 @@ def main() -> int:
             k: {"status": v.get("status"), "ok": v.get("ok")} for k, v in controls.items()
         }
 
+    # ---- Journey 2: release + fresh registration ----
+    j2: Dict[str, Any] = {"email": release_email, "client_id": release_id}
+    if release_id:
+        j2["before"] = _slim_client(_unwrap_client(_client_detail(token, release_id)))
+        j2["in_pending_before"] = _client_in_pending(token, release_id)
+        j2["identities_before"] = _identities_for_email(token, release_email)
+        j2["check_email_before"] = _public_post("/intake/check-email", {"email": release_email})
+        pre_co = _execute(
+            token, step, release_id, "regenerate_payment", send_email=False, promo_decision="none"
+        )
+        pre_ex = ((pre_co.get("body") or {}).get("execution") or {}) if pre_co.get("ok") else {}
+        j2["pre_release_checkout"] = {
+            "status": pre_co.get("status"),
+            "ok": pre_co.get("ok"),
+            "session_id": pre_ex.get("session_id"),
+        }
+        stale_checkout_url = pre_ex.get("checkout_url")
+        if stale_checkout_url:
+            j2["pre_release_checkout_inspect"] = _inspect_checkout(
+                stale_checkout_url, "j2_checkout_before_release.png"
+            )
+        results["paths"]["journey_2_release_restart"] = j2
+        # Concurrent release
+        def _rel():
+            return _execute(token, step, release_id, "release_and_restart", send_email=False)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futs = [pool.submit(_rel), pool.submit(_rel)]
+            conc = [f.result() for f in as_completed(futs)]
+        j2["concurrent_release"] = [
+            {
+                "status": c.get("status"),
+                "ok": c.get("ok"),
+                "error": ((c.get("body") or {}).get("detail") if isinstance(c.get("body"), dict) else c.get("body")),
+            }
+            for c in conc
+        ]
+        ok_rel = [c for c in conc if c.get("ok")]
+        j2["release_success_count"] = len(ok_rel)
+        results["paths"]["journey_2_release_restart"] = j2
+        j2["after_release"] = _slim_client(_unwrap_client(_client_detail(token, release_id)))
+        j2["in_pending_after_release"] = _client_in_pending(token, release_id)
+        j2["check_email_after"] = _public_post("/intake/check-email", {"email": release_email})
+        if stale_checkout_url:
+            j2["stale_checkout"] = _inspect_checkout(stale_checkout_url, "j2_stale_checkout.png")
+        j2["audit"] = _audit(token, release_id)
+        results["paths"]["journey_2_release_restart"] = j2
+        # Concurrent registration
+        def _reg(i: int):
+            payload = _intake_payload(release_email, name=f"SO Restart {i}")
+            return _public_post("/intake/submit", payload)
+
+        try:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futs = [pool.submit(_reg, 1), pool.submit(_reg, 2)]
+                regs = [f.result() for f in as_completed(futs)]
+        except Exception as exc:
+            j2["concurrent_register_error"] = str(exc)
+            regs = []
+        j2["concurrent_register"] = [
+            {
+                "status": r.get("status"),
+                "ok": r.get("ok"),
+                "client_id": (r.get("body") or {}).get("client_id"),
+                "restarted_from_client_id": (r.get("body") or {}).get("restarted_from_client_id"),
+                "detail": (r.get("body") or {}).get("detail") if not r.get("ok") else None,
+            }
+            for r in regs
+        ]
+        new_ok = [r for r in regs if r.get("ok")]
+        j2["register_success_count"] = len(new_ok)
+        new_id = (new_ok[0].get("body") or {}).get("client_id") if new_ok else None
+        j2["new_client_id"] = new_id
+        if new_id:
+            j2["new_after"] = _slim_client(_unwrap_client(_client_detail(token, new_id)))
+            j2["new_in_pending"] = _client_in_pending(token, new_id)
+            j2["restarted_from_client_id"] = (j2["new_after"] or {}).get("restarted_from_client_id")
+            try:
+                j2["admin_ui_released"] = _admin_panel(email, password, release_id, "j2_released_history.png")
+                j2["admin_ui_new"] = _admin_panel(email, password, new_id, "j2_new_ccp.png")
+            except Exception as exc:
+                j2["admin_ui_error"] = str(exc)
+        j2["identities_after"] = _identities_for_email(token, release_email)
+        active = [
+            x
+            for x in j2["identities_after"]
+            if str(x.get("onboarding_identity_status") or "").upper() != "RELEASED_FOR_RESTART"
+            and not str(x.get("email") or "").endswith("@released.invalid")
+        ]
+        released_hist = [
+            x
+            for x in j2["identities_after"]
+            if str(x.get("onboarding_identity_status") or "").upper() == "RELEASED_FOR_RESTART"
+            or str(x.get("email") or "").endswith("@released.invalid")
+        ]
+        # released row email is vacated so may not appear in email search; check released client directly
+        released_status = (j2.get("after_release") or {}).get("onboarding_identity_status")
+        j2["passed"] = bool(
+            j2.get("in_pending_before")
+            and not j2.get("in_pending_after_release")
+            and released_status == "RELEASED_FOR_RESTART"
+            and (j2.get("check_email_after") or {}).get("body", {}).get("available") is True
+            and j2.get("register_success_count") == 1
+            and j2.get("restarted_from_client_id") == release_id
+            and j2.get("new_client_id")
+            and j2.get("new_client_id") != release_id
+            and j2.get("release_success_count") == 1
+        )
+    results["paths"]["journey_2_release_restart"] = j2
+
+
     # ---- Journey 1: recovery checkout + validated promo ----
     j1: Dict[str, Any] = {"email": promo_email, "client_id": promo_id}
     if promo_id:
@@ -945,7 +1047,7 @@ def main() -> int:
         j1["messages"] = _messages(token, promo_email)
         j1["audit"] = _audit(token, promo_id)
         try:
-            j1["admin_ui"] = _admin_panel(token, user, promo_id, "j1_admin_ccp.png")
+            j1["admin_ui"] = _admin_panel(email, password, promo_id, "j1_admin_ccp.png")
         except Exception as exc:
             j1["admin_ui"] = {"ok": False, "error": str(exc)}
         active = [
@@ -996,99 +1098,6 @@ def main() -> int:
             j_sel["checkout"] = _inspect_checkout(ex_s["checkout_url"], "selected_promo_checkout.png")
         j_sel["passed"] = bool(exec_s.get("ok") and ex_s.get("applied_invite_code") == selected_code)
     results["paths"]["choice_admin_selected_promo"] = j_sel
-
-    # ---- Journey 2: release + fresh registration ----
-    j2: Dict[str, Any] = {"email": release_email, "client_id": release_id}
-    if release_id:
-        j2["before"] = _slim_client(_unwrap_client(_client_detail(token, release_id)))
-        j2["in_pending_before"] = _client_in_pending(token, release_id)
-        j2["identities_before"] = _identities_for_email(token, release_email)
-        j2["check_email_before"] = _public_post("/intake/check-email", {"email": release_email})
-        # Concurrent release
-        def _rel():
-            return _execute(token, step, release_id, "release_and_restart", send_email=False)
-
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            futs = [pool.submit(_rel), pool.submit(_rel)]
-            conc = [f.result() for f in as_completed(futs)]
-        j2["concurrent_release"] = [
-            {
-                "status": c.get("status"),
-                "ok": c.get("ok"),
-                "error": ((c.get("body") or {}).get("detail") if isinstance(c.get("body"), dict) else c.get("body")),
-            }
-            for c in conc
-        ]
-        ok_rel = [c for c in conc if c.get("ok")]
-        j2["release_success_count"] = len(ok_rel)
-        j2["after_release"] = _slim_client(_unwrap_client(_client_detail(token, release_id)))
-        j2["in_pending_after_release"] = _client_in_pending(token, release_id)
-        j2["check_email_after"] = _public_post("/intake/check-email", {"email": release_email})
-        old_url = (j2["before"] or {}).get("latest_checkout_session_id")
-        # stale continuation: if a checkout url existed on first regenerate of release fixture, none yet
-        detail_rel = _client_detail(token, release_id).get("body") or {}
-        stale_url = detail_rel.get("latest_checkout_url")
-        if stale_url:
-            j2["stale_checkout"] = _inspect_checkout(stale_url, "j2_stale_checkout.png")
-        j2["audit"] = _audit(token, release_id)
-        # Concurrent registration
-        def _reg(i: int):
-            payload = _intake_payload(release_email, name=f"SO Restart {i}")
-            return _public_post("/intake/submit", payload)
-
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            futs = [pool.submit(_reg, 1), pool.submit(_reg, 2)]
-            regs = [f.result() for f in as_completed(futs)]
-        j2["concurrent_register"] = [
-            {
-                "status": r.get("status"),
-                "ok": r.get("ok"),
-                "client_id": (r.get("body") or {}).get("client_id"),
-                "restarted_from_client_id": (r.get("body") or {}).get("restarted_from_client_id"),
-                "detail": (r.get("body") or {}).get("detail") if not r.get("ok") else None,
-            }
-            for r in regs
-        ]
-        new_ok = [r for r in regs if r.get("ok")]
-        j2["register_success_count"] = len(new_ok)
-        new_id = (new_ok[0].get("body") or {}).get("client_id") if new_ok else None
-        j2["new_client_id"] = new_id
-        if new_id:
-            j2["new_after"] = _slim_client(_unwrap_client(_client_detail(token, new_id)))
-            j2["new_in_pending"] = _client_in_pending(token, new_id)
-            j2["restarted_from_client_id"] = (j2["new_after"] or {}).get("restarted_from_client_id")
-            try:
-                j2["admin_ui_released"] = _admin_panel(token, user, release_id, "j2_released_history.png")
-                j2["admin_ui_new"] = _admin_panel(token, user, new_id, "j2_new_ccp.png")
-            except Exception as exc:
-                j2["admin_ui_error"] = str(exc)
-        j2["identities_after"] = _identities_for_email(token, release_email)
-        active = [
-            x
-            for x in j2["identities_after"]
-            if str(x.get("onboarding_identity_status") or "").upper() != "RELEASED_FOR_RESTART"
-            and not str(x.get("email") or "").endswith("@released.invalid")
-        ]
-        released_hist = [
-            x
-            for x in j2["identities_after"]
-            if str(x.get("onboarding_identity_status") or "").upper() == "RELEASED_FOR_RESTART"
-            or str(x.get("email") or "").endswith("@released.invalid")
-        ]
-        # released row email is vacated so may not appear in email search; check released client directly
-        released_status = (j2.get("after_release") or {}).get("onboarding_identity_status")
-        j2["passed"] = bool(
-            j2.get("in_pending_before")
-            and not j2.get("in_pending_after_release")
-            and released_status == "RELEASED_FOR_RESTART"
-            and (j2.get("check_email_after") or {}).get("body", {}).get("available") is True
-            and j2.get("register_success_count") == 1
-            and j2.get("restarted_from_client_id") == release_id
-            and j2.get("new_client_id")
-            and j2.get("new_client_id") != release_id
-            and j2.get("release_success_count") == 1
-        )
-    results["paths"]["journey_2_release_restart"] = j2
 
     # ---- Release guards ----
     guards: Dict[str, Any] = {}

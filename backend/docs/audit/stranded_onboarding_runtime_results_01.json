@@ -1,0 +1,368 @@
+{
+  "programme": "STRANDED-ONBOARDING-RUNTIME-01",
+  "started_at": "2026-08-17T16:34:01.516347+00:00",
+  "api": "https://pleerity-enterprise.onrender.com/api",
+  "frontend": "https://pleerity-enterprise-9jjg.vercel.app",
+  "production_touched": false,
+  "committed_sha_expected": "7f3ba4fcc2b733e0d41ced95d5646f5cb3e41ac9",
+  "paths": {
+    "grant_promo_exception": {
+      "status": 200,
+      "ok": true,
+      "invite_code": "PILOTACCESS"
+    },
+    "existing_promo_controls": {
+      "grant_promo_eligibility_bypass": {
+        "status": 200,
+        "ok": true
+      },
+      "waive_onboarding_fee": {
+        "status": 200,
+        "ok": true
+      }
+    },
+    "journey_1_recovery_promo": {
+      "email": "so.promo.202608171634@yopmail.com",
+      "client_id": "780c70e0-ab03-4b45-b69a-64b814537a75",
+      "before": {
+        "client_id": "780c70e0-ab03-4b45-b69a-64b814537a75",
+        "email": "so.promo.202608171634@yopmail.com",
+        "customer_reference": "PLE-CVP-2026-000063",
+        "onboarding_status": "INTAKE_PENDING",
+        "onboarding_identity_status": "ACTIVE",
+        "latest_checkout_session_id": null,
+        "recovery_checkout_context": null,
+        "pilot_invite_code": null,
+        "restarted_from_client_id": null,
+        "released_canonical_email": null,
+        "subscription_status": "PENDING",
+        "stripe_subscription_id": null,
+        "stripe_customer_id": null
+      },
+      "in_pending_before": true,
+      "identities_before": [
+        {
+          "client_id": "780c70e0-ab03-4b45-b69a-64b814537a75",
+          "email": "so.promo.202608171634@yopmail.com",
+          "onboarding_status": "INTAKE_PENDING",
+          "onboarding_identity_status": "ACTIVE",
+          "restarted_from_client_id": null,
+          "released_canonical_email": null
+        }
+      ],
+      "assessment_before": "EMAIL_RESERVED_NO_CHECKOUT",
+      "first_checkout": {
+        "status": 409,
+        "ok": false,
+        "body": {
+          "detail": {
+            "error_code": "STRIPE_PROMO_MODE_MISMATCH",
+            "message": "This promotion is not available in the current payment environment. Select a staging-valid approved promo or generate a normal paid checkout."
+          }
+        }
+      },
+      "old_session_id": null,
+      "freshness_wait": {
+        "ready": false,
+        "skipped": true,
+        "first_checkout_failed": true
+      },
+      "replacement": {
+        "status": 409,
+        "ok": false,
+        "execution": null
+      },
+      "new_session_id": null,
+      "prior_session_superseded": null,
+      "promo_preserved": null,
+      "applied_invite_code": null,
+      "email_sent": null,
+      "email_result": null,
+      "after": {
+        "client_id": "780c70e0-ab03-4b45-b69a-64b814537a75",
+        "email": "so.promo.202608171634@yopmail.com",
+        "customer_reference": "PLE-CVP-2026-000063",
+        "onboarding_status": "INTAKE_PENDING",
+        "onboarding_identity_status": "ACTIVE",
+        "latest_checkout_session_id": null,
+        "recovery_checkout_context": null,
+        "pilot_invite_code": null,
+        "restarted_from_client_id": null,
+        "released_canonical_email": null,
+        "subscription_status": "PENDING",
+        "stripe_subscription_id": null,
+        "stripe_customer_id": null
+      },
+      "in_pending_after": true,
+      "identities_after": [
+        {
+          "client_id": "780c70e0-ab03-4b45-b69a-64b814537a75",
+          "email": "so.promo.202608171634@yopmail.com",
+          "onboarding_status": "INTAKE_PENDING",
+          "onboarding_identity_status": "ACTIVE",
+          "restarted_from_client_id": null,
+          "released_canonical_email": null
+        }
+      ],
+      "messages": [],
+      "audit": [
+        {
+          "action": "NOTIFICATION_BLOCKED_PROVISIONING_INCOMPLETE",
+          "created_at": "2026-08-17T16:42:09.733748+00:00",
+          "resource_id": null
+        },
+        {
+          "action": "INTAKE_SUBMITTED",
+          "created_at": "2026-08-17T16:42:06.933257+00:00",
+          "resource_id": null
+        },
+        {
+          "action": "INTAKE_PROPERTY_ADDED",
+          "created_at": "2026-08-17T16:42:06.692945+00:00",
+          "resource_id": "d5eb27ec-2859-403b-a5e3-7c201ef488fe"
+        }
+      ],
+      "admin_ui": {
+        "ok": true,
+        "url": "https://pleerity-enterprise-9jjg.vercel.app/admin/clients/780c70e0-ab03-4b45-b69a-64b814537a75",
+        "markers": {
+          "assessment_panel": false,
+          "release_btn": false,
+          "regen_btn": false,
+          "grant_promo": false,
+          "grant_override": false,
+          "waive": false,
+          "recover": false,
+          "bypass": false
+        },
+        "text_preview": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nLogout\nToday\nCommand center\nDashboard\nProperties\nRequirements\nDocuments\nMore\nPortal status will appear once account status finishes loading.\n\nAccount status could not be loaded. Your session is valid; retry shortly or refresh the page.\n\nContact support if this issue persists.\n\nToday is available to client users only.\n\nCompliance Vault Pro\ninfo@pleerityenterprise.co.uk\nAudit log\nHelp Centre\nWe value your privacy\n\nWe use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking \"Accept All\", you consent to our use of cookies. Read our Privacy Policy and Cookie Policy.\n\nManage Preferences\nReject Non-Essential\nAccept All",
+        "screenshot": "j1_admin_ccp.png"
+      },
+      "passed": false
+    },
+    "choice_paid_checkout": {
+      "email": "so.paid.202608171634@yopmail.com",
+      "client_id": "fa86a1b5-5edd-4a7b-a0db-30e25d72a170",
+      "execute": {
+        "status": 200,
+        "ok": true,
+        "execution": {
+          "mode": "regenerate_payment",
+          "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_b1jZQrXm06D8eyPipCpyIQe4VEqeIKqNmnKQmXzcu30UqIhrwjn25gSBCH#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5acWB2cVowNFdrN19gRkM1SjBqdGFQfzc3d3Zsc2tWbVRuS3JzSX83RkloR0g9ZzNiT3A9UGFdMm5OY05ObF1gNjd1aFdMVFRAXEx8UzZtSmlEaE4wVlxmR0ZmS04wfTU1MDRIUTZpVTQnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+          "session_id": "cs_test_b1jZQrXm06D8eyPipCpyIQe4VEqeIKqNmnKQmXzcu30UqIhrwjn25gSBCH",
+          "email_sent": false,
+          "email_result": {},
+          "waiver_applied": false,
+          "waiver_override_id": null,
+          "promo_preserved": false,
+          "promo_decision": "none",
+          "applied_invite_code": null,
+          "prior_session_id": null,
+          "prior_session_superseded": false,
+          "continuation_delivered": true,
+          "completion_status": "CHECKOUT_RECOVERY_COMPLETE"
+        }
+      },
+      "checkout": {
+        "ok": true,
+        "url_host": "checkout.stripe.com",
+        "expired": false,
+        "amount_shown": "\u00a368.00",
+        "customer_entered_promo_ui_count": 0,
+        "text_preview": "Back\nPleerity Enterprise Ltd\nSandbox\nSubscribe to Compliance Vault Pro \u2013 Solo Landlord\n\u00a368.00\nThen \u00a319.00 per month\n\nOR\n\nContact information\nEmail\nso.paid.202608171634@yopmail.com\nPayment method\nCard\nKlarna\nRevolut Pay\nSave my information for faster checkout\nPay securely at Pleerity Enterprise Ltd and everywhere Onelink is accepted.\nPay and subscribe\nProcessing\nBy subscribing, you authorise Pleerity Enterprise Ltd to charge you according to the terms until you cancel.\nI am an AI agent acting on behalf of someone else\nPowered by\nTerms\nPrivacy",
+        "screenshot": "paid_checkout.png"
+      },
+      "passed": true
+    },
+    "choice_admin_selected_promo": {
+      "email": "so.select.202608171634@yopmail.com",
+      "client_id": "73ea9ece-3165-4819-92f8-5850573f9334",
+      "code": "PILOTACCESS",
+      "execute": {
+        "status": 409,
+        "ok": false,
+        "execution": {}
+      },
+      "passed": false
+    }
+  },
+  "matrix": {},
+  "health_wait": {
+    "version": {
+      "commit_sha": "ccd87cc3125a61b423461e73dfd19c8e6eced716",
+      "environment": "staging"
+    },
+    "health_status": 200,
+    "health": {
+      "status": "healthy",
+      "environment": "staging",
+      "readiness": {
+        "stage": "ready",
+        "degraded": false,
+        "last_error": null
+      },
+      "scheduler": {
+        "status": "healthy",
+        "stale": false,
+        "last_heartbeat_at": "2026-08-17T16:40:39.364390+00:00",
+        "age_seconds": 16.234367,
+        "stale_after_seconds": 300,
+        "reason": "heartbeat_fresh"
+      }
+    },
+    "ready": false
+  },
+  "frontend_bundle": {
+    "url": "https://pleerity-enterprise-9jjg.vercel.app",
+    "bundle": "static/js/main.5fcacb3c.js",
+    "markers": {
+      "release_and_restart": true,
+      "recovery-promo-preserve": true,
+      "preserve_existing": true,
+      "approved-promos": true,
+      "Release and restart": true
+    }
+  },
+  "pending_setup_before": {
+    "total": 20,
+    "count": 20
+  },
+  "pending_sample": [
+    {
+      "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+      "email": "user@example.com",
+      "classification": "EXPIRED_CHECKOUT",
+      "executable_modes": [
+        "regenerate_payment",
+        "release_and_restart"
+      ],
+      "has_validated_promo": false,
+      "checkout_fresh": false,
+      "paid_or_active": false,
+      "password_set": null
+    },
+    {
+      "client_id": "c4044406-621d-49cb-b9bc-be0fc339b8d4",
+      "email": "alex.chen@greenleafbotanicals.com",
+      "classification": "EMAIL_RESERVED_NO_CHECKOUT",
+      "executable_modes": [
+        "release_and_restart",
+        "regenerate_payment",
+        "resume_onboarding"
+      ],
+      "has_validated_promo": false,
+      "checkout_fresh": false,
+      "paid_or_active": false,
+      "password_set": null
+    },
+    {
+      "client_id": "5ede4f6a-65ee-4e99-a4d3-b974f3deb701",
+      "email": "anya.sharma@peakproperty.co.uk",
+      "classification": "EMAIL_RESERVED_NO_CHECKOUT",
+      "executable_modes": [
+        "release_and_restart",
+        "regenerate_payment",
+        "resume_onboarding"
+      ],
+      "has_validated_promo": false,
+      "checkout_fresh": false,
+      "paid_or_active": false,
+      "password_set": null
+    },
+    {
+      "client_id": "rent_ops_verify_01_7bbe8f8b",
+      "email": null,
+      "classification": "EXPIRED_CHECKOUT",
+      "executable_modes": [
+        "regenerate_payment",
+        "release_and_restart"
+      ],
+      "has_validated_promo": false,
+      "checkout_fresh": false,
+      "paid_or_active": false,
+      "password_set": false
+    },
+    {
+      "client_id": "412c72a9-f840-4fb2-9a8d-d04e7ad9d85a",
+      "email": "anya.sharma@gmail.com",
+      "classification": "DUPLICATE_RECOVERY_RISK",
+      "executable_modes": [],
+      "has_validated_promo": false,
+      "checkout_fresh": false,
+      "paid_or_active": true,
+      "password_set": null
+    },
+    {
+      "client_id": "86fbd659-851d-457e-bcb7-080ef7dfe0c8",
+      "email": "zara.mehta@resonance-ai.co.uk",
+      "classification": "DUPLICATE_RECOVERY_RISK",
+      "executable_modes": [],
+      "has_validated_promo": false,
+      "checkout_fresh": false,
+      "paid_or_active": true,
+      "password_set": null
+    },
+    {
+      "client_id": "9a7c8f82-7b28-4237-8a30-dc882a94fb5d",
+      "email": "thomasw@gmail.com",
+      "classification": "DUPLICATE_RECOVERY_RISK",
+      "executable_modes": [],
+      "has_validated_promo": false,
+      "checkout_fresh": false,
+      "paid_or_active": true,
+      "password_set": null
+    },
+    {
+      "client_id": "805caa60-a8ab-49f3-ad4d-79a5e206de12",
+      "email": "mabel@yopmail.com",
+      "classification": "EXPIRED_CHECKOUT",
+      "executable_modes": [
+        "regenerate_payment",
+        "release_and_restart"
+      ],
+      "has_validated_promo": false,
+      "checkout_fresh": false,
+      "paid_or_active": false,
+      "password_set": null
+    }
+  ],
+  "approved_promos": {
+    "ok": true,
+    "customer_entered_promo_supported": false,
+    "codes": [
+      "PILOTACCESS"
+    ]
+  },
+  "fixtures_created": {
+    "promo": {
+      "status": 200,
+      "ok": true,
+      "client_id": "780c70e0-ab03-4b45-b69a-64b814537a75",
+      "customer_reference": "PLE-CVP-2026-000063",
+      "email": "so.promo.202608171634@yopmail.com"
+    },
+    "release": {
+      "status": 200,
+      "ok": true,
+      "client_id": "3f4be927-77f4-4737-b696-40b80f8868e3",
+      "customer_reference": "PLE-CVP-2026-000064",
+      "email": "so.release.202608171634@yopmail.com"
+    },
+    "paid": {
+      "status": 200,
+      "ok": true,
+      "client_id": "fa86a1b5-5edd-4a7b-a0db-30e25d72a170",
+      "customer_reference": "PLE-CVP-2026-000065",
+      "email": "so.paid.202608171634@yopmail.com"
+    },
+    "select": {
+      "status": 200,
+      "ok": true,
+      "client_id": "73ea9ece-3165-4819-92f8-5850573f9334",
+      "customer_reference": "PLE-CVP-2026-000066",
+      "email": "so.select.202608171634@yopmail.com"
+    }
+  },
+  "final_verdict": "STRANDED_ONBOARDING_INCOMPLETE",
+  "completed_at": "2026-08-17T16:45:56.194877+00:00"
+}
