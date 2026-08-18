@@ -19,7 +19,7 @@ class _AsyncIter:
         return self.items.pop(0)
 
 
-def _make_db(client=None, job=None, portal_user=None, properties_count=0, property_items=None, client_billing=None):
+def _make_db(client=None, job=None, portal_user=None, properties_count=0, property_items=None, client_billing=None, checkout_session=None):
     db = MagicMock()
     db.clients.find_one = AsyncMock(return_value=client)
     db.provisioning_jobs.find_one = AsyncMock(return_value=job)
@@ -28,6 +28,7 @@ def _make_db(client=None, job=None, portal_user=None, properties_count=0, proper
     db.properties.count_documents = AsyncMock(return_value=properties_count)
     db.properties.find = MagicMock(return_value=_AsyncIter(property_items or []))
     db.requirements.count_documents = AsyncMock(return_value=5 if property_items else 0)
+    db.checkout_sessions.find_one = AsyncMock(return_value=checkout_session)
     return db
 
 
@@ -468,3 +469,83 @@ def test_send_password_setup_link_returns_not_configured_when_blocked():
     assert ok is False
     assert status == "NOT_CONFIGURED"
     assert err is not None
+
+
+def test_setup_status_resolves_stripe_session_id(client):
+    """Unauthenticated post-checkout lookup by Stripe session_id."""
+    mock_client = {
+        "client_id": "c-session",
+        "customer_reference": "PLE-CVP-2026-00099",
+        "subscription_status": "ACTIVE",
+        "onboarding_status": "PROVISIONING",
+        "provisioning_status": "IN_PROGRESS",
+        "created_at": "2026-08-18T12:00:00Z",
+    }
+    mock_db = _make_db(
+        client=mock_client,
+        checkout_session={"session_id": "cs_test_abcdefghijklmnopqrstuv", "client_id": "c-session"},
+    )
+
+    with patch("routes.portal.database.get_db", return_value=mock_db), \
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
+        response = client.get(
+            "/api/portal/setup-status",
+            params={"session_id": "cs_test_abcdefghijklmnopqrstuv"},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["client_id"] == "c-session"
+    assert data["payment_state"] == "paid"
+    mock_db.checkout_sessions.find_one.assert_awaited()
+
+
+def test_setup_status_session_id_fallback_latest_checkout(client):
+    """If checkout_sessions row is missing, resolve via clients.latest_checkout_session_id."""
+    mock_client = {
+        "client_id": "c-latest",
+        "customer_reference": "PLE-002",
+        "subscription_status": "PENDING",
+        "onboarding_status": "INTAKE_PENDING",
+        "created_at": "2026-08-18T12:00:00Z",
+    }
+
+    async def clients_find_one(query, *args, **kwargs):
+        if query.get("latest_checkout_session_id") == "cs_test_fallbacksessionid01":
+            return {"client_id": "c-latest"}
+        if query.get("client_id") == "c-latest":
+            return mock_client
+        return None
+
+    mock_db = _make_db(client=mock_client, checkout_session=None)
+    mock_db.clients.find_one = AsyncMock(side_effect=clients_find_one)
+
+    with patch("routes.portal.database.get_db", return_value=mock_db), \
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
+        response = client.get(
+            "/api/portal/setup-status",
+            params={"session_id": "cs_test_fallbacksessionid01"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["client_id"] == "c-latest"
+
+
+def test_setup_status_unknown_session_id_404(client):
+    mock_db = _make_db(client=None, checkout_session=None)
+
+    with patch("routes.portal.database.get_db", return_value=mock_db), \
+         patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
+        response = client.get(
+            "/api/portal/setup-status",
+            params={"session_id": "cs_test_doesnotexist0000001"},
+        )
+
+    assert response.status_code == 404
+
+
+def test_setup_status_malformed_session_id_400(client):
+    with patch("routes.portal.get_current_user", new_callable=AsyncMock, return_value=None):
+        response = client.get("/api/portal/setup-status", params={"session_id": "not-a-stripe-id"})
+
+    assert response.status_code == 400

@@ -65,34 +65,8 @@ import JobPage from './pages/contractor/JobPage';
 import IntakePage from './pages/IntakePage';
 import OnboardingStatusPage from './pages/OnboardingStatusPage';
 import OnboardingContinuePage from './pages/OnboardingContinuePage';
+import CheckoutSuccessPage from './pages/CheckoutSuccessPage';
 import AdminBlogPage from './pages/AdminBlogPage';
-
-// Checkout success redirect component
-const CheckoutSuccessRedirect = () => {
-  const [searchParams] = React.useState(() => new URLSearchParams(window.location.search));
-  const sessionId = searchParams.get('session_id');
-  
-  // Extract client_id from session or redirect to onboarding
-  React.useEffect(() => {
-    const storedClientId = localStorage.getItem('pending_client_id');
-    if (storedClientId) {
-      localStorage.removeItem('pending_client_id');
-      sessionStorage.setItem('pleerity_stripe_redirect', Date.now().toString());
-      window.location.href = `/onboarding-status?client_id=${storedClientId}`;
-    } else {
-      window.location.href = '/';
-    }
-  }, []);
-  
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-teal mx-auto mb-4"></div>
-        <p className="text-gray-600">Processing your payment...</p>
-      </div>
-    </div>
-  );
-};
 
 // Client pages
 import ClientDashboard from './pages/ClientDashboard';
@@ -368,7 +342,7 @@ function App() {
               <Route path="/intake/start" element={<IntakePage />} />
               <Route path="/onboarding-status" element={<OnboardingStatusPage />} />
               <Route path="/onboarding/continue" element={<OnboardingContinuePage />} />
-              <Route path="/checkout/success" element={<CheckoutSuccessRedirect />} />
+              <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
               <Route path="/checkout/cancel" element={<Navigate to="/intake/start" replace />} />
 
               {/* ========================================

@@ -1,12 +1,13 @@
 """Portal endpoints - setup status for post-payment onboarding.
 
-GET /api/portal/setup-status - Read-only; JWT optional, client_id query for post-checkout.
+GET /api/portal/setup-status - Read-only; JWT optional, client_id or Stripe session_id query for post-checkout.
 POST /api/portal/resend-activation - Resend activation (password setup) email; same auth as setup-status.
 GET /api/portal/digests - List monthly digests for the authenticated client (portal JWT required).
 GET /api/portal/digests/{id} - Get a single digest by id (portal JWT required).
 GET /api/portal/digests/{id}/pdf - Download stored PDF audit report when available.
 """
 import os
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -159,22 +160,50 @@ def _client_ip_portal(request: Request) -> str:
 # Rate limit for unauthenticated setup-status polling (prevent enumeration)
 SETUP_STATUS_RATE_LIMIT_ATTEMPTS = 60
 SETUP_STATUS_RATE_LIMIT_WINDOW_MINUTES = 5
+_STRIPE_CHECKOUT_SESSION_ID_RE = re.compile(r"^cs_[A-Za-z0-9_]{8,200}$")
+
+
+def _is_plausible_stripe_checkout_session_id(session_id: str) -> bool:
+    return bool(session_id and _STRIPE_CHECKOUT_SESSION_ID_RE.match(session_id))
+
+
+async def _client_id_for_checkout_session(db, session_id: str) -> str | None:
+    """Map a Stripe Checkout session_id to client_id without calling Stripe."""
+    rec = await db.checkout_sessions.find_one(
+        {"session_id": session_id},
+        {"_id": 0, "client_id": 1},
+    )
+    cid = str((rec or {}).get("client_id") or "").strip()
+    if cid:
+        return cid
+    client = await db.clients.find_one(
+        {"latest_checkout_session_id": session_id},
+        {"_id": 0, "client_id": 1},
+    )
+    cid = str((client or {}).get("client_id") or "").strip()
+    return cid or None
 
 
 @router.get("/setup-status")
 async def get_setup_status(
     request: Request,
     client_id: str | None = Query(None, description="Client ID (required when not authenticated)"),
+    session_id: str | None = Query(
+        None, description="Stripe Checkout session_id from /checkout/success (alternative to client_id)"
+    ),
 ):
     """
     Read-only setup status for polling. No side effects. No Stripe calls.
-    Auth: JWT (portal user) or client_id query param (post-checkout).
+    Auth: JWT (portal user), client_id query param, or Stripe checkout session_id
+    (post-checkout success page; customers completing recovery checkout have no localStorage client_id).
     When client_id query is provided, it is used so post-checkout flow always shows
     the status for the client who just paid (avoids showing a different logged-in user's status).
     """
     user = await get_current_user(request)
-    # Rate limit when using client_id query (unauthenticated polling)
-    if client_id and not user:
+    client_id_clean = (client_id or "").strip() or None
+    session_id_clean = (session_id or "").strip() or None
+    # Rate limit when using client_id or session_id query (unauthenticated polling)
+    if (client_id_clean or session_id_clean) and not user:
         ip = _client_ip_portal(request)
         allowed, err_msg = await rate_limiter.check_rate_limit(
             f"portal_setup_status:{ip}", SETUP_STATUS_RATE_LIMIT_ATTEMPTS, SETUP_STATUS_RATE_LIMIT_WINDOW_MINUTES
@@ -182,8 +211,15 @@ async def get_setup_status(
         if not allowed:
             raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=err_msg or "Too many requests. Try again later.")
     resolved_client_id = None
-    if client_id:
-        resolved_client_id = client_id.strip() or None
+    if client_id_clean:
+        resolved_client_id = client_id_clean
+    db = database.get_db()
+    if not resolved_client_id and session_id_clean:
+        if not _is_plausible_stripe_checkout_session_id(session_id_clean):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session_id")
+        resolved_client_id = await _client_id_for_checkout_session(db, session_id_clean)
+        if not resolved_client_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Checkout session not found")
     if not resolved_client_id and user and user.get("client_id"):
         resolved_client_id = user["client_id"]
     if not resolved_client_id:
@@ -192,7 +228,6 @@ async def get_setup_status(
             detail="client_id required (or authenticate with portal JWT)",
         )
 
-    db = database.get_db()
     client = await db.clients.find_one(
         {"client_id": resolved_client_id},
         {"_id": 0, "client_id": 1, "customer_reference": 1, "billing_plan": 1,
