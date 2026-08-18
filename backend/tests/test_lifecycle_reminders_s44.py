@@ -70,7 +70,7 @@ class TestLifecycleReminderEmailCopy:
     @pytest.mark.parametrize(
         "alias,attention_kind,expected_phrase",
         [
-            (EmailTemplateAlias.REMINDER, "CERTIFICATE_EXPIRING", "is due on"),
+            (EmailTemplateAlias.REMINDER, "CERTIFICATE_EXPIRING", "expires in"),
             (EmailTemplateAlias.LIFECYCLE_REMINDER_REVIEW_DUE, "REVIEW_DUE", "review due on"),
             (
                 EmailTemplateAlias.LIFECYCLE_REMINDER_EVENT_ACTION_REQUIRED,

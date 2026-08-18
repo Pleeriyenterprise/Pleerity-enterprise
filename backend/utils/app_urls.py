@@ -254,6 +254,30 @@ def validate_url_configuration() -> None:
     logger.info("URL validation OK: app_base=%s api_base=%s", app, get_api_base_url())
 
 
+def client_portal_requirement_item_url(
+    app_base: str,
+    *,
+    property_id: str = "",
+    requirement_id: str = "",
+    overdue: bool = False,
+) -> str:
+    """
+    Narrowest existing client destination for a requirement reminder.
+
+    Property-bound: ``/properties/{propertyId}?requirement_id=`` (PropertyDetailPage deep-link).
+    No property: Requirements list with overdue/due-soon filter. Do not invent unsupported routes.
+    """
+    b = _strip_base(app_base)
+    pid = quote(str(property_id or "").strip(), safe="")
+    rid = quote(str(requirement_id or "").strip(), safe="")
+    if pid and rid:
+        return f"{b}/properties/{pid}?requirement_id={rid}" if b else f"/properties/{pid}?requirement_id={rid}"
+    if pid:
+        return f"{b}/properties/{pid}" if b else f"/properties/{pid}"
+    status = "OVERDUE_OR_MISSING" if overdue else "DUE_SOON"
+    return client_portal_requirements_list_url(b, status=status)
+
+
 def client_portal_requirements_list_url(app_base: str, *, status: Optional[str] = None) -> str:
     """
     Client SPA URL for the Requirements list.

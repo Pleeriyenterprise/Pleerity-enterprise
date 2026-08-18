@@ -320,14 +320,21 @@ def build_renewal_email_context(
     charge_automatically: bool,
     billing_url: str,
 ) -> Dict[str, str]:
+    n = max(0, int(days_until))
+    if n <= 0:
+        when = f"today ({renewal_date_display})"
+    elif n == 1:
+        when = f"tomorrow ({renewal_date_display})"
+    else:
+        when = f"in {n} days on {renewal_date_display}"
     if charge_automatically:
         body_framing = (
-            f"Your subscription renews in about {days_until} day(s) on {renewal_date_display}. "
+            f"Your subscription renews {when}. "
             "If your card or billing details have changed, update them in Billing so automatic renewal can complete without retries."
         )
     else:
         body_framing = (
-            f"Your billing period renews in about {days_until} day(s) on {renewal_date_display}. "
+            f"Your billing period renews {when}. "
             "When you receive your invoice, complete payment from Billing to keep plan-gated features on schedule."
         )
     return {
@@ -337,4 +344,117 @@ def build_renewal_email_context(
         "billing_portal_link": billing_url,
         "body_framing": body_framing,
         "charge_automatically": "true" if charge_automatically else "false",
+    }
+
+
+def subscription_renewal_reminder_subject(days_until: int) -> str:
+    n = int(days_until)
+    if n <= 0:
+        return "Your subscription renews today"
+    if n == 1:
+        return "Your subscription renews tomorrow"
+    return f"Your subscription renews in {n} days"
+
+
+def _format_customer_access_date(dt: Optional[datetime]) -> Optional[str]:
+    if dt is None:
+        return None
+    aware = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+    return f"{aware.strftime('%B')} {aware.day}, {aware.year}"
+
+
+def resolve_subscription_canceled_customer_copy(
+    *,
+    stripe_subscription: Optional[Dict[str, Any]] = None,
+    billing: Optional[Dict[str, Any]] = None,
+    now: Optional[datetime] = None,
+    commercial_overlay_active: bool = False,
+    effective_entitlement: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Customer-facing cancellation copy from Stripe + platform lifecycle facts.
+
+    Does not invent an access-end date. Prefer Stripe ended_at / current_period_end /
+    canceled_at over webhook processing time.
+    """
+    now = now or datetime.now(timezone.utc)
+    sub = stripe_subscription if isinstance(stripe_subscription, dict) else {}
+    bill = billing if isinstance(billing, dict) else {}
+    from services.billing_period_utils import coerce_any_timestamp_to_utc_datetime
+
+    period_end = coerce_any_timestamp_to_utc_datetime(
+        sub.get("current_period_end")
+    ) or normalize_stored_period_end_for_api(bill.get("current_period_end"))
+    ended_at = coerce_any_timestamp_to_utc_datetime(sub.get("ended_at"))
+    canceled_at = coerce_any_timestamp_to_utc_datetime(sub.get("canceled_at"))
+    cancel_at_period_end = bool(sub.get("cancel_at_period_end") or bill.get("cancel_at_period_end"))
+    ent = str(effective_entitlement or bill.get("entitlement_status") or "").strip().upper()
+
+    if commercial_overlay_active or ent == "ENABLED":
+        return {
+            "cancel_mode": "commercial_overlay" if commercial_overlay_active else "access_retained",
+            "access_end_date": "",
+            "access_end_date_known": False,
+            "access_ended": False,
+            "subject": "Your subscription has been cancelled",
+            "access_body_html": (
+                "<p>Your Stripe subscription has been cancelled. "
+                "Your account access currently continues under a commercial arrangement on this platform. "
+                "The portal remains authoritative for what you can use.</p>"
+            ),
+            "access_body_text": (
+                "Your Stripe subscription has been cancelled. "
+                "Your account access currently continues under a commercial arrangement on this platform."
+            ),
+        }
+
+    # Deleted webhook: Stripe has ended the subscription. Date authority:
+    # period-end cancellation → current_period_end; immediate → canceled_at / ended_at.
+    access_dt = None
+    if cancel_at_period_end and period_end:
+        cancel_mode = "period_end_completed"
+        access_dt = period_end
+    elif ended_at:
+        cancel_mode = "immediate" if not cancel_at_period_end else "period_end_completed"
+        access_dt = ended_at
+    elif canceled_at:
+        cancel_mode = "immediate"
+        access_dt = canceled_at
+    elif period_end:
+        cancel_mode = "period_end_completed" if period_end <= now else "unknown"
+        access_dt = period_end if period_end <= now else None
+    else:
+        cancel_mode = "unknown"
+        access_dt = None
+
+    date_disp = _format_customer_access_date(access_dt)
+    if date_disp:
+        return {
+            "cancel_mode": cancel_mode,
+            "access_end_date": date_disp,
+            "access_end_date_known": True,
+            "access_ended": True,
+            "subject": "Your subscription has been cancelled",
+            "access_body_html": (
+                f"<p>Your subscription has been cancelled. Paid-feature access ended on "
+                f"<strong>{date_disp}</strong>.</p>"
+            ),
+            "access_body_text": (
+                f"Your subscription has been cancelled. Paid-feature access ended on {date_disp}."
+            ),
+        }
+    return {
+        "cancel_mode": cancel_mode,
+        "access_end_date": "",
+        "access_end_date_known": False,
+        "access_ended": True,
+        "subject": "Your subscription has been cancelled",
+        "access_body_html": (
+            "<p>Your subscription has been cancelled and paid-feature access is no longer available. "
+            "We cannot confirm a precise access-end date from the billing records we hold.</p>"
+        ),
+        "access_body_text": (
+            "Your subscription has been cancelled and paid-feature access is no longer available. "
+            "We cannot confirm a precise access-end date from the billing records we hold."
+        ),
     }

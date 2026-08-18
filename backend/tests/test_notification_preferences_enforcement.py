@@ -17,6 +17,7 @@ def test_daily_reminder_skipped_when_daily_reminder_enabled_false():
         from services.jobs import JobScheduler
         scheduler = JobScheduler()
     scheduler.db = MagicMock()
+    scheduler._client_allowed_for_background = AsyncMock(return_value=True)
     scheduler.db.clients.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[
         {"client_id": "c1", "email": "c1@test.com"},
     ])))
@@ -48,6 +49,7 @@ def test_daily_reminder_skipped_when_expiry_reminders_false():
         from services.jobs import JobScheduler
         scheduler = JobScheduler()
     scheduler.db = MagicMock()
+    scheduler._client_allowed_for_background = AsyncMock(return_value=True)
     scheduler.db.clients.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[
         {"client_id": "c1", "email": "c1@test.com"},
     ])))
@@ -85,9 +87,13 @@ def test_sms_reminder_skipped_when_sms_urgent_alerts_only_and_no_overdue():
         from services.jobs import JobScheduler
         scheduler = JobScheduler()
     scheduler.db = MagicMock()
+    scheduler._client_allowed_for_background = AsyncMock(return_value=True)
     scheduler.db.clients.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[
         {"client_id": "c1", "email": "c1@test.com"},
     ])))
+    scheduler.db.clients.find_one = AsyncMock(return_value={"client_id": "c1", "email": "c1@test.com"})
+    scheduler.db.client_billing = MagicMock()
+    scheduler.db.client_billing.find_one = AsyncMock(return_value={"client_id": "c1", "entitlement_status": "ENABLED"})
     scheduler.db.notification_preferences.find_one = AsyncMock(return_value={
         "expiry_reminders": True,
         "reminder_days_before": 30,
@@ -108,6 +114,7 @@ def test_sms_reminder_skipped_when_sms_urgent_alerts_only_and_no_overdue():
     scheduler.db.requirements.find_one = AsyncMock(return_value=req_row)
     scheduler.db.requirements.update_one = AsyncMock()
     scheduler.db.properties.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+    scheduler.db.properties.find_one = AsyncMock(return_value={"property_id": "p1", "client_id": "c1"})
     ris = MagicMock()
     ris.find_one = AsyncMock(return_value=None)
     ris.update_one = AsyncMock()
@@ -117,12 +124,19 @@ def test_sms_reminder_skipped_when_sms_urgent_alerts_only_and_no_overdue():
     scheduler.db.reminder_evaluation_log = rel
     scheduler.db.audit_logs = MagicMock()
     scheduler.db.audit_logs.insert_one = AsyncMock()
-    scheduler._send_reminder_email = AsyncMock()
+    scheduler._send_reminder_email = AsyncMock(return_value=True)
     scheduler._maybe_send_reminder_sms = AsyncMock()
+    scheduler._resolve_reminder_recipients = AsyncMock(return_value=["c1@test.com"])
+    req_row["client_surface_visible"] = True
+    req_row["applicability"] = "REQUIRED"
 
     with patch("services.plan_registry.plan_registry", MagicMock(enforce_feature=AsyncMock(return_value=(True, None, None)))):
         with patch("services.compliance_recalc_queue.enqueue_compliance_recalc", AsyncMock()):
-            asyncio.run(scheduler.send_daily_reminders())
+            with patch(
+                "services.requirement_client_runtime_surface.filter_requirement_rows_for_client_runtime_surfaces",
+                new=AsyncMock(side_effect=lambda *args, **kwargs: kwargs.get("requirements") or []),
+            ):
+                asyncio.run(scheduler.send_daily_reminders())
 
     scheduler._send_reminder_email.assert_called_once()
     scheduler._maybe_send_reminder_sms.assert_not_called()

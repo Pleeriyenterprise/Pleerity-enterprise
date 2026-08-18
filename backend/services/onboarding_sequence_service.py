@@ -171,6 +171,11 @@ async def process_onboarding_email_queue() -> dict:
             "portal_base_url": portal_base,
             "portal_link": (portal_base + "/dashboard") if portal_base else "#",
             "customer_reference": client.get("customer_reference"),
+            "has_added_property": bool(state.get("has_added_property")),
+            "has_uploaded_certificate": bool(state.get("has_uploaded_certificate")),
+            "monitoring_enabled": bool(state.get("monitoring_enabled")),
+            "jurisdiction_label": state.get("jurisdiction_label") or "",
+            "jurisdiction_known": bool(state.get("jurisdiction_known")),
         }
         idempotency_key = f"ONBOARDING_{event_id}_{client_id}"
         try:

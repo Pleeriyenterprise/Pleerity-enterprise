@@ -30,6 +30,7 @@ def test_daily_reminder_suppresses_already_compliant_requirement():
         with patch.dict(os.environ, {"MONGO_URL": "mongodb://localhost:27017", "DB_NAME": "test"}):
             scheduler = JobScheduler()
         scheduler.db = MagicMock()
+        scheduler._client_allowed_for_background = AsyncMock(return_value=True)
         scheduler.db.clients.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[
             {"client_id": "c1", "email": "c1@test.com", "subscription_status": "ACTIVE", "entitlement_status": "ENABLED"},
         ])))
@@ -107,6 +108,7 @@ def test_pending_verification_digest_suppressed_when_zero_pending():
         with patch.dict(os.environ, {"MONGO_URL": "mongodb://localhost:27017", "DB_NAME": "test"}):
             scheduler = JobScheduler()
         scheduler.db = MagicMock()
+        scheduler._client_allowed_for_background = AsyncMock(return_value=True)
         scheduler.db.documents.count_documents = AsyncMock(side_effect=[0, 0])
         scheduler.db.portal_users.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[
             {"auth_email": "admin@example.com"},

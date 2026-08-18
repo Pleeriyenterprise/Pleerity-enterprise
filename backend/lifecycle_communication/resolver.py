@@ -116,6 +116,7 @@ def resolve_customer_communication(
             prop_addr=prop_addr,
             due_date=due_text,
             is_overdue=overdue_eff,
+            days_remaining=days_remaining,
         )
         surface_variants["intro_text"] = _reminder_intro_text(
             family=family,
@@ -123,6 +124,7 @@ def resolve_customer_communication(
             prop_addr=prop_addr,
             due_date=due_text,
             is_overdue=overdue_eff,
+            days_remaining=days_remaining,
         )
         surface_variants["why_received"] = _why_received(attention_kind_for_row(row))
     if surface == "reminder_sms":
@@ -234,12 +236,21 @@ def _reminder_intro_html(
     prop_addr: str,
     due_date: str,
     is_overdue: bool,
+    days_remaining: int | None = None,
 ) -> str:
-    reason = build_reason(family, req_name=req_name, due_date=due_date, is_overdue=is_overdue)
-    return (
-        f"This is a reminder that <strong>{req_name}</strong> for your property at "
-        f"<strong>{prop_addr}</strong>. {reason}"
+    reason = build_reason(
+        family,
+        req_name=req_name,
+        due_date=due_date,
+        is_overdue=is_overdue,
+        days_remaining=days_remaining,
     )
+    if prop_addr:
+        return (
+            f"This is a reminder about <strong>{req_name}</strong> for your property at "
+            f"<strong>{prop_addr}</strong>. {reason}"
+        )
+    return f"This is a reminder about <strong>{req_name}</strong>. {reason}"
 
 
 def _reminder_intro_text(
@@ -249,9 +260,18 @@ def _reminder_intro_text(
     prop_addr: str,
     due_date: str,
     is_overdue: bool,
+    days_remaining: int | None = None,
 ) -> str:
-    reason = build_reason(family, req_name=req_name, due_date=due_date, is_overdue=is_overdue)
-    return f"This is a reminder that {req_name} for your property at {prop_addr}. {reason}"
+    reason = build_reason(
+        family,
+        req_name=req_name,
+        due_date=due_date,
+        is_overdue=is_overdue,
+        days_remaining=days_remaining,
+    )
+    if prop_addr:
+        return f"This is a reminder about {req_name} for your property at {prop_addr}. {reason}"
+    return f"This is a reminder about {req_name}. {reason}"
 
 
 def _sms_body(family: str, *, overdue: bool) -> str:
@@ -278,38 +298,46 @@ def resolve_reminder_subject(
     requirement_row: Dict[str, Any],
     *,
     is_overdue: bool = False,
+    days_remaining: int | None = None,
 ) -> str:
     family = infer_communication_family(requirement_row)
     req_name = requirement_display_name(requirement_row)
     fam = str(family)
     if is_overdue:
-        prefixes = {
-            "REVIEW_BASED": "Review reminder",
-            "TENANCY_LIFECYCLE": "Tenancy reminder",
-            "OCCUPANCY_REVIEW_DUE": "Occupancy review reminder",
-            "OCCUPANCY_LIFECYCLE": "Occupancy review reminder",
-            "OPERATIONAL": "Operational reminder",
-            "EVENT_BASED": "Action reminder",
-            "DECLARATION_BASED": "Declaration reminder",
-            "SELF_CERTIFIED": "Declaration reminder",
-            "STRUCTURED_EVIDENCE": "Declaration reminder",
-            "LICENSING": "Licence renewal reminder",
-            "REGISTRATION": "Registration renewal reminder",
-        }
-        prefix = prefixes.get(fam, "Renewal reminder")
-        return f"{prefix}: {req_name} is overdue"
-    prefixes = {
-        "REVIEW_BASED": "Review reminder",
-        "TENANCY_LIFECYCLE": "Tenancy reminder",
-        "OCCUPANCY_REVIEW_DUE": "Occupancy review reminder",
-        "OCCUPANCY_LIFECYCLE": "Occupancy review reminder",
-        "OPERATIONAL": "Operational reminder",
-        "EVENT_BASED": "Action reminder",
-        "DECLARATION_BASED": "Declaration reminder",
-        "SELF_CERTIFIED": "Declaration reminder",
-        "STRUCTURED_EVIDENCE": "Declaration reminder",
-        "LICENSING": "Licence renewal reminder",
-        "REGISTRATION": "Registration renewal reminder",
-    }
-    prefix = prefixes.get(fam, "Renewal reminder")
-    return f"{prefix}: {req_name} due soon"
+        return f"{req_name} is overdue"
+
+    if days_remaining is not None:
+        n = int(days_remaining)
+        if n <= 0:
+            timing = "today"
+        elif n == 1:
+            timing = "tomorrow"
+        else:
+            timing = f"in {n} days"
+    else:
+        timing = "soon"
+
+    if fam in ("REVIEW_BASED", "OCCUPANCY_LIFECYCLE", "OCCUPANCY_REVIEW_DUE"):
+        return f"{req_name} is due {timing}"
+    if fam in ("TENANCY_LIFECYCLE",):
+        return f"{req_name} requires attention"
+    if fam in ("OPERATIONAL", "EVENT_BASED"):
+        return f"{req_name} requires attention"
+    if fam in ("DECLARATION_BASED", "SELF_CERTIFIED", "STRUCTURED_EVIDENCE"):
+        return f"{req_name} is due {timing}"
+    if fam in ("DOCUMENT_EVIDENCE", "ASSESSMENT", "INSPECTION"):
+        return f"{req_name} is due {timing}"
+    if fam == "REGISTRATION":
+        return f"{req_name} is due {timing}"
+    if fam == "LICENSING":
+        return f"{req_name} is due {timing}"
+    if fam == "EXPIRY_BASED":
+        if days_remaining is not None:
+            n = int(days_remaining)
+            if n <= 0:
+                return f"Your {req_name} expires today"
+            if n == 1:
+                return f"Your {req_name} expires tomorrow"
+            return f"Your {req_name} expires in {n} days"
+        return f"{req_name} is due soon"
+    return f"{req_name} is due {timing}"

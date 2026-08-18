@@ -107,6 +107,16 @@ def _refine_expiry_family(row: Dict[str, Any]) -> LifecycleFamily:
         return "LICENSING"
     if "registration" in code or "register" in code:
         return "REGISTRATION"
+    wf = _workflow_class(row)
+    if wf == "EXTERNAL_ASSESSMENT_EVIDENCE":
+        return "ASSESSMENT"
+    if wf in ("MULTI_EVIDENCE", "REGISTRATION_TRACKING"):
+        return "DOCUMENT_EVIDENCE" if wf == "MULTI_EVIDENCE" else "REGISTRATION"
+    if code in ("hmo_fire_risk", "hmo_fire_risk_evidence", "fire_risk_assessment") or "hmo_fire" in code:
+        return "DOCUMENT_EVIDENCE"
+    mode = _primary_evidence_mode(row)
+    if mode == "EXTERNAL_ASSESSMENT_EVIDENCE":
+        return "ASSESSMENT"
     return "EXPIRY_BASED"
 
 

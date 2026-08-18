@@ -11,6 +11,37 @@ import hashlib
 from typing import Any, Dict, Iterable, List, Optional
 
 
+def daily_compliance_reminder_item_idempotency_key(
+    *,
+    client_id: str,
+    template_key: str,
+    date_key: str,
+    recipient_suffix: str,
+    requirement_id: str,
+    property_id: str,
+    due_date: str,
+    lifecycle_window: str,
+) -> str:
+    """
+    Per-requirement daily reminder idempotency (one email = one requirement = one window).
+
+    Identity is stable requirement/property/due-date/window — never display names.
+    ``date_key`` is the governed send calendar day; ``due_date`` is the requirement's
+    effective due/expiry date (YYYY-MM-DD). ``lifecycle_window`` is ``overdue`` or ``upcoming``.
+    """
+    rid = str(requirement_id or "").strip() or "NOREQ"
+    pid = str(property_id or "").strip() or "NOPROP"
+    due = str(due_date or "").strip() or "NODATE"
+    window = str(lifecycle_window or "").strip().lower() or "unknown"
+    blob = f"{rid}|{pid}|{due}|{window}"
+    fp = hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
+    cid = str(client_id or "").strip() or "NOCLIENT"
+    tk = str(template_key or "").strip() or "COMPLIANCE_EXPIRY_REMINDER"
+    dk = str(date_key or "").strip() or "NODAY"
+    rs = str(recipient_suffix or "").strip() or "client"
+    return f"{cid}_{tk}_{dk}_{rs}_{fp}"
+
+
 def daily_compliance_reminder_scope_fingerprint(
     *,
     reminder_refs: Optional[List[Dict[str, Any]]],

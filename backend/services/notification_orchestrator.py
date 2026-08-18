@@ -1029,6 +1029,37 @@ class NotificationOrchestrator:
             text = (context.get("text_message") or "").strip() or _strip_html_to_text(html)
             subj = (context.get("subject") or default_subject).strip()
             return html, text, subj
+        # Safety-critical billing: never depend on a missing DB row (generic "new notification" fallback).
+        if alias_str in ("payment-failed", "subscription-canceled"):
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = context or {}
+            alias_enum = (
+                EmailTemplateAlias.PAYMENT_FAILED
+                if alias_str == "payment-failed"
+                else EmailTemplateAlias.SUBSCRIPTION_CANCELED
+            )
+            html = svc._build_html_body(alias_enum, model)
+            text = svc._build_text_body(alias_enum, model)
+            default_billing_subj = (
+                "Payment unsuccessful" if alias_str == "payment-failed" else "Your subscription has been cancelled"
+            )
+            subj = (context.get("subject") or default_subject or default_billing_subj).strip() or default_billing_subj
+            return html, text, subj
+        if alias_str == "admin-manual" and context.get("contractor_assignment_layout"):
+            from services.email_service import EmailService
+            from models import EmailTemplateAlias
+
+            svc = EmailService()
+            model = dict(context or {})
+            if not model.get("message") and model.get("body"):
+                model["message"] = model["body"]
+            html = svc._build_html_body(EmailTemplateAlias.ADMIN_MANUAL, model)
+            text = svc._build_text_body(EmailTemplateAlias.ADMIN_MANUAL, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
         # Subscription payment receipt: always use code-built layout (structured context from Stripe webhook).
         if alias_str == "payment-receipt" and context.get("payment_receipt_layout") == "structured":
             from services.email_service import EmailService

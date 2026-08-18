@@ -40,6 +40,8 @@ _UNCONDITIONAL_CODE_BUILT = frozenset(
         "lifecycle-reminder-tenancy-term-ending",
         "lifecycle-reminder-occupancy-review-due",
         "lifecycle-reminder-operational-action-required",
+        "payment-failed",
+        "subscription-canceled",
     }
 )
 
@@ -104,7 +106,11 @@ def _for_alias(alias: str) -> Dict[str, Any]:
                 "reading email_templates. An active DB row is not used for body/subject at send time."
             ),
             attachment_policy="Flow-dependent (see product docs); admin preview does not validate attachments.",
-            legal_or_financial_flow=alias.startswith("client-") or alias.startswith("contractor-"),
+            legal_or_financial_flow=(
+                alias in {"payment-failed", "subscription-canceled"}
+                or alias.startswith("client-")
+                or alias.startswith("contractor-")
+            ),
             recommended_admin_action="Do not edit DB template for runtime copy; use engineering change requests for layout.",
             db_visible_at_runtime=False,
             placeholders_hint="Built-in layout placeholders (EmailService); DB available_variables do not drive production.",

@@ -48,11 +48,19 @@ def test_payment_receipt_hybrid_locked():
     assert m["edit_risk_level"] == "high"
 
 
-def test_subscription_canceled_financial_high_but_editable():
+def test_subscription_canceled_code_built_locked():
     m = get_email_alias_runtime_metadata("subscription-canceled")
+    assert m["runtime_source"] == "code_built"
     assert m["legal_or_financial_flow"] is True
-    assert m["edit_risk_level"] == "high"
-    assert m["admin_editable"] is True
+    assert m["edit_risk_level"] == "immutable"
+    assert m["admin_editable"] is False
+
+
+def test_payment_failed_code_built_locked():
+    m = get_email_alias_runtime_metadata("payment-failed")
+    assert m["runtime_source"] == "code_built"
+    assert m["legal_or_financial_flow"] is True
+    assert m["admin_editable"] is False
 
 
 def test_portal_ready_hybrid_editable():
