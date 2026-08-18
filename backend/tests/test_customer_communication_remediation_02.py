@@ -251,12 +251,17 @@ def test_renewal_subject_uses_actual_days():
 
 
 def test_onboarding_day0_adapts_when_property_exists():
+    from services.onboarding_sequence_service import _subject_for_event
+
     c = _get_onboarding_content(
         EmailTemplateAlias.ONBOARDING_DAY0_WELCOME,
         {"has_added_property": True},
     )
     assert "Add your first property" not in c["cta_label"]
     assert "first property is on the account" in c["body"].lower() or "view your properties" in c["cta_label"].lower()
+    assert "Add your first property" not in _subject_for_event(
+        "ONBOARDING_DAY0_WELCOME", {"has_added_property": True}
+    )
 
 
 def test_onboarding_day1_neutral_when_jurisdiction_unknown():
@@ -269,11 +274,16 @@ def test_onboarding_day1_neutral_when_jurisdiction_unknown():
 
 
 def test_onboarding_day7_does_not_say_activate_if_monitoring_on():
+    from services.onboarding_sequence_service import _subject_for_event
+
     c = _get_onboarding_content(
         EmailTemplateAlias.ONBOARDING_DAY7_ACTIVATION_PUSH,
         {"monitoring_enabled": True, "has_added_property": True},
     )
     assert "Activate monitoring" not in c["cta_label"]
+    assert "Activate monitoring" not in _subject_for_event(
+        "ONBOARDING_DAY7_ACTIVATION_PUSH", {"monitoring_enabled": True}
+    )
 
 
 def test_contractor_assignment_html_contains_job_and_cta():
