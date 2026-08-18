@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from database import database
 from models import OnboardingStatus, PasswordStatus
+from utils.client_email import is_released_onboarding_identity
 from services.pilot_promo_recovery_service import get_account_promo_recovery_context
 from services.pilot_redemption_lifecycle import (
     PilotRedemptionStatus,
@@ -26,6 +27,9 @@ CLASS_SUBSCRIPTION_DRIFT = "SUBSCRIPTION_DRIFT"
 CLASS_DUPLICATE_RECOVERY_RISK = "DUPLICATE_RECOVERY_RISK"
 CLASS_RECOVERY_ALREADY_ACTIVE = "RECOVERY_ALREADY_ACTIVE"
 CLASS_UNKNOWN_RECOVERY_STATE = "UNKNOWN_RECOVERY_STATE"
+CLASS_EMAIL_RESERVED_NO_CHECKOUT = "EMAIL_RESERVED_NO_CHECKOUT"
+CLASS_PROMO_CONTEXT_LOST = "PROMO_CONTEXT_LOST"
+CLASS_PASSWORD_SETUP_PENDING = "PASSWORD_SETUP_PENDING"
 
 ALL_RECOVERY_CLASSIFICATIONS = frozenset(
     {
@@ -39,6 +43,9 @@ ALL_RECOVERY_CLASSIFICATIONS = frozenset(
         CLASS_DUPLICATE_RECOVERY_RISK,
         CLASS_RECOVERY_ALREADY_ACTIVE,
         CLASS_UNKNOWN_RECOVERY_STATE,
+        CLASS_EMAIL_RESERVED_NO_CHECKOUT,
+        CLASS_PROMO_CONTEXT_LOST,
+        CLASS_PASSWORD_SETUP_PENDING,
     }
 )
 
@@ -46,7 +53,35 @@ ALL_RECOVERY_CLASSIFICATIONS = frozenset(
 MODE_RESUME_ONBOARDING = "resume_onboarding"
 MODE_REGENERATE_PAYMENT = "regenerate_payment"
 MODE_RESEND_ACTIVATION = "resend_activation"
+MODE_RELEASE_AND_RESTART = "release_and_restart"
 MODE_MANUAL_ESCALATION = "manual_escalation"
+
+STAGE_REGISTRATION_STARTED = "REGISTRATION_STARTED"
+STAGE_EMAIL_CAPTURED = "EMAIL_CAPTURED"
+STAGE_COMPANY_CONTACT_COMPLETED = "COMPANY_CONTACT_COMPLETED"
+STAGE_PLAN_SELECTED = "PLAN_SELECTED"
+STAGE_PROMO_VALIDATED = "PROMO_VALIDATED"
+STAGE_AGREEMENT_ACCEPTED = "AGREEMENT_ACCEPTED"
+STAGE_CHECKOUT_CREATED = "CHECKOUT_CREATED"
+STAGE_PAYMENT_COMPLETED = "PAYMENT_COMPLETED"
+STAGE_PROVISIONING_STARTED = "PROVISIONING_STARTED"
+STAGE_CLIENT_PROVISIONED = "CLIENT_PROVISIONED"
+STAGE_PORTAL_USER_CREATED = "PORTAL_USER_CREATED"
+STAGE_PASSWORD_CREATED = "PASSWORD_CREATED"
+STAGE_DASHBOARD_ENABLED = "DASHBOARD_ENABLED"
+
+_RELEASE_ELIGIBLE_CLASSES = frozenset(
+    {
+        CLASS_EMAIL_RESERVED_NO_CHECKOUT,
+        CLASS_EXPIRED_CHECKOUT,
+        CLASS_PAYMENT_ABANDONED,
+        CLASS_PROMO_REDEMPTION_FAILED,
+        CLASS_PROMO_CONTEXT_LOST,
+        CLASS_FIRST_TIME_RESTRICTION_COLLISION,
+        CLASS_UNKNOWN_RECOVERY_STATE,
+        CLASS_RECOVERY_ALREADY_ACTIVE,
+    }
+)
 
 RISK_LOW = "low"
 RISK_MEDIUM = "medium"
@@ -113,6 +148,9 @@ def classify_recovery_state(signals: Dict[str, Any]) -> Optional[str]:
         return None
 
     client = signals.get("client") or {}
+    if is_released_onboarding_identity(client):
+        return None
+
     indicators = signals.get("indicators") or {}
     redemptions = signals.get("redemptions") or []
     portal_user = signals.get("portal_user") or {}
@@ -147,12 +185,16 @@ def classify_recovery_state(signals: Dict[str, Any]) -> Optional[str]:
 
     if _has_checkout_history(client) and not _checkout_is_fresh(client):
         if not _is_paid_or_active(client, signals.get("billing")):
+            if _promo_was_expected(client, indicators) and not signals.get("validated_promo"):
+                return CLASS_PROMO_CONTEXT_LOST
             return CLASS_EXPIRED_CHECKOUT
 
     ob = (client.get("onboarding_status") or "").upper()
     lifecycle = (client.get("lifecycle_status") or "").lower()
     has_crn = bool((client.get("customer_reference") or "").strip())
     unpaid = not _is_paid_or_active(client, signals.get("billing"))
+    if unpaid and not _has_checkout_history(client):
+        return CLASS_EMAIL_RESERVED_NO_CHECKOUT
     if unpaid and (has_crn or ob != OnboardingStatus.INTAKE_PENDING.value or lifecycle in ("pending_payment", "abandoned")):
         return CLASS_PAYMENT_ABANDONED
 
@@ -165,8 +207,14 @@ def classify_recovery_state(signals: Dict[str, Any]) -> Optional[str]:
     return CLASS_UNKNOWN_RECOVERY_STATE
 
 
+def _promo_was_expected(client: Dict[str, Any], indicators: Dict[str, Any]) -> bool:
+    if (client.get("pilot_invite_code") or "").strip():
+        return True
+    return bool(indicators.get("promo_attached") or indicators.get("incomplete_redemption"))
+
+
 EXECUTABLE_MODES_PHASE2 = frozenset(
-    {MODE_REGENERATE_PAYMENT, MODE_RESEND_ACTIVATION, MODE_RESUME_ONBOARDING}
+    {MODE_REGENERATE_PAYMENT, MODE_RESEND_ACTIVATION, MODE_RESUME_ONBOARDING, MODE_RELEASE_AND_RESTART}
 )
 
 _MODE_CLASSIFICATIONS_ALLOWED: Dict[str, frozenset] = {
@@ -176,6 +224,8 @@ _MODE_CLASSIFICATIONS_ALLOWED: Dict[str, frozenset] = {
             CLASS_EXPIRED_CHECKOUT,
             CLASS_PROMO_REDEMPTION_FAILED,
             CLASS_FIRST_TIME_RESTRICTION_COLLISION,
+            CLASS_EMAIL_RESERVED_NO_CHECKOUT,
+            CLASS_PROMO_CONTEXT_LOST,
         }
     ),
     MODE_RESUME_ONBOARDING: frozenset(
@@ -184,9 +234,11 @@ _MODE_CLASSIFICATIONS_ALLOWED: Dict[str, frozenset] = {
             CLASS_EXPIRED_CHECKOUT,
             CLASS_PROMO_REDEMPTION_FAILED,
             CLASS_FIRST_TIME_RESTRICTION_COLLISION,
+            CLASS_EMAIL_RESERVED_NO_CHECKOUT,
         }
     ),
-    MODE_RESEND_ACTIVATION: frozenset({CLASS_ACTIVATION_INCOMPLETE}),
+    MODE_RESEND_ACTIVATION: frozenset({CLASS_ACTIVATION_INCOMPLETE, CLASS_PASSWORD_SETUP_PENDING}),
+    MODE_RELEASE_AND_RESTART: _RELEASE_ELIGIBLE_CLASSES,
 }
 
 
@@ -233,31 +285,49 @@ def derive_recovery_strategy(
         }
 
     mode_map: Dict[str, Tuple[str, List[str]]] = {
-        CLASS_PAYMENT_ABANDONED: (MODE_REGENERATE_PAYMENT, [MODE_REGENERATE_PAYMENT, MODE_RESUME_ONBOARDING]),
-        CLASS_EXPIRED_CHECKOUT: (MODE_REGENERATE_PAYMENT, [MODE_REGENERATE_PAYMENT]),
+        CLASS_PAYMENT_ABANDONED: (
+            MODE_REGENERATE_PAYMENT,
+            [MODE_REGENERATE_PAYMENT, MODE_RESUME_ONBOARDING, MODE_RELEASE_AND_RESTART],
+        ),
+        CLASS_EXPIRED_CHECKOUT: (
+            MODE_REGENERATE_PAYMENT,
+            [MODE_REGENERATE_PAYMENT, MODE_RELEASE_AND_RESTART],
+        ),
+        CLASS_EMAIL_RESERVED_NO_CHECKOUT: (
+            MODE_RELEASE_AND_RESTART,
+            [MODE_RELEASE_AND_RESTART, MODE_REGENERATE_PAYMENT, MODE_RESUME_ONBOARDING],
+        ),
+        CLASS_PROMO_CONTEXT_LOST: (
+            MODE_REGENERATE_PAYMENT,
+            [MODE_REGENERATE_PAYMENT, MODE_RELEASE_AND_RESTART],
+        ),
         CLASS_PROMO_REDEMPTION_FAILED: (
             MODE_REGENERATE_PAYMENT,
-            [MODE_REGENERATE_PAYMENT, MODE_RESUME_ONBOARDING],
+            [MODE_REGENERATE_PAYMENT, MODE_RESUME_ONBOARDING, MODE_RELEASE_AND_RESTART],
         ),
         CLASS_FIRST_TIME_RESTRICTION_COLLISION: (
             MODE_REGENERATE_PAYMENT,
-            [MODE_REGENERATE_PAYMENT, MODE_MANUAL_ESCALATION],
+            [MODE_REGENERATE_PAYMENT, MODE_MANUAL_ESCALATION, MODE_RELEASE_AND_RESTART],
         ),
         CLASS_PARTIAL_PROVISIONING: (MODE_MANUAL_ESCALATION, [MODE_MANUAL_ESCALATION, MODE_RESEND_ACTIVATION]),
         CLASS_ACTIVATION_INCOMPLETE: (MODE_RESEND_ACTIVATION, [MODE_RESEND_ACTIVATION]),
+        CLASS_PASSWORD_SETUP_PENDING: (MODE_RESEND_ACTIVATION, [MODE_RESEND_ACTIVATION]),
         CLASS_SUBSCRIPTION_DRIFT: (MODE_MANUAL_ESCALATION, [MODE_MANUAL_ESCALATION]),
         CLASS_DUPLICATE_RECOVERY_RISK: (MODE_MANUAL_ESCALATION, [MODE_MANUAL_ESCALATION]),
-        CLASS_RECOVERY_ALREADY_ACTIVE: (None, []),
-        CLASS_UNKNOWN_RECOVERY_STATE: (MODE_MANUAL_ESCALATION, [MODE_MANUAL_ESCALATION]),
+        CLASS_RECOVERY_ALREADY_ACTIVE: (
+            None,
+            [MODE_RELEASE_AND_RESTART],
+        ),
+        CLASS_UNKNOWN_RECOVERY_STATE: (MODE_MANUAL_ESCALATION, [MODE_MANUAL_ESCALATION, MODE_RELEASE_AND_RESTART]),
     }
     recommended, available = mode_map.get(classification, (MODE_MANUAL_ESCALATION, [MODE_MANUAL_ESCALATION]))
     if classification == CLASS_RECOVERY_ALREADY_ACTIVE:
         return {
             "recommended_mode": None,
-            "available_modes": [],
+            "available_modes": [MODE_RELEASE_AND_RESTART],
             "execution_available": False,
             "phase": 2,
-            "note": "A recovery checkout link was sent recently. Wait for customer action or allow the link to expire before regenerating.",
+            "note": "A recovery checkout link was sent recently. Wait for the customer to pay, or Release and restart if this unpaid attempt should be abandoned.",
         }
     return {
         "recommended_mode": recommended,
@@ -292,6 +362,7 @@ def derive_customer_continuation_mode(
         MODE_RESUME_ONBOARDING: "continue_saved_setup",
         MODE_REGENERATE_PAYMENT: "secure_payment_checkout",
         MODE_RESEND_ACTIVATION: "portal_activation",
+        MODE_RELEASE_AND_RESTART: "release_and_restart_signup",
         MODE_MANUAL_ESCALATION: "support_escalation",
     }.get(mode)
 
@@ -304,8 +375,13 @@ def validate_recovery_eligibility(
         return {"eligible": False, "reason": "No stranded onboarding detected for this account."}
     if classification == CLASS_RECOVERY_ALREADY_ACTIVE:
         return {
-            "eligible": False,
-            "reason": "A recovery checkout link is still active. Customer should use the existing link first.",
+            "eligible": True,
+            "reason": None,
+            "regenerate_blocked": True,
+            "regenerate_block_reason": (
+                "A recovery checkout link is still active. Use the existing link, "
+                "wait for it to expire before regenerating, or Release and restart this unpaid attempt."
+            ),
         }
     if classification == CLASS_DUPLICATE_RECOVERY_RISK:
         return {
@@ -344,9 +420,21 @@ def derive_recovery_recommendation_copy(
         },
         CLASS_EXPIRED_CHECKOUT: {
             "blockage_summary": "Previous payment link has expired or is no longer valid.",
-            "recommended_action": "Generate a fresh checkout link with preserved onboarding context (Phase 2).",
+            "recommended_action": "Generate a fresh checkout link with preserved onboarding context.",
             "expected_customer_outcome": "Customer receives a new secure payment link.",
-            "operational_impact": "Old checkout sessions should be treated as expired before sending a new link.",
+            "operational_impact": "Old checkout sessions are expired before sending a new link.",
+        },
+        CLASS_EMAIL_RESERVED_NO_CHECKOUT: {
+            "blockage_summary": "This email is reserved by an incomplete signup that never reached payment.",
+            "recommended_action": "Release and restart onboarding so the customer can register again, or generate checkout if they should continue this attempt.",
+            "expected_customer_outcome": "Either a new payment link for this attempt, or the email becomes available for a fresh signup.",
+            "operational_impact": "Release preserves history and does not delete the customer record.",
+        },
+        CLASS_PROMO_CONTEXT_LOST: {
+            "blockage_summary": "A promotion was expected on this attempt but cannot be resolved for recovery checkout.",
+            "recommended_action": "Select an approved promotion or generate a normal paid checkout.",
+            "expected_customer_outcome": "Customer receives a checkout with a governed promotion or the standard amount.",
+            "operational_impact": "Do not type an arbitrary discount. Use an active approved promo only.",
         },
         CLASS_PROMO_REDEMPTION_FAILED: {
             "blockage_summary": "Promo redemption did not complete payment successfully.",
@@ -386,9 +474,9 @@ def derive_recovery_recommendation_copy(
         },
         CLASS_RECOVERY_ALREADY_ACTIVE: {
             "blockage_summary": "A recovery checkout link was sent recently and may still be valid.",
-            "recommended_action": "Wait for customer action or confirm the prior link expired before regenerating.",
-            "expected_customer_outcome": "Customer should use the existing payment link if still valid.",
-            "operational_impact": "Avoid stacking multiple active checkout sessions.",
+            "recommended_action": "Ask the customer to complete the existing payment link, or Release and restart if this unpaid attempt should be abandoned. Do not regenerate checkout while the current link is still fresh.",
+            "expected_customer_outcome": "Either they pay on the existing link, or the email becomes available for a fresh signup after release.",
+            "operational_impact": "Avoid stacking multiple active checkout sessions. Release remains available because the attempt is still unpaid.",
         },
         CLASS_UNKNOWN_RECOVERY_STATE: {
             "blockage_summary": "Onboarding appears stranded but the blockage could not be classified confidently.",
@@ -424,6 +512,7 @@ async def detect_stranded_onboarding(client_id: str) -> Dict[str, Any]:
 
     subscription_drift = _detect_subscription_drift(client, billing)
     is_stranded = _compute_is_stranded(client, indicators, portal_user, billing)
+    validated_promo = bool((client.get("pilot_invite_code") or "").strip())
 
     provisioning_rows = (
         await db.provisioning_jobs.find(
@@ -453,6 +542,8 @@ async def detect_stranded_onboarding(client_id: str) -> Dict[str, Any]:
         "recovery_history": recovery_history,
         "checkout_fresh": _checkout_is_fresh(client),
         "paid_or_active": _is_paid_or_active(client, billing),
+        "validated_promo": validated_promo,
+        "released": is_released_onboarding_identity(client),
     }
 
 
@@ -479,6 +570,8 @@ def _compute_is_stranded(
     portal_user: Optional[Dict[str, Any]],
     billing: Optional[Dict[str, Any]],
 ) -> bool:
+    if is_released_onboarding_identity(client):
+        return False
     if indicators.get("stranded_onboarding"):
         return True
     if not _is_paid_or_active(client, billing):
@@ -535,6 +628,119 @@ def _build_recovery_history(
     }
 
 
+def derive_onboarding_dropout_diagnostic(
+    classification: Optional[str],
+    signals: Dict[str, Any],
+    recommendation: Dict[str, Any],
+    strategy: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Authoritative dropout ladder so admins do not reconstruct state from INTAKE_PENDING alone."""
+    client = signals.get("client") or {}
+    portal_user = signals.get("portal_user") or {}
+    billing = signals.get("billing") or {}
+    paid = bool(signals.get("paid_or_active"))
+    password_set = bool(portal_user) and portal_user.get("password_status") == PasswordStatus.SET.value
+    ob = (client.get("onboarding_status") or "").upper()
+    job = signals.get("provisioning_job") or {}
+    job_status = str(job.get("status") or "").upper()
+
+    stages: List[str] = [STAGE_REGISTRATION_STARTED]
+    if (client.get("email") or client.get("released_canonical_email") or "").strip():
+        stages.append(STAGE_EMAIL_CAPTURED)
+    if (client.get("company_name") or client.get("full_name") or "").strip():
+        stages.append(STAGE_COMPANY_CONTACT_COMPLETED)
+    if (client.get("billing_plan") or "").strip():
+        stages.append(STAGE_PLAN_SELECTED)
+    if signals.get("validated_promo") or (client.get("pilot_invite_code") or "").strip():
+        stages.append(STAGE_PROMO_VALIDATED)
+    if client.get("consent_service_boundary") or client.get("consent_data_processing"):
+        stages.append(STAGE_AGREEMENT_ACCEPTED)
+    if _has_checkout_history(client):
+        stages.append(STAGE_CHECKOUT_CREATED)
+    if paid:
+        stages.append(STAGE_PAYMENT_COMPLETED)
+    if job_status in ("PROVISIONING_STARTED", "PROVISIONING_COMPLETED", "WELCOME_EMAIL_SENT") or ob in (
+        OnboardingStatus.PROVISIONING.value,
+        OnboardingStatus.PROVISIONED.value,
+    ):
+        stages.append(STAGE_PROVISIONING_STARTED)
+    if ob == OnboardingStatus.PROVISIONED.value:
+        stages.append(STAGE_CLIENT_PROVISIONED)
+    if portal_user:
+        stages.append(STAGE_PORTAL_USER_CREATED)
+    if password_set:
+        stages.append(STAGE_PASSWORD_CREATED)
+        stages.append(STAGE_DASHBOARD_ENABLED)
+
+    last_successful = stages[-1] if stages else STAGE_REGISTRATION_STARTED
+    next_required = {
+        STAGE_REGISTRATION_STARTED: STAGE_EMAIL_CAPTURED,
+        STAGE_EMAIL_CAPTURED: STAGE_PLAN_SELECTED,
+        STAGE_COMPANY_CONTACT_COMPLETED: STAGE_PLAN_SELECTED,
+        STAGE_PLAN_SELECTED: STAGE_CHECKOUT_CREATED,
+        STAGE_PROMO_VALIDATED: STAGE_CHECKOUT_CREATED,
+        STAGE_AGREEMENT_ACCEPTED: STAGE_CHECKOUT_CREATED,
+        STAGE_CHECKOUT_CREATED: STAGE_PAYMENT_COMPLETED,
+        STAGE_PAYMENT_COMPLETED: STAGE_PROVISIONING_STARTED,
+        STAGE_PROVISIONING_STARTED: STAGE_CLIENT_PROVISIONED,
+        STAGE_CLIENT_PROVISIONED: STAGE_PASSWORD_CREATED,
+        STAGE_PORTAL_USER_CREATED: STAGE_PASSWORD_CREATED,
+        STAGE_PASSWORD_CREATED: STAGE_DASHBOARD_ENABLED,
+        STAGE_DASHBOARD_ENABLED: None,
+    }.get(last_successful)
+
+    email_state = "NONE"
+    if is_released_onboarding_identity(client):
+        email_state = "RELEASED_STRANDED_ONBOARDING"
+    elif (client.get("email") or "").strip():
+        email_state = "ACTIVE_OR_VALID_ONBOARDING_IDENTITY"
+
+    promo_state = "NONE"
+    if signals.get("validated_promo"):
+        promo_state = "VALIDATED"
+    elif classification == CLASS_PROMO_CONTEXT_LOST:
+        promo_state = "LOST"
+    elif classification == CLASS_PROMO_REDEMPTION_FAILED:
+        promo_state = "REDEMPTION_FAILED"
+
+    payment_state = "PAID" if paid else "UNPAID"
+    if classification == CLASS_EXPIRED_CHECKOUT:
+        payment_state = "CHECKOUT_EXPIRED"
+    elif classification == CLASS_RECOVERY_ALREADY_ACTIVE:
+        payment_state = "CHECKOUT_FRESH"
+
+    provisioning_state = ob or "UNKNOWN"
+    if job_status:
+        provisioning_state = job_status
+    password_state = "SET" if password_set else ("PENDING" if portal_user or paid else "NOT_STARTED")
+
+    recoverability = "ESCALATE"
+    if classification in (CLASS_ACTIVATION_INCOMPLETE, CLASS_PASSWORD_SETUP_PENDING):
+        recoverability = "RESEND_PASSWORD_SETUP"
+    elif classification in _RELEASE_ELIGIBLE_CLASSES:
+        recoverability = "CONTINUATION_OR_RELEASE"
+    elif classification == CLASS_RECOVERY_ALREADY_ACTIVE:
+        recoverability = "WAIT_EXISTING_LINK"
+    elif not classification:
+        recoverability = "NOT_REQUIRED"
+
+    recommended = (strategy.get("recommended_mode") or "").upper() or None
+    return {
+        "last_successful_stage": last_successful,
+        "next_required_stage": next_required,
+        "blocking_reason": classification,
+        "recoverability": recoverability,
+        "payment_state": payment_state,
+        "promo_state": promo_state,
+        "email_identity_state": email_state,
+        "provisioning_state": provisioning_state,
+        "password_state": password_state,
+        "recommended_recovery": recommended,
+        "blockage_summary": recommendation.get("blockage_summary"),
+        "customer_entered_promo_supported": False,
+    }
+
+
 async def build_onboarding_recovery_assessment(client_id: str) -> Dict[str, Any]:
     """Full read-only assessment payload for admin UI."""
     signals = await detect_stranded_onboarding(client_id)
@@ -556,9 +762,11 @@ async def build_onboarding_recovery_assessment(client_id: str) -> Dict[str, Any]
     }
 
     recommendation = derive_recovery_recommendation_copy(classification, signals, strategy)
+    diagnostic = derive_onboarding_dropout_diagnostic(classification, signals, recommendation, strategy)
 
     client = signals.get("client") or {}
     portal_user = signals.get("portal_user") or {}
+    has_validated_promo = bool(signals.get("validated_promo"))
 
     from services.onboarding_recovery_observability_service import get_client_onboarding_recovery_observability
 
@@ -595,6 +803,13 @@ async def build_onboarding_recovery_assessment(client_id: str) -> Dict[str, Any]
         "customer_continuation_mode": continuation_mode,
         "eligibility": eligibility,
         "recommendation": recommendation,
+        "diagnostic": diagnostic,
+        "promo_recovery": {
+            "has_validated_promo": has_validated_promo,
+            "invite_code": (client.get("pilot_invite_code") or "").strip().upper() or None,
+            "customer_entered_promo_supported": False,
+            "preserve_existing_available": has_validated_promo,
+        },
         "state_summary": {
             "customer_reference": client.get("customer_reference"),
             "onboarding_status": client.get("onboarding_status"),
@@ -608,6 +823,8 @@ async def build_onboarding_recovery_assessment(client_id: str) -> Dict[str, Any]
             "checkout_fresh": signals.get("checkout_fresh"),
             "paid_or_active": signals.get("paid_or_active"),
             "activation_email_sent": bool(client.get("activation_email_sent_at")),
+            "onboarding_identity_status": client.get("onboarding_identity_status") or "ACTIVE",
+            "released_canonical_email": client.get("released_canonical_email"),
         },
         "recovery_history": signals.get("recovery_history"),
         "indicators": signals.get("indicators"),

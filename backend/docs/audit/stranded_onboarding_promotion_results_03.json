@@ -1,0 +1,198 @@
+{
+  "programme": "CHECKOUT-SUCCESS-ROUTE-FIX-AND-STRANDED-ONBOARDING-PRODUCTION-PROMOTION-03",
+  "started_at": "2026-08-18T14:35:00.851176+00:00",
+  "api": "https://pleerity-enterprise.onrender.com/api",
+  "frontend": "https://pleerity-enterprise-9jjg.vercel.app",
+  "paths": {
+    "register": {
+      "status": 200,
+      "ok": true,
+      "email": "so.success.202608181435@yopmail.com",
+      "client_id": "f44b8fd0-571e-418c-be75-3e6bec76a42b",
+      "detail": null
+    },
+    "recovery_checkout": {
+      "status": 200,
+      "ok": true,
+      "session_id": "cs_test_a1wgVR4vNn3aJle59Y2xNpvzrvABi6ECLR3LP5IhiF3S3nHy90M6uNwXhh",
+      "applied_invite_code": "STAGINGSO01",
+      "promo_decision": "apply_selected",
+      "email_sent": true,
+      "detail": null
+    },
+    "checkout_inspect": {
+      "ok": true,
+      "url_host": "checkout.stripe.com",
+      "expired": false,
+      "amount_shown": "\u00a30.00",
+      "customer_entered_promo_ui_count": 0,
+      "text_preview": "Back\nPleerity Enterprise Ltd\nSandbox\nSubscribe to Compliance Vault Pro \u2013 Solo Landlord\n\u00a30.00\nper month\nuntil coupon expires\nCompliance Vault Pro \u2013 Solo Landlord\nCompliance dashboard and reminders for DIY landlords managing up to 2 properties.\nBilled monthly\n\u00a319.00\nSubtotal\n\u00a319.00\nStaging stranded-onboarding cert\n-\u00a319.00\n100% off for 2 months\nTotal due today\n\u00a30.00\n\nOR\n\nContact information\nEmail\nso.success.202608181435@yopmail.com\nPayment method\nCard\nKlarna\nRevolut Pay\nSave my information for faster checkout\nPay securely at Pleerity Enterprise Ltd and everywhere Onelink is accepted.\nPay and subscribe\nProcessing\nBy subscribing, you authorise Pleerity Enterprise Ltd to charge you according to the terms until you cancel.\nI am an AI agent acting on behalf of someone else\nPowered by \nTerms\nPrivacy",
+      "screenshot": "so03_checkout.png"
+    },
+    "customer_pay": {
+      "ok": true,
+      "clicked_pay": true,
+      "filled_card": true,
+      "final_url": "https://pleerity-enterprise-9jjg.vercel.app/checkout/success?session_id=cs_test_a1wgVR4vNn3aJle59Y2xNpvzrvABi6ECLR3LP5IhiF3S3nHy90M6uNwXhh",
+      "text_preview": "Compliance Vault Pro\nCheckout complete\n\nYour payment has been received. We are continuing your account setup. This can take a minute.\n\nCheckout reference: cs_test_a1wgVR4vNn3aJle59Y2xNpvzrvABi6ECLR3LP5IhiF3S3nHy90M6uNwXhh\n\nNeed help? Contact info@pleerityenterprise.co.uk",
+      "screenshot": "so03_paid.png",
+      "pre_pay_preview": "Back\nPleerity Enterprise Ltd\nSandbox\nSubscribe to Compliance Vault Pro \u2013 Solo Landlord\n\u00a30.00\nper month\nuntil coupon expires\nCompliance Vault Pro \u2013 Solo Landlord\nCompliance dashboard and reminders for DIY landlords managing up to 2 properties.\nBilled monthly\n\u00a319.00\nSubtotal\n\u00a319.00\nStaging stranded-onboarding cert\n-\u00a319.00\n100% off for 2 months\nTotal due today\n\u00a30.00\n\nOR\n\nContact information\nEmail\nso.success.202608181435@yopmail.com\nPayment method\nCard\nKlarna\nRevolut Pay\nSave my information for faster checkout\nPay securely at Pleerity Enterprise Ltd and everywhere Onelink is accepted.\nPay and subscribe\nProcessing\nBy subscribing, you authorise Pleerity Enterprise Ltd to charge you according to the terms until you cancel.\nI am an AI agent acting on behalf of someone else\nPowered by \nTerms\nPrivac"
+    },
+    "success_landing": {
+      "final_url": "https://pleerity-enterprise-9jjg.vercel.app/checkout/success?session_id=cs_test_a1wgVR4vNn3aJle59Y2xNpvzrvABi6ECLR3LP5IhiF3S3nHy90M6uNwXhh",
+      "path": "/checkout/success",
+      "session_id_in_url": "cs_test_a1wgVR4vNn3aJle59Y2xNpvzrvABi6ECLR3LP5IhiF3S3nHy90M6uNwXhh",
+      "session_id_matches": true,
+      "text_has_checkout_complete": true,
+      "text_has_homepage_hero": false,
+      "ok": true
+    },
+    "setup_status_by_session": {
+      "status": 200,
+      "client_id": "f44b8fd0-571e-418c-be75-3e6bec76a42b",
+      "next_action": "set_password",
+      "payment_state": "paid",
+      "provisioning_status": "COMPLETED"
+    },
+    "provisioning": {
+      "onboarding_status": "PROVISIONED",
+      "subscription_status": "ACTIVE",
+      "stripe_subscription_id": "sub_1U5o\u2026",
+      "stripe_customer_id": "cus_V608\u2026",
+      "in_pending_setup": false,
+      "ready": true
+    },
+    "messages": [
+      {
+        "template_key": "WELCOME_EMAIL",
+        "event_type": null,
+        "status": "DELIVERED",
+        "provider_message_id": "54dbdfbb\u2026",
+        "created_at": "2026-08-18T14:36:52.347000"
+      },
+      {
+        "template_key": "SUBSCRIPTION_CONFIRMED",
+        "event_type": null,
+        "status": "DELIVERED",
+        "provider_message_id": "1ee6173c\u2026",
+        "created_at": "2026-08-18T14:36:43.447000"
+      },
+      {
+        "template_key": "ADMIN_MANUAL",
+        "event_type": null,
+        "status": "DELIVERED",
+        "provider_message_id": "da732287\u2026",
+        "created_at": "2026-08-18T14:36:02.271000"
+      }
+    ],
+    "after_client": {
+      "client_id": "f44b8fd0-571e-418c-be75-3e6bec76a42b",
+      "email": "so.success.202608181435@yopmail.com",
+      "customer_reference": "PLE-CVP-2026-000074",
+      "onboarding_status": "PROVISIONED",
+      "onboarding_identity_status": "ACTIVE",
+      "latest_checkout_session_id": "cs_test_a1wgVR4vNn3aJle59Y2xNpvzrvABi6ECLR3LP5IhiF3S3nHy90M6uNwXhh",
+      "recovery_checkout_context": {
+        "classification": "EMAIL_RESERVED_NO_CHECKOUT",
+        "promo_decision": "apply_selected",
+        "preserve_promo": true,
+        "applied_invite_code": "STAGINGSO01",
+        "prior_session_id": null,
+        "prior_session_superseded": false,
+        "customer_entered_promo": false
+      },
+      "pilot_invite_code": "STAGINGSO01",
+      "restarted_from_client_id": null,
+      "released_canonical_email": null,
+      "subscription_status": "ACTIVE",
+      "stripe_subscription_id": "sub_1U5o\u2026",
+      "stripe_customer_id": "cus_V608\u2026"
+    },
+    "release_provisioned_blocked": {
+      "status": 400,
+      "ok": false,
+      "detail": {
+        "detail": {
+          "error_code": "MODE_CLASSIFICATION_MISMATCH",
+          "message": "Mode 'release_and_restart' is not valid for classification 'ACTIVATION_INCOMPLETE'."
+        }
+      },
+      "pass": true
+    }
+  },
+  "api_version": {
+    "status": 200,
+    "body": {
+      "commit_sha": "583c4f9a90e78fb83baf3c9f60b57bf17c9ab5b2",
+      "environment": "staging"
+    }
+  },
+  "api_health": {
+    "status": 200,
+    "body": {
+      "status": "healthy",
+      "environment": "staging",
+      "readiness": {
+        "stage": "ready",
+        "degraded": false,
+        "last_error": null
+      },
+      "scheduler": {
+        "status": "healthy",
+        "stale": false,
+        "last_heartbeat_at": "2026-08-18T14:35:01.826005+00:00",
+        "age_seconds": 2.112554,
+        "stale_after_seconds": 300,
+        "reason": "heartbeat_fresh"
+      }
+    }
+  },
+  "direct_routes": {
+    "missing": {
+      "final_url": "https://pleerity-enterprise-9jjg.vercel.app/checkout/success",
+      "has_success_page": true,
+      "hero_cta_count": 0,
+      "testids": [
+        "checkout-success-page",
+        "checkout-success-missing-session",
+        "cookie-banner",
+        "cookie-manage-btn",
+        "cookie-reject-btn",
+        "cookie-accept-btn"
+      ],
+      "text_preview": "Compliance Vault Pro\nCheckout details missing\n\nThis page needs a checkout reference from your payment. If you have just paid, check your email for the next step. Do not start another registration.\n\nNeed help? Contact info@pleerityenterprise.co.uk\n\nWe value your privacy\n\nWe use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking \"Accept All\", you consent to our use of cookies. Read our Privacy Policy and Cookie Policy.\n\nManage Preferences\nReject Non-Essential\nAccept All",
+      "screenshot": "route_missing.png",
+      "pass": true
+    },
+    "session": {
+      "final_url": "https://pleerity-enterprise-9jjg.vercel.app/checkout/success?session_id=cs_test_abcdefghijklmnopqrstuv",
+      "has_success_page": true,
+      "hero_cta_count": 0,
+      "testids": [
+        "checkout-success-page",
+        "checkout-success-invalid-session",
+        "checkout-success-session-id"
+      ],
+      "text_preview": "Compliance Vault Pro\nWe could not match this checkout\n\nIf you have just paid, check your email for the next step. Do not start another registration.\n\nCheckout reference: cs_test_abcdefghijklmnopqrstuv\n\nNeed help? Contact info@pleerityenterprise.co.uk",
+      "screenshot": "route_session.png",
+      "pass": true
+    },
+    "malformed": {
+      "final_url": "https://pleerity-enterprise-9jjg.vercel.app/checkout/success?session_id=not-a-session",
+      "has_success_page": true,
+      "hero_cta_count": 0,
+      "testids": [
+        "checkout-success-page",
+        "checkout-success-invalid-session",
+        "checkout-success-session-id"
+      ],
+      "text_preview": "Compliance Vault Pro\nWe could not match this checkout\n\nIf you have just paid, check your email for the next step. Do not start another registration.\n\nCheckout reference: not-a-session\n\nNeed help? Contact info@pleerityenterprise.co.uk",
+      "screenshot": "route_malformed.png",
+      "pass": true
+    }
+  },
+  "route_ok": true,
+  "landing_ok": true,
+  "finished_at": "2026-08-18T14:37:13.643486+00:00",
+  "verdict": "GO_FOR_STRANDED_ONBOARDING_PRODUCTION_PROMOTION"
+}

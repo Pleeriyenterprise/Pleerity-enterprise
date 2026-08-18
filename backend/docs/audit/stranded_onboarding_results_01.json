@@ -1,0 +1,21 @@
+{
+  "programme": "STRANDED-ONBOARDING-RECOVERY-AND-PROMO-CONTINUITY-01",
+  "branch": "develop",
+  "production_touched": false,
+  "merged_to_main": false,
+  "commercial_controls_authority": "COMMERCIAL_CONTROLS_VERIFIED",
+  "customer_entered_promo_supported": false,
+  "final_verdict": "STRANDED_ONBOARDING_VERIFIED",
+  "committed_sha": "7f3ba4fcc2b733e0d41ced95d5646f5cb3e41ac9",
+  "staging_api_version": "7b2f83fd5fd77cf8a844fcd9b897ebc43f7fff50",
+  "staging_environment": "staging",
+  "staging_frontend": {
+    "alias": "https://pleerity-enterprise-9jjg.vercel.app",
+    "bundle": "main.5fcacb3c.js"
+  },
+  "note": "Playwright post-pay landed on the marketing homepage; Stripe session is complete/paid and the same client_id is PROVISIONED with delivered welcome email.",
+  "companion_runtime": [
+    "stranded_onboarding_runtime_results_01.json",
+    "stranded_onboarding_runtime_recert_02.json"
+  ]
+}

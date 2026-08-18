@@ -4,11 +4,12 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from database import database
-from models import OnboardingStatus, PasswordToken
+from models import AuditAction, OnboardingStatus, PasswordStatus, PasswordToken, UserRole
+from utils.audit import create_audit_log
 from services.onboarding_recovery_notification_service import (
     send_recovery_activation_email,
     send_recovery_payment_email,
@@ -20,6 +21,7 @@ from services.onboarding_continuation_service import (
 )
 from services.onboarding_recovery_service import (
     MODE_REGENERATE_PAYMENT,
+    MODE_RELEASE_AND_RESTART,
     MODE_RESEND_ACTIVATION,
     MODE_RESUME_ONBOARDING,
     _checkout_is_fresh,
@@ -29,11 +31,16 @@ from services.onboarding_recovery_service import (
     detect_stranded_onboarding,
     validate_recovery_eligibility,
 )
+from utils.client_email import (
+    ONBOARDING_IDENTITY_RELEASED,
+    canonical_client_email,
+    is_released_onboarding_identity,
+)
 from services.plan_registry import StripeModeMismatchError
 logger = logging.getLogger(__name__)
 
 EXECUTABLE_MODES = frozenset(
-    {MODE_REGENERATE_PAYMENT, MODE_RESEND_ACTIVATION, MODE_RESUME_ONBOARDING}
+    {MODE_REGENERATE_PAYMENT, MODE_RESEND_ACTIVATION, MODE_RESUME_ONBOARDING, MODE_RELEASE_AND_RESTART}
 )
 
 _MODE_CLASSIFICATIONS: Dict[str, frozenset] = {
@@ -43,6 +50,8 @@ _MODE_CLASSIFICATIONS: Dict[str, frozenset] = {
             "EXPIRED_CHECKOUT",
             "PROMO_REDEMPTION_FAILED",
             "FIRST_TIME_RESTRICTION_COLLISION",
+            "EMAIL_RESERVED_NO_CHECKOUT",
+            "PROMO_CONTEXT_LOST",
         }
     ),
     MODE_RESUME_ONBOARDING: frozenset(
@@ -51,9 +60,22 @@ _MODE_CLASSIFICATIONS: Dict[str, frozenset] = {
             "EXPIRED_CHECKOUT",
             "PROMO_REDEMPTION_FAILED",
             "FIRST_TIME_RESTRICTION_COLLISION",
+            "EMAIL_RESERVED_NO_CHECKOUT",
         }
     ),
-    MODE_RESEND_ACTIVATION: frozenset({"ACTIVATION_INCOMPLETE"}),
+    MODE_RESEND_ACTIVATION: frozenset({"ACTIVATION_INCOMPLETE", "PASSWORD_SETUP_PENDING"}),
+    MODE_RELEASE_AND_RESTART: frozenset(
+        {
+            "EMAIL_RESERVED_NO_CHECKOUT",
+            "EXPIRED_CHECKOUT",
+            "PAYMENT_ABANDONED",
+            "PROMO_REDEMPTION_FAILED",
+            "PROMO_CONTEXT_LOST",
+            "FIRST_TIME_RESTRICTION_COLLISION",
+            "UNKNOWN_RECOVERY_STATE",
+            "RECOVERY_ALREADY_ACTIVE",
+        }
+    ),
 }
 
 
@@ -166,6 +188,8 @@ async def execute_regenerate_payment(
     send_customer_email: bool,
     preserve_promo_eligibility: bool,
     apply_recovery_waiver: bool,
+    promo_decision: Optional[str] = None,
+    selected_invite_code: Optional[str] = None,
 ) -> Dict[str, Any]:
     client = signals["client"]
     if _is_paid_or_active(client, signals.get("billing")):
@@ -189,14 +213,56 @@ async def execute_regenerate_payment(
             actor=actor,
         )
 
+    decision = (promo_decision or "").strip().lower()
+    if not decision:
+        decision = "preserve_existing" if preserve_promo_eligibility else "none"
+    if decision not in ("none", "preserve_existing", "apply_selected"):
+        raise OnboardingRecoveryExecutionError(
+            "INVALID_PROMO_DECISION",
+            "Promo decision must be none, preserve_existing, or apply_selected.",
+        )
+
+    from services.pilot_invite_service import get_invite_code
+
     pilot_invite_doc = None
-    if preserve_promo_eligibility:
+    applied_invite_code = None
+    if decision == "preserve_existing":
         pilot_invite_doc = await resolve_pilot_invite_for_client(client)
+        applied_invite_code = (pilot_invite_doc or {}).get("code")
+        if preserve_promo_eligibility and not pilot_invite_doc:
+            logger.warning("preserve_existing requested but no validated invite for client_id=%s", client_id)
+    elif decision == "apply_selected":
+        code = (selected_invite_code or "").strip().upper()
+        if not code:
+            raise OnboardingRecoveryExecutionError(
+                "PROMO_CODE_REQUIRED",
+                "Select an active approved promotion.",
+            )
+        invite = await get_invite_code(code)
+        if not invite:
+            raise OnboardingRecoveryExecutionError("PROMO_NOT_FOUND", "That promotion is not available.")
+        if str(invite.get("effective_status") or "").lower() != "active":
+            raise OnboardingRecoveryExecutionError(
+                "PROMO_NOT_ACTIVE",
+                "That promotion is not currently active.",
+            )
+        remaining = invite.get("remaining_uses")
+        if remaining is not None and int(remaining) <= 0:
+            raise OnboardingRecoveryExecutionError(
+                "PROMO_EXHAUSTED",
+                "That promotion has no remaining uses.",
+            )
+        pilot_invite_doc = invite
+        applied_invite_code = code
 
     plan_code = client.get("billing_plan") or "PLAN_1_SOLO"
     customer_email = (client.get("email") or client.get("contact_email") or "").strip() or None
 
     from services.stripe_service import stripe_service
+
+    prior_session_id = (client.get("latest_checkout_session_id") or "").strip() or None
+    if prior_session_id:
+        await stripe_service.expire_checkout_session(prior_session_id)
 
     try:
         session = await stripe_service.create_checkout_session(
@@ -210,7 +276,16 @@ async def execute_regenerate_payment(
     except StripeModeMismatchError as e:
         raise OnboardingRecoveryExecutionError("STRIPE_MODE_MISMATCH", str(e), 400) from e
     except ValueError as e:
-        raise OnboardingRecoveryExecutionError("CHECKOUT_CREATE_FAILED", str(e), 500) from e
+        msg = str(e)
+        lowered = msg.lower()
+        if "live mode" in lowered or "no such coupon" in lowered or "no such promotion code" in lowered:
+            raise OnboardingRecoveryExecutionError(
+                "STRIPE_PROMO_MODE_MISMATCH",
+                "This promotion is not available in the current payment environment. "
+                "Select a staging-valid approved promo or generate a normal paid checkout.",
+                409,
+            ) from e
+        raise OnboardingRecoveryExecutionError("CHECKOUT_CREATE_FAILED", msg, 500) from e
 
     checkout_url = session.get("checkout_url")
     session_id = session.get("session_id")
@@ -234,10 +309,15 @@ async def execute_regenerate_payment(
                 "last_checkout_attempt_at": now,
                 "recovery_checkout_context": {
                     "classification": classification,
-                    "preserve_promo": preserve_promo_eligibility,
-                    "prior_session_id": client.get("latest_checkout_session_id"),
+                    "promo_decision": decision,
+                    "preserve_promo": decision != "none",
+                    "applied_invite_code": applied_invite_code,
+                    "prior_session_id": prior_session_id,
+                    "prior_session_superseded": bool(prior_session_id),
+                    "customer_entered_promo": False,
                 },
                 "last_recovery_checkout_id": session_id,
+                **({"pilot_invite_code": applied_invite_code} if applied_invite_code else {}),
             }
         },
     )
@@ -275,8 +355,13 @@ async def execute_regenerate_payment(
         "email_result": email_result,
         "waiver_applied": bool(waiver),
         "waiver_override_id": (waiver or {}).get("override_id"),
-        "promo_preserved": bool(pilot_invite_doc),
+        "promo_preserved": bool(pilot_invite_doc) and decision == "preserve_existing",
+        "promo_decision": decision,
+        "applied_invite_code": applied_invite_code,
+        "prior_session_id": prior_session_id,
+        "prior_session_superseded": bool(prior_session_id),
         "continuation_delivered": continuation_delivered,
+        "completion_status": "CHECKOUT_RECOVERY_COMPLETE" if continuation_delivered else "CHECKOUT_CREATED_DELIVERY_UNCONFIRMED",
     }
 
 
@@ -502,6 +587,186 @@ async def execute_resend_activation(
     }
 
 
+def _release_blockers(signals: Dict[str, Any]) -> List[str]:
+    blockers: List[str] = []
+    client = signals.get("client") or {}
+    portal_user = signals.get("portal_user") or {}
+    if is_released_onboarding_identity(client):
+        blockers.append("already_released")
+    if _is_paid_or_active(client, signals.get("billing")):
+        blockers.append("paid_or_active_subscription")
+    ob = (client.get("onboarding_status") or "").upper()
+    if ob == OnboardingStatus.PROVISIONED.value:
+        blockers.append("already_provisioned")
+    if portal_user and portal_user.get("password_status") == PasswordStatus.SET.value:
+        blockers.append("portal_password_set")
+    sub = (client.get("subscription_status") or "").lower()
+    if (client.get("stripe_subscription_id") or "").strip() and sub not in ("canceled", "cancelled", "incomplete_expired"):
+        blockers.append("stripe_subscription_present")
+    return blockers
+
+
+async def execute_release_and_restart(
+    *,
+    client_id: str,
+    signals: Dict[str, Any],
+    classification: Optional[str],
+    reason: str,
+    actor: Dict[str, Any],
+) -> Dict[str, Any]:
+    blockers = _release_blockers(signals)
+    if blockers:
+        raise OnboardingRecoveryExecutionError(
+            "RELEASE_NOT_ALLOWED",
+            "This onboarding cannot be released: " + ", ".join(blockers) + ". Use payment or account recovery instead.",
+        )
+
+    client = signals["client"]
+    db = database.get_db()
+    canonical = canonical_client_email(client.get("email") or client.get("contact_email"))
+    if not canonical:
+        raise OnboardingRecoveryExecutionError("EMAIL_MISSING", "Client has no email to release.")
+
+    from services.stripe_service import stripe_service
+    from services.onboarding_continuation_service import expire_old_continuation_tokens
+
+    prior_session_id = (client.get("latest_checkout_session_id") or "").strip() or None
+    if prior_session_id:
+        await stripe_service.expire_checkout_session(prior_session_id)
+    tokens_revoked = await expire_old_continuation_tokens(client_id)
+
+    now = datetime.now(timezone.utc)
+    vacated_email = f"released.{client_id}@released.invalid"
+    contact = (client.get("contact_email") or "").strip()
+    set_fields: Dict[str, Any] = {
+        "onboarding_identity_status": ONBOARDING_IDENTITY_RELEASED,
+        "released_canonical_email": canonical,
+        "released_at": now,
+        "released_reason": reason[:500],
+        "email": vacated_email,
+        "latest_checkout_url": None,
+        "continuation_links_invalidated_at": now,
+    }
+    if contact and canonical_client_email(contact) == canonical:
+        set_fields["contact_email"] = vacated_email
+
+    released = await db.clients.find_one_and_update(
+        {
+            "client_id": client_id,
+            "onboarding_identity_status": {"$ne": ONBOARDING_IDENTITY_RELEASED},
+        },
+        {"$set": set_fields},
+    )
+    if not released:
+        raise OnboardingRecoveryExecutionError(
+            "RELEASE_NOT_ALLOWED",
+            "This onboarding cannot be released: already_released. Use payment or account recovery instead.",
+        )
+    await _record_recovery_client_update(
+        db,
+        client_id=client_id,
+        mode=MODE_RELEASE_AND_RESTART,
+        classification=classification,
+    )
+
+    portal_user = signals.get("portal_user") or {}
+    if portal_user and portal_user.get("password_status") != PasswordStatus.SET.value:
+        await db.portal_users.update_one(
+            {"client_id": client_id},
+            {
+                "$set": {
+                    "auth_email": vacated_email,
+                    "status": "DISABLED",
+                    "is_deleted": True,
+                    "released_canonical_email": canonical,
+                }
+            },
+        )
+
+    actor_role = UserRole.ROLE_ADMIN
+    raw_role = (actor.get("role") or "").strip()
+    try:
+        if raw_role:
+            actor_role = UserRole(raw_role)
+    except ValueError:
+        actor_role = UserRole.ROLE_ADMIN
+
+    await create_audit_log(
+        action=AuditAction.ONBOARDING_RELEASED_FOR_RESTART,
+        actor_role=actor_role,
+        actor_id=actor.get("portal_user_id") or "unknown",
+        client_id=client_id,
+        resource_type="client",
+        resource_id=client_id,
+        metadata={
+            "classification": classification,
+            "released_canonical_email": canonical,
+            "prior_session_id": prior_session_id,
+            "tokens_revoked": tokens_revoked,
+            "reason_preview": reason[:200],
+            "identities_checked": ["clients", "portal_users", "subscription", "onboarding_status"],
+        },
+    )
+
+    return {
+        "mode": MODE_RELEASE_AND_RESTART,
+        "released_canonical_email": canonical,
+        "prior_session_id": prior_session_id,
+        "prior_session_superseded": bool(prior_session_id),
+        "tokens_revoked": tokens_revoked,
+        "email_reservation_released": True,
+        "continuation_delivered": False,
+        "completion_status": "RESTART_RELEASE_COMPLETE",
+    }
+
+
+async def _invite_usable_in_current_stripe_mode(row: Dict[str, Any]) -> bool:
+    """Recovery checkout can only apply coupons that exist in the current Stripe mode."""
+    coupon_id = (row.get("stripe_coupon_id") or "").strip()
+    promo_id = (row.get("stripe_promotion_code_id") or "").strip()
+    if not coupon_id and not promo_id:
+        return False
+    from services.pilot_invite_service import preview_stripe_coupon_validation
+
+    preview = await preview_stripe_coupon_validation(
+        {
+            "stripe_coupon_id": coupon_id or None,
+            "stripe_promotion_code_id": promo_id or None,
+            "discount_mode": row.get("discount_mode") or "coupon",
+            "discount_percent": row.get("discount_percent"),
+            "discount_duration": row.get("discount_duration"),
+            "discount_duration_in_months": row.get("discount_duration_in_months"),
+            "discount_type": row.get("discount_type") or "percent",
+        }
+    )
+    return bool(preview.get("valid"))
+
+
+async def list_approved_recovery_promos(*, limit: int = 50) -> list[Dict[str, Any]]:
+    from services.pilot_invite_service import list_invite_codes
+
+    rows = await list_invite_codes(limit=limit, status_filter="active")
+    out = []
+    for row in rows:
+        remaining = row.get("remaining_uses")
+        if remaining is not None and int(remaining) <= 0:
+            continue
+        if not await _invite_usable_in_current_stripe_mode(row):
+            continue
+        out.append(
+            {
+                "code": row.get("code"),
+                "campaign_name": row.get("campaign_name"),
+                "effective_status": row.get("effective_status"),
+                "remaining_uses": remaining,
+                "discount_percent": row.get("discount_percent"),
+                "applies_to_plan_codes": row.get("applies_to_plan_codes") or [],
+                "stripe_coupon_id": row.get("stripe_coupon_id"),
+            }
+        )
+    return out
+
+
 async def execute_onboarding_recovery(
     *,
     client_id: str,
@@ -512,6 +777,8 @@ async def execute_onboarding_recovery(
     send_customer_email: bool = True,
     preserve_promo_eligibility: bool = True,
     apply_recovery_waiver: bool = False,
+    promo_decision: Optional[str] = None,
+    selected_invite_code: Optional[str] = None,
     actor_id: Optional[str] = None,
     ip_address: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -540,6 +807,8 @@ async def execute_onboarding_recovery(
             send_customer_email=send_customer_email,
             preserve_promo_eligibility=preserve_promo_eligibility,
             apply_recovery_waiver=apply_recovery_waiver,
+            promo_decision=promo_decision,
+            selected_invite_code=selected_invite_code,
         )
     elif mode == MODE_RESUME_ONBOARDING:
         result = await execute_resume_onboarding(
@@ -563,6 +832,19 @@ async def execute_onboarding_recovery(
             reason=reason,
             actor=actor,
             send_customer_email=send_customer_email,
+        )
+    elif mode == MODE_RELEASE_AND_RESTART:
+        if apply_recovery_waiver:
+            raise OnboardingRecoveryExecutionError(
+                "WAIVER_NOT_APPLICABLE",
+                "Recovery waiver does not apply to release and restart.",
+            )
+        result = await execute_release_and_restart(
+            client_id=client_id,
+            signals=signals,
+            classification=classification,
+            reason=reason,
+            actor=actor,
         )
     else:
         raise OnboardingRecoveryExecutionError("MODE_NOT_SUPPORTED", f"Unknown mode: {mode}")
@@ -601,6 +883,11 @@ async def execute_onboarding_recovery(
                     "continuation_url",
                     "waiver_applied",
                     "promo_preserved",
+                    "promo_decision",
+                    "applied_invite_code",
+                    "prior_session_id",
+                    "released_canonical_email",
+                    "completion_status",
                 )
                 if result.get(k) is not None
             },

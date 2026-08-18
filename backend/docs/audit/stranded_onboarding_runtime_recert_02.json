@@ -1,0 +1,300 @@
+{
+  "programme": "STRANDED-ONBOARDING-RECERT-02",
+  "base_sha": "7b2f83fd5fd77cf8a844fcd9b897ebc43f7fff50",
+  "production_touched": false,
+  "health": {
+    "version": {
+      "commit_sha": "7b2f83fd5fd77cf8a844fcd9b897ebc43f7fff50",
+      "environment": "staging"
+    },
+    "health_status": 200,
+    "health": {
+      "status": "healthy",
+      "environment": "staging",
+      "readiness": {
+        "stage": "post_db_initialization",
+        "degraded": false,
+        "last_error": null
+      },
+      "scheduler": {
+        "status": "healthy",
+        "stale": false,
+        "last_heartbeat_at": "2026-08-17T18:07:10.402012+00:00",
+        "age_seconds": 232.815194,
+        "stale_after_seconds": 300,
+        "reason": "heartbeat_fresh"
+      }
+    },
+    "ready": true
+  },
+  "j1_pay": {
+    "ok": false,
+    "clicked_pay": true,
+    "filled_card": true,
+    "final_url": "https://pleerity-enterprise-9jjg.vercel.app/",
+    "text_preview": "Platforms\nServices\nPricing\nInsights\nAbout\nCheck Your Compliance Risk\nPortal login\n|\nJoin contractor network\nAre You Fully Compliant as a UK Landlord?\n\nStructured compliance monitoring and renewal tracking for UK portfolios.\n\nCheck Your Compliance Risk\nView Platform Overview\nExpiry reminders\nEvidence vault\nPortfolio view\nPDF reports (plan-based)\nNot legal advice\nUK landlord compliance tracking\u2014risk report in 60 seconds\n\nIllustrative preview. Live score generated after structured assessment.\n\nSee Your Entire Portfolio in One View\n\nInstantly see expiry risk, expiring documents, and compliance visibility across every property you manage.\n\nPortfolio compliance score\nProperty-level breakdown\nExpiring soon indicator\nOverdue alert example\n\nExpiry alerts generated from confirmed certificate dates.\n\nFree compliance risk preview\n\nShort questionnaire \u2014 not your live in-app PDF reports. Pricing with reports\n\nCompliance Is Easy to Forget \u2014 Until It's Too Late\n\nCertificates buried in inboxes. Expiry dates lost in spreadsheets. No clear overview across properties.\n\nWhen documentation is scattered, visibility disappears \u2014 and deadlines get missed.\n\nCompliance Vault Pro gives you structured oversight so nothing critical slips through.\n\nCheck Your Compliance Risk\nAll Your Compliance Tracking in One Structured Dashboard\n\nTrack evidence, see risk indicators, get reminders, and generate reports. No legal claims \u2014 just structured tracking.\n\nTrack evidence and expiries\n\nSecurely store Gas Safety (CP12), EICR, EPC, HMO licences and supporting documents. Track issue and expiry dates in one organised portal.\n\nCompliance score (risk indicator)\n\nSee a clear risk indicator per property and across your portfolio based on evidence and expiry status. Transparency over what\u2019s valid, expiring, or missing.\n\nReminders\n\nReceive email and SMS reminders before deadlines (plan-based) so you can renew in good time.\n\nReports and exports\n\nGenerate structured PDF and CSV reports (plan-based) for internal reviews or professional consultation.\n\nBuilt for Modern UK Landlords\n\nWorks for solo landlords, portfolio landlords, and HMO operators. Also suitable for managing agents overseeing landlord portfolios.\n\nSolo landlords\n\nKeep your compliance documentation organised and monitored from day one.\n\nPortfolio landlords\n\nTrack multiple properties with structured oversight and centralised reporting.\n\nHMO / managed properties\n\nMonitor licensing, renewals, and property-level documentation clearly.\n\nGet Set Up in",
+    "screenshot": "j1_paid_recert.png",
+    "pre_pay_preview": "Back\nPleerity Enterprise Ltd\nSandbox\nSubscribe to Compliance Vault Pro \u2013 Solo Landlord\n\u00a30.00\nper month\nuntil coupon expires\nCompliance Vault Pro \u2013 Solo Landlord\nCompliance dashboard and reminders for DIY landlords managing up to 2 properties.\nBilled monthly\n\u00a319.00\nSubtotal\n\u00a319.00\nStaging stranded-onboarding cert\n-\u00a319.00\n100% off for 2 months\nTotal due today\n\u00a30.00\n\nOR\n\nContact information\nEmail\nso.promo.202608171708@yopmail.com\nPayment method\nCard\nKlarna\nRevolut Pay\nSave my information for faster checkout\nPay securely at Pleerity Enterprise Ltd and everywhere Onelink is accepted.\nPay and subscribe\nProcessing\nBy subscribing, you authorise Pleerity Enterprise Ltd to charge you according to the terms until you cancel.\nI am an AI agent acting on behalf of someone else\nPowered by \nTerms\nPrivacy"
+  },
+  "j1_provisioning": {
+    "onboarding_status": "PROVISIONED",
+    "subscription_status": "ACTIVE",
+    "stripe_subscription_id": "sub_1U5V\u2026",
+    "stripe_customer_id": "cus_V5gM\u2026",
+    "in_pending_setup": false,
+    "ready": true
+  },
+  "j1_after": {
+    "client_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5",
+    "email": "so.promo.202608171708@yopmail.com",
+    "customer_reference": "PLE-CVP-2026-000068",
+    "onboarding_status": "PROVISIONED",
+    "onboarding_identity_status": "ACTIVE",
+    "latest_checkout_session_id": "cs_test_a1bF7GMuG1AbxCkHpIMUtnhJPKQoy0ARUd2KnHH9375JdOSLhBxiczhChK",
+    "recovery_checkout_context": {
+      "classification": "EXPIRED_CHECKOUT",
+      "promo_decision": "preserve_existing",
+      "preserve_promo": true,
+      "applied_invite_code": "STAGINGSO01",
+      "prior_session_id": "cs_test_a14AF4omAyYAiBwauUmAanzJTorIZzaL4Ywt9eV8Yqt2MtZT53AK3XJs3E",
+      "prior_session_superseded": true,
+      "customer_entered_promo": false
+    },
+    "pilot_invite_code": "STAGINGSO01",
+    "restarted_from_client_id": null,
+    "released_canonical_email": null,
+    "subscription_status": "ACTIVE",
+    "stripe_subscription_id": "sub_1U5V\u2026",
+    "stripe_customer_id": "cus_V5gM\u2026"
+  },
+  "j1_in_pending": false,
+  "j1_identities": [
+    {
+      "client_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5",
+      "email": "so.promo.202608171708@yopmail.com",
+      "onboarding_status": "PROVISIONED",
+      "onboarding_identity_status": "ACTIVE",
+      "restarted_from_client_id": null,
+      "released_canonical_email": null
+    }
+  ],
+  "j1_messages": [
+    {
+      "template_key": "WELCOME_EMAIL",
+      "event_type": null,
+      "status": "DELIVERED",
+      "provider_message_id": "8bbc2eff\u2026",
+      "created_at": "2026-08-17T18:11:41.578000"
+    },
+    {
+      "template_key": "SUBSCRIPTION_CONFIRMED",
+      "event_type": null,
+      "status": "DELIVERED",
+      "provider_message_id": "fa857eec\u2026",
+      "created_at": "2026-08-17T18:11:33.126000"
+    },
+    {
+      "template_key": "ADMIN_MANUAL",
+      "event_type": null,
+      "status": "DELIVERED",
+      "provider_message_id": "4db14f3c\u2026",
+      "created_at": "2026-08-17T17:42:40.283000"
+    }
+  ],
+  "j2_concurrent_release": [
+    {
+      "status": 400,
+      "ok": false,
+      "error": {
+        "error_code": "RELEASE_NOT_ALLOWED",
+        "message": "This onboarding cannot be released: already_released. Use payment or account recovery instead."
+      }
+    },
+    {
+      "status": 200,
+      "ok": true,
+      "error": null
+    }
+  ],
+  "j2_release_success_count": 1,
+  "j2_after_release": {
+    "client_id": "40a3f8d3-d5df-417b-9a29-32f806c776e6",
+    "email": "released.40a3f8d3-d5df-417b-9a29-32f806c776e6@released.invalid",
+    "customer_reference": "PLE-CVP-2026-000069",
+    "onboarding_status": "INTAKE_PENDING",
+    "onboarding_identity_status": "RELEASED_FOR_RESTART",
+    "latest_checkout_session_id": "cs_test_b1laUYIYuYXFN98VzR0GtW0bDAQ1Dog3IUIpFWADhJk8kIj2R3FKxPO6iM",
+    "recovery_checkout_context": {
+      "classification": "EMAIL_RESERVED_NO_CHECKOUT",
+      "promo_decision": "none",
+      "preserve_promo": false,
+      "applied_invite_code": null,
+      "prior_session_id": null,
+      "prior_session_superseded": false,
+      "customer_entered_promo": false
+    },
+    "pilot_invite_code": null,
+    "restarted_from_client_id": null,
+    "released_canonical_email": "so.release.202608171708@yopmail.com",
+    "subscription_status": "PENDING",
+    "stripe_subscription_id": null,
+    "stripe_customer_id": null
+  },
+  "j2_in_pending": false,
+  "j2_check_email": {
+    "status": 200,
+    "ok": true,
+    "body": {
+      "available": true,
+      "normalized_email": "so.release.202608171708@yopmail.com",
+      "reason_code": "OK"
+    }
+  },
+  "j2_concurrent_register": [
+    {
+      "status": 400,
+      "ok": false,
+      "client_id": null,
+      "restarted_from_client_id": null,
+      "detail": "An account with this email already exists"
+    },
+    {
+      "status": 200,
+      "ok": true,
+      "client_id": "42c3152c-41b1-49ce-9850-028794972672",
+      "restarted_from_client_id": null,
+      "detail": null
+    }
+  ],
+  "j2_register_success_count": 1,
+  "j2_new_client_id": "42c3152c-41b1-49ce-9850-028794972672",
+  "j2_new_after": {
+    "client_id": "42c3152c-41b1-49ce-9850-028794972672",
+    "email": "so.release.202608171708@yopmail.com",
+    "customer_reference": "PLE-CVP-2026-000072",
+    "onboarding_status": "INTAKE_PENDING",
+    "onboarding_identity_status": "ACTIVE",
+    "latest_checkout_session_id": null,
+    "recovery_checkout_context": null,
+    "pilot_invite_code": null,
+    "restarted_from_client_id": "40a3f8d3-d5df-417b-9a29-32f806c776e6",
+    "released_canonical_email": null,
+    "subscription_status": "PENDING",
+    "stripe_subscription_id": null,
+    "stripe_customer_id": null
+  },
+  "j2_identities": [
+    {
+      "client_id": "42c3152c-41b1-49ce-9850-028794972672",
+      "email": "so.release.202608171708@yopmail.com",
+      "onboarding_status": "INTAKE_PENDING",
+      "onboarding_identity_status": "ACTIVE",
+      "restarted_from_client_id": "40a3f8d3-d5df-417b-9a29-32f806c776e6",
+      "released_canonical_email": null
+    }
+  ],
+  "choice_paid": {
+    "status": 200,
+    "ok": true,
+    "execution": {
+      "mode": "regenerate_payment",
+      "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_b1aKrd9Lt14xRbL48Gx682qBJaq5LDODW8zldAPE02FombyyrMvPQvvlsq#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5acWB2cVowNFdrN19gRkM1SjBqdGFQfzc3d3Zsc2tWbVRuS3JzSX83RkloR0g9ZzNiT3A9UGFdMm5OY05ObF1gNjd1aFdMVFRAXEx8UzZtSmlEaE4wVlxmR0ZmS04wfTU1MDRIUTZpVTQnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+      "session_id": "cs_test_b1aKrd9Lt14xRbL48Gx682qBJaq5LDODW8zldAPE02FombyyrMvPQvvlsq",
+      "email_sent": false,
+      "email_result": {},
+      "waiver_applied": false,
+      "waiver_override_id": null,
+      "promo_preserved": false,
+      "promo_decision": "none",
+      "applied_invite_code": null,
+      "prior_session_id": null,
+      "prior_session_superseded": false,
+      "continuation_delivered": true,
+      "completion_status": "CHECKOUT_RECOVERY_COMPLETE"
+    },
+    "checkout": {
+      "ok": true,
+      "url_host": "checkout.stripe.com",
+      "expired": false,
+      "amount_shown": "\u00a368.00",
+      "customer_entered_promo_ui_count": 0,
+      "text_preview": "Back\nPleerity Enterprise Ltd\nSandbox\nSubscribe to Compliance Vault Pro \u2013 Solo Landlord\n\u00a368.00\nThen \u00a319.00 per month\nCompliance Vault Pro \u2013 Solo Landlord\nCompliance dashboard and reminders for DIY landlords managing up to 2 properties.\nBilled monthly\n\u00a319.00\nCompliance Vault Pro \u2013 Onboarding (Solo)\n\u00a349.00\n\nOR\n\nContact information\nEmail\nso.paid.202608171708@yopmail.com\nPayment method\nCard\nKlarna\nRevolut Pay\nSave my information for faster checkout\nPay securely at Pleerity Enterprise Ltd and everywhere Onelink is accepted.\nPay and subscribe\nProcessing\nBy subscribing, you authorise Pleerity Enterprise Ltd to charge you according to the terms until you cancel.\nI am an AI agent acting on behalf of someone else\nPowered by \nTerms\nPrivacy",
+      "screenshot": "paid_checkout_recert.png"
+    }
+  },
+  "choice_select": {
+    "status": 200,
+    "ok": true,
+    "execution": {
+      "mode": "regenerate_payment",
+      "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_a14bXbirlpQx17yK0sDQyDDmxwk4ishXHkbcres8uWVZ8rXeDGMBDSbMA0#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5acWB2cVowNFdrN19gRkM1SjBqdGFQfzc3d3Zsc2tWbVRuS3JzSX83RkloR0g9ZzNiT3A9UGFdMm5OY05ObF1gNjd1aFdMVFRAXEx8UzZtSmlEaE4wVlxmR0ZmS04wfTU1MDRIUTZpVTQnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBoJyknYGtkZ2lgVWlkZmBtamlhYHd2Jz9xd3BgeCUl",
+      "session_id": "cs_test_a14bXbirlpQx17yK0sDQyDDmxwk4ishXHkbcres8uWVZ8rXeDGMBDSbMA0",
+      "email_sent": false,
+      "email_result": {},
+      "waiver_applied": false,
+      "waiver_override_id": null,
+      "promo_preserved": false,
+      "promo_decision": "apply_selected",
+      "applied_invite_code": "STAGINGSO01",
+      "prior_session_id": null,
+      "prior_session_superseded": false,
+      "continuation_delivered": true,
+      "completion_status": "CHECKOUT_RECOVERY_COMPLETE"
+    },
+    "checkout": {
+      "ok": true,
+      "url_host": "checkout.stripe.com",
+      "expired": false,
+      "amount_shown": "\u00a30.00",
+      "customer_entered_promo_ui_count": 0,
+      "text_preview": "Back\nPleerity Enterprise Ltd\nSandbox\nSubscribe to Compliance Vault Pro \u2013 Solo Landlord\n\u00a30.00\nper month\nuntil coupon expires\n\nOR\n\nContact information\nEmail\nso.select.202608171708@yopmail.com\nPayment method\nCard\nKlarna\nRevolut Pay\nSave my information for faster checkout\nPay securely at Pleerity Enterprise Ltd and everywhere Onelink is accepted.\nPay and subscribe\nProcessing\nBy subscribing, you authorise Pleerity Enterprise Ltd to charge you according to the terms until you cancel.\nI am an AI agent acting on behalf of someone else\nPowered by\nTerms\nPrivacy",
+      "screenshot": "selected_promo_recert.png"
+    }
+  },
+  "release_guards": {
+    "provisioned": {
+      "status": 400,
+      "ok": false,
+      "error_code": "NOT_ELIGIBLE",
+      "rejected": true
+    },
+    "activation_incomplete": {
+      "status": 400,
+      "ok": false,
+      "error_code": "MODE_CLASSIFICATION_MISMATCH",
+      "rejected": true
+    },
+    "duplicate_risk": {
+      "status": 400,
+      "ok": false,
+      "error_code": "NOT_ELIGIBLE",
+      "rejected": true
+    }
+  },
+  "admin_ui": {
+    "ok": false,
+    "url": "https://pleerity-enterprise-9jjg.vercel.app/admin/clients/718fae2d-5063-4bd6-9e4f-6f03837748e5",
+    "final_url": "https://pleerity-enterprise-9jjg.vercel.app/admin/clients/718fae2d-5063-4bd6-9e4f-6f03837748e5",
+    "markers": {
+      "assessment_panel": false,
+      "release_btn": false,
+      "regen_btn": false,
+      "grant_promo": false,
+      "grant_override": false,
+      "waive": false,
+      "recover": false,
+      "bypass": false,
+      "landed_admin": false
+    },
+    "text_preview": "Compliance Vault Pro Secure Access\n\nOne secure entry for clients, internal staff, and contractors. Pick the option that matches your role.\n\nClient Portal\n\nFor landlords and portfolio users.\n\nStaff / Admin\n\nInternal team access only.\n\nContractor portal\n\nFor vetted contractors with an activated account. Use the link in your invite email to set your password first, then sign in here.\n\nSecure encrypted access\nRole-based authentication\nAudit logging enabled\n\nNeed help accessing your account? Contact support\n\n\u2190 Back to Website",
+    "screenshot": "j1_admin_ccp_recert.png"
+  },
+  "matrix": {
+    "recovery_checkout_validated_promo": "FAIL",
+    "release_and_fresh_registration": "PASS",
+    "release_guards": "PASS",
+    "choice_paid": "PASS",
+    "choice_admin_selected": "PASS"
+  },
+  "final_verdict": "STRANDED_ONBOARDING_INCOMPLETE"
+}

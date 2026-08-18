@@ -2304,7 +2304,12 @@ async def get_clients(
             tl = {"is_test_like": True}
             match = {"$and": [match, tl]} if match else tl
         elif bucket == "pending_setup":
-            ps = {"onboarding_status": {"$ne": OnboardingStatus.PROVISIONED.value}}
+            ps = {
+                "$and": [
+                    {"onboarding_status": {"$ne": OnboardingStatus.PROVISIONED.value}},
+                    {"onboarding_identity_status": {"$ne": "RELEASED_FOR_RESTART"}},
+                ]
+            }
             parts = [match, ps] if match else [ps]
             if not include_archived_clients:
                 parts.append(default_active_client_match())

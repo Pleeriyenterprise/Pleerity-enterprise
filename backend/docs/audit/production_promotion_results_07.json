@@ -1,0 +1,83 @@
+{
+  "programme": "PRODUCTION-PROMOTION-EXECUTION-07",
+  "at_utc": "2026-08-17T07:24:00+00:00",
+  "commercial_controls_verdict": "COMMERCIAL_CONTROLS_VERIFIED",
+  "platform_promotion_gate_in": "GO_FOR_PRODUCTION_PROMOTION_WITH_ACCEPTED_CONDITIONS",
+  "final_verdict": "PRODUCTION_DEPLOYMENT_SUCCESSFUL_WITH_CONDITIONS",
+  "rollback_executed": false,
+  "promotion": {
+    "PROMOTION_DEVELOP_SHA": "fb138ae5b8234d9e354f6f5175c2fd02b1f944c7",
+    "PROMOTION_APPLICATION_SHA": "fb138ae5b8234d9e354f6f5175c2fd02b1f944c7",
+    "merge_sha": "b6b7ddf553482fa2797f317ce69296b21a494230",
+    "origin_main_before": "89217062481b4eb858a8b530ec90c83de067a4be",
+    "origin_main_after": "b6b7ddf553482fa2797f317ce69296b21a494230",
+    "push": "89217062..b6b7ddf5 main -> main",
+    "force_push": false,
+    "unverified_develop_drift": false
+  },
+  "backend": {
+    "service": "pleerity-api-production",
+    "deploy_id": "dep-da1ashu1egvs73a2chb0",
+    "sha": "b6b7ddf553482fa2797f317ce69296b21a494230",
+    "environment": "production",
+    "health": "healthy",
+    "readiness": "ready",
+    "scheduler_reason": "heartbeat_fresh",
+    "last_heartbeat_at": "2026-08-17T07:20:06.842468+00:00",
+    "registered_jobs": 53
+  },
+  "frontend": {
+    "project": "pleerity-enterprise",
+    "github_deployment_id": 5940350296,
+    "bundle_before": "main.eac95fab.js",
+    "bundle_after": "main.c9306ba7.js",
+    "production_api_in_bundle": true,
+    "staging_api_in_bundle": false,
+    "circuit_fingerprint": true,
+    "modal_host": true,
+    "capacity_ux": true
+  },
+  "tests": {
+    "tests_run": 246,
+    "tests_passed": 219,
+    "tests_failed": 5,
+    "tests_skipped": 22,
+    "known_pre_existing_failures": [
+      "test_notification_orchestrator.py resolve_greeting NameError also on origin/main"
+    ]
+  },
+  "observation": {
+    "window_start_utc": "2026-08-17T06:49:14Z",
+    "window_end_utc": "2026-08-17T07:20:06Z",
+    "minutes": 31,
+    "claim_24h_production_stability": false,
+    "instance_count": 1,
+    "five_xx_after_cutover": false
+  },
+  "mongo": {
+    "usage_percent": 54.19,
+    "level": "ok",
+    "writes_at_risk": false,
+    "used_bytes": 2909250479,
+    "production_db_objects": 1391524,
+    "staging_db_objects": 859577,
+    "source": "staging health-summary cluster scan at 2026-08-17T07:24:06Z"
+  },
+  "smoke": {
+    "homepage": 200,
+    "login_pages": 200,
+    "staging_admin_on_production": 401,
+    "production_admin_session": "NOT_EXERCISED",
+    "commercial_controls_execute": "NOT_EXERCISED",
+    "stripe_live_event": "NOT_EXERCISED",
+    "postmark_customer_email": false
+  },
+  "rollback": {
+    "PRE_PROMOTION_MAIN_SHA": "89217062481b4eb858a8b530ec90c83de067a4be",
+    "PRE_PROMOTION_PRODUCTION_BACKEND_SHA": "89217062481b4eb858a8b530ec90c83de067a4be",
+    "PRE_PROMOTION_FRONTEND_DEPLOYMENT": "main.eac95fab.js",
+    "ROLLBACK_BACKEND_SHA": "89217062481b4eb858a8b530ec90c83de067a4be",
+    "ROLLBACK_FRONTEND_DEPLOYMENT": "main.eac95fab.js"
+  },
+  "soak_06_in_application_merge": false
+}

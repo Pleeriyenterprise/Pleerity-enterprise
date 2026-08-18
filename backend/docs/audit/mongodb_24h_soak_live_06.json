@@ -1,0 +1,461 @@
+{
+  "captured_at": "2026-08-17T06:05:20.658388+00:00",
+  "soak_start": "2026-08-15T21:19:51.151684+00:00",
+  "elapsed_hours": 32.76,
+  "version": {
+    "http": 200,
+    "body": {
+      "commit_sha": "fb138ae5b8234d9e354f6f5175c2fd02b1f944c7",
+      "environment": "staging"
+    }
+  },
+  "health": {
+    "http": 200,
+    "body": {
+      "status": "healthy",
+      "environment": "staging",
+      "readiness": {
+        "stage": "ready",
+        "degraded": false,
+        "last_error": null
+      },
+      "scheduler": {
+        "status": "healthy",
+        "stale": false,
+        "last_heartbeat_at": "2026-08-17T06:04:36.113594+00:00",
+        "age_seconds": 49.753884,
+        "stale_after_seconds": 300,
+        "reason": "heartbeat_fresh"
+      }
+    }
+  },
+  "health_summary": {
+    "http": 200,
+    "overall_health": "degraded",
+    "status": "degraded",
+    "open_incidents_count": 2,
+    "open_p0_p1_count": 0,
+    "summary_counts": {
+      "critical_missed": 0,
+      "never_ran": 0,
+      "never_ran_overdue": 0,
+      "not_yet_due_since_startup": 0,
+      "degraded_24h": 3,
+      "failed_24h": 1,
+      "open_incidents": 2,
+      "heartbeat_stale": 0,
+      "delivery_unknown_stale": 20
+    },
+    "mongo_storage": {
+      "available": true,
+      "captured_at": "2026-08-17T06:05:37.680199+00:00",
+      "primary_database": "pleerity_staging",
+      "limit_bytes": 5368709120,
+      "used_bytes": 2906243948,
+      "data_size_bytes": 2160882540,
+      "index_size_bytes": 745361408,
+      "usage_percent": 54.13,
+      "level": "ok",
+      "thresholds_percent": {
+        "emergency": 95,
+        "platform_alert": 90,
+        "critical": 85,
+        "attention": 75,
+        "warning": 60
+      },
+      "databases": [
+        {
+          "database": "pleerity_staging",
+          "data_size_bytes": 744300875,
+          "index_size_bytes": 245075968,
+          "storage_size_bytes": 203399168,
+          "collections": 266,
+          "objects": 858616
+        },
+        {
+          "database": "pleerity_production",
+          "data_size_bytes": 1416581665,
+          "index_size_bytes": 500285440,
+          "storage_size_bytes": 274591744,
+          "collections": 224,
+          "objects": 1390825
+        }
+      ],
+      "writes_at_risk": false,
+      "incident_recommended": false
+    },
+    "scheduler_health": {
+      "status": "healthy",
+      "stale": false,
+      "last_heartbeat_at": "2026-08-17T06:04:36.113594+00:00",
+      "age_seconds": 50.583662,
+      "stale_after_seconds": 300,
+      "reason": "heartbeat_fresh"
+    },
+    "scheduler_runtime": {
+      "available": true,
+      "registered_jobs_count": 54
+    },
+    "last_heartbeat_at": "2026-08-17T06:04:36.113594+00:00",
+    "heartbeat_stale": false,
+    "failed_runs_24h_by_job": [
+      {
+        "job_name": "compliance_recalc_worker",
+        "count": 1
+      }
+    ],
+    "degraded_runs_24h_by_job": [
+      {
+        "job_name": "compliance_recalc_worker",
+        "count": 2
+      },
+      {
+        "job_name": "daily_reminders",
+        "count": 1
+      }
+    ],
+    "recalc_queue_health": {
+      "queue_depth_pending": 417,
+      "active_running": 0,
+      "retrying_failed": 58,
+      "dead_letter": 0,
+      "missing_correlation_rows": 0,
+      "stale_pending_markers": 417,
+      "stuck_running_markers": 0,
+      "stale_running_reclaimed_last_24h": 0,
+      "regeneration_pending_backlog": 28,
+      "duplicate_suppression_observed_total": 3085,
+      "health_posture": "NON_BLOCKING_OBSERVABILITY_ONLY"
+    },
+    "deployment_suppression": {
+      "active": false,
+      "note": null
+    },
+    "job_state_counts": {},
+    "jobs_sample": []
+  },
+  "job_runs": {
+    "http": 200,
+    "total": 30260,
+    "recent_names": [
+      {
+        "job_name": "risk_signal_regen_alert_monitor",
+        "status": "success",
+        "created_at": "2026-08-17T06:05:00.962981+00:00"
+      },
+      {
+        "job_name": "generation_auto_retry_processing",
+        "status": "success",
+        "created_at": "2026-08-17T06:05:00.962721+00:00"
+      },
+      {
+        "job_name": "notification_failure_spike_monitor",
+        "status": "success",
+        "created_at": "2026-08-17T06:05:00.960326+00:00"
+      },
+      {
+        "job_name": "compliance_recalc_sla_monitor",
+        "status": "success",
+        "created_at": "2026-08-17T06:05:00.959426+00:00"
+      },
+      {
+        "job_name": "order_delivery_processing",
+        "status": "success",
+        "created_at": "2026-08-17T06:05:00.959046+00:00"
+      },
+      {
+        "job_name": "mongo_storage_capacity_monitor",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.435552+00:00"
+      },
+      {
+        "job_name": "generation_auto_retry_processing",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.435203+00:00"
+      },
+      {
+        "job_name": "delivery_reconciliation",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.435014+00:00"
+      },
+      {
+        "job_name": "work_order_sla_breach_job",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.434863+00:00"
+      },
+      {
+        "job_name": "sla_watchdog",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.434703+00:00"
+      },
+      {
+        "job_name": "notification_failure_spike_monitor",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.434531+00:00"
+      },
+      {
+        "job_name": "compliance_recalc_sla_monitor",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.434039+00:00"
+      },
+      {
+        "job_name": "lead_sla_check",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.433758+00:00"
+      },
+      {
+        "job_name": "lead_followup_processing",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.433540+00:00"
+      },
+      {
+        "job_name": "abandoned_intake_detection",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.433295+00:00"
+      },
+      {
+        "job_name": "queued_order_processing",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.432828+00:00"
+      },
+      {
+        "job_name": "stuck_order_detection",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.431559+00:00"
+      },
+      {
+        "job_name": "sla_monitoring",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.431313+00:00"
+      },
+      {
+        "job_name": "order_delivery_processing",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.431023+00:00"
+      },
+      {
+        "job_name": "scheduled_reports",
+        "status": "success",
+        "created_at": "2026-08-17T06:00:02.430686+00:00"
+      },
+      {
+        "job_name": "risk_signal_regen_worker",
+        "status": "success",
+        "created_at": "2026-08-17T05:58:38.101453+00:00"
+      },
+      {
+        "job_name": "risk_signal_regen_worker",
+        "status": "success",
+        "created_at": "2026-08-17T05:58:07.887280+00:00"
+      },
+      {
+        "job_name": "risk_signal_regen_worker",
+        "status": "success",
+        "created_at": "2026-08-17T05:56:38.024655+00:00"
+      },
+      {
+        "job_name": "risk_signal_regen_worker",
+        "status": "success",
+        "created_at": "2026-08-17T05:55:37.387279+00:00"
+      },
+      {
+        "job_name": "risk_signal_regen_worker",
+        "status": "success",
+        "created_at": "2026-08-17T05:55:07.211469+00:00"
+      },
+      {
+        "job_name": "risk_signal_regen_alert_monitor",
+        "status": "success",
+        "created_at": "2026-08-17T05:55:00.964122+00:00"
+      },
+      {
+        "job_name": "generation_auto_retry_processing",
+        "status": "success",
+        "created_at": "2026-08-17T05:55:00.963920+00:00"
+      },
+      {
+        "job_name": "notification_failure_spike_monitor",
+        "status": "success",
+        "created_at": "2026-08-17T05:55:00.963749+00:00"
+      },
+      {
+        "job_name": "compliance_recalc_sla_monitor",
+        "status": "success",
+        "created_at": "2026-08-17T05:55:00.963236+00:00"
+      },
+      {
+        "job_name": "order_delivery_processing",
+        "status": "success",
+        "created_at": "2026-08-17T05:55:00.962821+00:00"
+      }
+    ]
+  },
+  "idle_job_runs": {
+    "compliance_recalc_worker": {
+      "http": 200,
+      "total": 189,
+      "latest": [
+        {
+          "created_at": "2026-08-17T03:35:59.284330+00:00",
+          "status": "success"
+        },
+        {
+          "created_at": "2026-08-17T03:35:10.208873+00:00",
+          "status": "success"
+        },
+        {
+          "created_at": "2026-08-17T03:33:01.197688+00:00",
+          "status": "success"
+        }
+      ]
+    },
+    "risk_signal_regen_worker": {
+      "http": 200,
+      "total": 4897,
+      "latest": [
+        {
+          "created_at": "2026-08-17T05:58:38.101453+00:00",
+          "status": "success"
+        },
+        {
+          "created_at": "2026-08-17T05:58:07.887280+00:00",
+          "status": "success"
+        },
+        {
+          "created_at": "2026-08-17T05:56:38.024655+00:00",
+          "status": "success"
+        }
+      ]
+    },
+    "notification_retry_worker": {
+      "http": 200,
+      "total": 0,
+      "latest": []
+    },
+    "scheduler_heartbeat": {
+      "http": 200,
+      "total": 0,
+      "latest": []
+    },
+    "scheduled_admin_communications": {
+      "http": 200,
+      "total": 0,
+      "latest": []
+    }
+  },
+  "incidents": {
+    "listed_total": 1138,
+    "listed_fetched": 1138,
+    "all_tally": {
+      "severity": {
+        "P2": 376,
+        "P0": 372,
+        "P1": 390
+      },
+      "status": {
+        "resolved": 1136,
+        "open": 2
+      },
+      "lifecycle": {
+        "RESOLVED": 757,
+        "RECOVERED": 1,
+        "DEGRADED": 1,
+        "unknown": 379
+      },
+      "count": 1138
+    },
+    "during_soak_tally": {
+      "severity": {
+        "P2": 1,
+        "P0": 3,
+        "P1": 1
+      },
+      "status": {
+        "resolved": 5
+      },
+      "lifecycle": {
+        "RESOLVED": 5
+      },
+      "count": 5
+    },
+    "during_soak": [
+      {
+        "id": "6a80e18042d285b35c8de849",
+        "title": "Job work_order_schedule_reminders missed SLA",
+        "severity": "P2",
+        "status": "resolved",
+        "lifecycle_state": "RESOLVED",
+        "source": "job_monitor",
+        "created_at": "2026-08-15T22:00:32.658317+00:00",
+        "related_job_name": "work_order_schedule_reminders"
+      },
+      {
+        "id": "6a80d93a42d285b35c8de5d8",
+        "title": "Job scheduled_admin_communications missed SLA",
+        "severity": "P0",
+        "status": "resolved",
+        "lifecycle_state": "RESOLVED",
+        "source": "job_monitor",
+        "created_at": "2026-08-15T21:25:14.527965+00:00",
+        "related_job_name": "scheduled_admin_communications"
+      },
+      {
+        "id": "6a80d93342d285b35c8de5c7",
+        "title": "Job notification_retry_worker missed SLA",
+        "severity": "P0",
+        "status": "resolved",
+        "lifecycle_state": "RESOLVED",
+        "source": "job_monitor",
+        "created_at": "2026-08-15T21:25:07.505743+00:00",
+        "related_job_name": "notification_retry_worker"
+      },
+      {
+        "id": "6a80d92f42d285b35c8de5b8",
+        "title": "Job risk_signal_regen_worker missed SLA",
+        "severity": "P0",
+        "status": "resolved",
+        "lifecycle_state": "RESOLVED",
+        "source": "job_monitor",
+        "created_at": "2026-08-15T21:25:03.567888+00:00",
+        "related_job_name": "risk_signal_regen_worker"
+      },
+      {
+        "id": "6a80d92842d285b35c8de5a8",
+        "title": "Scheduler heartbeat stale",
+        "severity": "P1",
+        "status": "resolved",
+        "lifecycle_state": "RESOLVED",
+        "source": "heartbeat",
+        "created_at": "2026-08-15T21:24:56.556345+00:00",
+        "related_job_name": null
+      }
+    ],
+    "open_now": [
+      {
+        "id": "6a7843fc4ad85044e9ae9bf9",
+        "title": "Job daily_reminders last run was degraded",
+        "severity": "P2",
+        "status": "open",
+        "lifecycle_state": "RECOVERED",
+        "created_at": "2026-08-09T09:10:20.566048+00:00"
+      },
+      {
+        "id": "6a74f83b4ad85044e9adc90e",
+        "title": "Delivery unknown unresolved",
+        "severity": "P2",
+        "status": "open",
+        "lifecycle_state": "DEGRADED",
+        "created_at": "2026-08-06T21:10:19.139293+00:00"
+      }
+    ]
+  },
+  "commercial_controls_smoke": {
+    "http": 200,
+    "found": true,
+    "classification": {
+      "governance_state": "ACTIVE",
+      "commercial_risk": "low"
+    },
+    "has_active_exception": false
+  }
+}

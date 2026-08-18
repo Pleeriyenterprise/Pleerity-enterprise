@@ -1,0 +1,43 @@
+{
+  "email": "so.regrel.202608181438@yopmail.com",
+  "first": {
+    "status": 200,
+    "client_id": "c85dd389-efd2-4d92-92c3-ab84d9b4bd80"
+  },
+  "in_pending_before": true,
+  "release": {
+    "status": 200,
+    "ok": true,
+    "identity": "RELEASED_FOR_RESTART",
+    "released_canonical_email": "so.regrel.202608181438@yopmail.com"
+  },
+  "in_pending_after_release": false,
+  "check_email": {
+    "status": 405,
+    "body": {
+      "detail": "Method Not Allowed"
+    }
+  },
+  "second": {
+    "status": 200,
+    "client_id": "894f0002-cdfe-4f4f-afd1-50ab55fe8e33",
+    "restarted_from_client_id": null
+  },
+  "third_duplicate": {
+    "status": 400,
+    "ok": false,
+    "detail": "An account with this email already exists"
+  },
+  "identities": [
+    {
+      "client_id": "894f0002-cdfe-4f4f-afd1-50ab55fe8e33",
+      "email": "so.regrel.202608181438@yopmail.com",
+      "onboarding_status": "INTAKE_PENDING",
+      "onboarding_identity_status": "ACTIVE",
+      "restarted_from_client_id": "c85dd389-efd2-4d92-92c3-ab84d9b4bd80",
+      "released_canonical_email": null
+    }
+  ],
+  "active_count": 1,
+  "pass": false
+}

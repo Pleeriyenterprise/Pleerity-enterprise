@@ -41,6 +41,13 @@ class OnboardingStatus(str, Enum):
     FAILED = "FAILED"
 
 
+class OnboardingIdentityStatus(str, Enum):
+    """Uniqueness/reservation authority for an onboarding attempt. Orthogonal to OnboardingStatus."""
+
+    ACTIVE = "ACTIVE"
+    RELEASED_FOR_RESTART = "RELEASED_FOR_RESTART"
+
+
 class ClientLifecycleStatus(str, Enum):
     """Enterprise client lifecycle (orthogonal to legacy payment lifecycle_status on Client)."""
 
@@ -297,6 +304,7 @@ class AuditAction(str, Enum):
     WORKFLOW_RECOVERY_GUIDANCE_GENERATED = "WORKFLOW_RECOVERY_GUIDANCE_GENERATED"
     ONBOARDING_RECOVERY_EXECUTED = "ONBOARDING_RECOVERY_EXECUTED"
     ONBOARDING_RECOVERY_CONTINUATION_RECORDED = "ONBOARDING_RECOVERY_CONTINUATION_RECORDED"
+    ONBOARDING_RELEASED_FOR_RESTART = "ONBOARDING_RELEASED_FOR_RESTART"
     COMMERCIAL_ENTITLEMENT_GOVERNED = "COMMERCIAL_ENTITLEMENT_GOVERNED"
     COMMERCIAL_ENTITLEMENT_REVOKED = "COMMERCIAL_ENTITLEMENT_REVOKED"
     COMMERCIAL_ENTITLEMENT_EXPIRED = "COMMERCIAL_ENTITLEMENT_EXPIRED"
