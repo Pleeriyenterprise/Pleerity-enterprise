@@ -1,0 +1,184 @@
+{
+  "run1": {
+    "status": 200,
+    "ok": true,
+    "body": {
+      "success": true,
+      "job": "daily_reminders",
+      "message": "Daily reminders sent: 2",
+      "result": {
+        "message": "Daily reminders sent: 2",
+        "count": 2,
+        "outcome_status": "success",
+        "outcome_metrics": {
+          "expected_count": 2,
+          "attempted_count": 2,
+          "success_count": 2,
+          "failed_count": 0,
+          "skipped_count": 0,
+          "evaluated_items_count": 12,
+          "suppressed_items_count": 11,
+          "suppressed_by_reason": {
+            "COOLDOWN_ACTIVE": 9,
+            "NO_LONGER_DUE": 1,
+            "ALREADY_RESOLVED": 1
+          }
+        }
+      },
+      "scope_type": "CLIENT",
+      "estimated_impact": {
+        "scope_type": "CLIENT",
+        "is_portfolio_wide": false,
+        "clients_affected": 1,
+        "properties_affected": 7,
+        "summary_lines": [
+          "1 client(s) affected",
+          "~7 properties under those clients",
+          "~3 reminders estimated (approx.)"
+        ]
+      }
+    }
+  },
+  "run2": {
+    "status": 200,
+    "ok": true,
+    "body": {
+      "success": true,
+      "job": "daily_reminders",
+      "message": "Daily reminders: no reminders due",
+      "result": {
+        "message": "Daily reminders: no reminders due",
+        "count": 0,
+        "outcome_status": "success",
+        "outcome_metrics": {
+          "expected_count": 0,
+          "attempted_count": 0,
+          "success_count": 0,
+          "failed_count": 0,
+          "skipped_count": 0,
+          "evaluated_items_count": 12,
+          "suppressed_items_count": 12,
+          "suppressed_by_reason": {
+            "COOLDOWN_ACTIVE": 10,
+            "NO_LONGER_DUE": 1,
+            "ALREADY_RESOLVED": 1
+          }
+        }
+      },
+      "scope_type": "CLIENT",
+      "estimated_impact": {
+        "scope_type": "CLIENT",
+        "is_portfolio_wide": false,
+        "clients_affected": 1,
+        "properties_affected": 7,
+        "summary_lines": [
+          "1 client(s) affected",
+          "~7 properties under those clients",
+          "~3 reminders estimated (approx.)"
+        ]
+      }
+    }
+  },
+  "new_after_first": [
+    {
+      "message_id": "dae2ad99-2048-480b-b4ad-3926c93333c1",
+      "template_key": "COMPLIANCE_EXPIRY_REMINDER_SMS",
+      "status": "BLOCKED_PLAN_GATE",
+      "idempotency_key": null,
+      "provider_message_id": null,
+      "subject": null,
+      "recipient": null,
+      "requirement_name": null,
+      "cta": null,
+      "portal_link": null,
+      "delivered_at": ""
+    },
+    {
+      "message_id": "0f8e7e95-773f-485b-ad21-e5a79e2a69ed",
+      "template_key": "COMPLIANCE_EXPIRY_REMINDER_SMS",
+      "status": "BLOCKED_PLAN_GATE",
+      "idempotency_key": null,
+      "provider_message_id": null,
+      "subject": null,
+      "recipient": null,
+      "requirement_name": null,
+      "cta": null,
+      "portal_link": null,
+      "delivered_at": ""
+    },
+    {
+      "message_id": "566affb5-8da6-40a1-bb6f-7861663014e4",
+      "template_key": "COMPLIANCE_EXPIRY_REMINDER_SMS",
+      "status": "BLOCKED_PLAN_GATE",
+      "idempotency_key": null,
+      "provider_message_id": null,
+      "subject": null,
+      "recipient": null,
+      "requirement_name": null,
+      "cta": null,
+      "portal_link": null,
+      "delivered_at": ""
+    },
+    {
+      "message_id": "0bda58ee-df73-4e5f-9f4d-b0a35714f8d6",
+      "template_key": "COMPLIANCE_EXPIRY_REMINDER_SMS",
+      "status": "BLOCKED_PLAN_GATE",
+      "idempotency_key": null,
+      "provider_message_id": null,
+      "subject": null,
+      "recipient": null,
+      "requirement_name": null,
+      "cta": null,
+      "portal_link": null,
+      "delivered_at": ""
+    },
+    {
+      "message_id": "910cecaf-d566-4b3e-8032-bff1250f3d64",
+      "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+      "status": "DELIVERED",
+      "idempotency_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f_COMPLIANCE_EXPIRY_REMINDER_2026-08-18_agent_at_yopmail.com_27e4bb733f01ce4a",
+      "provider_message_id": "d1e6c9d0-42f0-49a8-8770-4abe72ccecd3",
+      "subject": "HMO fire safety management evidence (log book, tests, compartmentation) is overdue",
+      "recipient": "agent@yopmail.com",
+      "requirement_name": "HMO fire safety management evidence (log book, tests, compartmentation)",
+      "cta": "Upload HMO fire safety evidence",
+      "portal_link": "https://pleerity-enterprise-9jjg.vercel.app/properties/0a6f0874-19b4-4344-b2af-f423585a5b94?requirement_id=68622908-cd2f-4d4a-a681-d6e058ed4ad1",
+      "delivered_at": "2026-08-18T19:04:29Z"
+    },
+    {
+      "message_id": "511fc025-c444-4d35-9fea-46c4949963ed",
+      "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+      "status": "DELIVERED",
+      "idempotency_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f_COMPLIANCE_EXPIRY_REMINDER_2026-08-18_nancy_at_yopmail.com_27e4bb733f01ce4a",
+      "provider_message_id": "28e29f81-e2ee-46d2-b012-883f98eaaed4",
+      "subject": "HMO fire safety management evidence (log book, tests, compartmentation) is overdue",
+      "recipient": "nancy@yopmail.com",
+      "requirement_name": "HMO fire safety management evidence (log book, tests, compartmentation)",
+      "cta": "Upload HMO fire safety evidence",
+      "portal_link": "https://pleerity-enterprise-9jjg.vercel.app/properties/0a6f0874-19b4-4344-b2af-f423585a5b94?requirement_id=68622908-cd2f-4d4a-a681-d6e058ed4ad1",
+      "delivered_at": "2026-08-18T19:04:24Z"
+    },
+    {
+      "message_id": "7e89a836-5b3d-44d9-a698-4231247cd6a3",
+      "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+      "status": "DELIVERED",
+      "idempotency_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f_COMPLIANCE_EXPIRY_REMINDER_2026-08-18_agent_at_yopmail.com_d65c8d329ac60a25",
+      "provider_message_id": "f3111638-1421-431f-b3be-d8f9ea8f1108",
+      "subject": "Gas Safety Certificate is overdue",
+      "recipient": "agent@yopmail.com",
+      "requirement_name": "Gas Safety Certificate",
+      "cta": "Review Gas Safety Certificate",
+      "portal_link": "https://pleerity-enterprise-9jjg.vercel.app/properties/9786b4ea-3523-4665-9849-db93745d457d?requirement_id=bb32fac0-c219-4401-8739-13ded9511721",
+      "delivered_at": "2026-08-18T19:04:20Z"
+    }
+  ],
+  "new_after_second_count": 0,
+  "assign": {
+    "status": 400,
+    "ok": false,
+    "body": {
+      "detail": "Contractor execution capabilities do not match this work order (maintenance repair vs compliance inspection/renewal)"
+    }
+  },
+  "contractor_messages": []
+}
