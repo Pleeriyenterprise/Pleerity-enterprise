@@ -142,22 +142,29 @@ def build_reason(
         return f"{client_lifecycle_label} for {name}."
 
     fam = str(family or "")
+    name_l = name.lower()
     if fam in ("EXPIRY_BASED", "LICENSING", "REGISTRATION"):
         if is_overdue:
             if fam == "LICENSING":
-                return f"Licence renewal is overdue for {name}."
+                return f"{name} is overdue." if "licence" in name_l or "license" in name_l else f"The licence for {name} is overdue."
             if fam == "REGISTRATION":
-                return f"Registration renewal is overdue for {name}."
-            return f"Certificate renewal is overdue for {name}."
+                return f"{name} is overdue."
+            return f"{name} is overdue."
         if due_date:
-            if days_remaining is not None and days_remaining >= 0:
+            if fam == "EXPIRY_BASED" and days_remaining is not None and days_remaining >= 0:
                 return f"{name} expires in {days_remaining} days on {due_date}."
             if fam == "LICENSING":
+                if "licence" in name_l or "license" in name_l:
+                    return f"{name} is due on {due_date}."
                 return f"{name} licence renewal is due on {due_date}."
             if fam == "REGISTRATION":
-                return f"{name} registration renewal is due on {due_date}."
+                return f"{name} is due on {due_date}."
             return f"{name} is due on {due_date}."
-        return f"Certificate renewal is required for {name}."
+        if fam == "LICENSING":
+            return f"Licence renewal is required for {name}."
+        if fam == "REGISTRATION":
+            return f"{name} requires renewal."
+        return f"{name} requires renewal."
 
     if fam in ("DECLARATION_BASED", "SELF_CERTIFIED", "STRUCTURED_EVIDENCE"):
         return f"Required declaration has not been completed for {name}."

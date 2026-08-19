@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from database import database
+from services.billing_period_utils import subscription_id_from_stripe_invoice_dict
 from services.plan_registry import plan_registry, EntitlementStatus
 from services.subscription_operational_constants import (
     CHARGEBACK_RECEIVED,
@@ -326,7 +327,7 @@ async def record_subscription_renewed(
         reconciliation_status=reconciliation_status,
         source_event_id=source_event_id,
         stripe_customer_id=str(invoice.get("customer") or ""),
-        stripe_subscription_id=str(invoice.get("subscription") or ""),
+        stripe_subscription_id=subscription_id_from_stripe_invoice_dict(invoice),
         renewal_meta=meta,
         dedupe_key=dedupe_key,
         extra={
@@ -433,7 +434,7 @@ async def record_subscription_renewal_failed(
         reconciliation_status=reconciliation_status,
         source_event_id=source_event_id,
         stripe_customer_id=str(invoice.get("customer") or ""),
-        stripe_subscription_id=str(invoice.get("subscription") or ""),
+        stripe_subscription_id=subscription_id_from_stripe_invoice_dict(invoice),
         renewal_meta=await load_renewal_metadata(db, client_id=client_id),
         dedupe_key=dedupe_key,
         extra={

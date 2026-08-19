@@ -1,0 +1,115 @@
+{
+  "programme": "CHECKOUT-SUCCESS-ROUTE-FIX-AND-STRANDED-ONBOARDING-PRODUCTION-PROMOTION-03",
+  "started_at": "2026-08-18T15:04:08.140112+00:00",
+  "frontend": "https://pleerityenterprise.co.uk",
+  "api": "https://api.pleerityenterprise.co.uk/api",
+  "api_version": {
+    "status": 200,
+    "body": {
+      "commit_sha": "1fcb5fbcdf99ded01a45fe2fcf1123587efd117d",
+      "environment": "production"
+    }
+  },
+  "api_health": {
+    "status": 200,
+    "body": {
+      "status": "healthy",
+      "environment": "production",
+      "readiness": {
+        "stage": "ready",
+        "degraded": false,
+        "last_error": null
+      },
+      "scheduler": {
+        "status": "healthy",
+        "stale": false,
+        "last_heartbeat_at": "2026-08-18T15:02:40.905704+00:00",
+        "age_seconds": 90.122637,
+        "stale_after_seconds": 300,
+        "reason": "heartbeat_fresh"
+      }
+    }
+  },
+  "public_pages": {
+    "/": {
+      "status": 200,
+      "url": "https://pleerityenterprise.co.uk/"
+    },
+    "/login": {
+      "status": 200,
+      "url": "https://pleerityenterprise.co.uk/login"
+    },
+    "/login/admin": {
+      "status": 200,
+      "url": "https://pleerityenterprise.co.uk/login/admin"
+    },
+    "/checkout/success": {
+      "status": 200,
+      "url": "https://pleerityenterprise.co.uk/checkout/success"
+    }
+  },
+  "bundle_path": "/static/js/main.b993e884.js",
+  "bundle": {
+    "path": "/static/js/main.b993e884.js",
+    "len": 5244155,
+    "checkout-success-page": true,
+    "checkout-success-missing-session": true,
+    "release_and_restart": true,
+    "preserve_existing": true,
+    "apply_selected": true,
+    "allow_promotion_codes": false,
+    "staging_api_onrender": false,
+    "production_api_host": true,
+    "pk_live_present": true,
+    "pk_test_present": true
+  },
+  "direct_routes": {
+    "missing": {
+      "final_url": "https://pleerityenterprise.co.uk/checkout/success",
+      "has_success_page": true,
+      "hero_cta_count": 0,
+      "testids": [
+        "checkout-success-page",
+        "checkout-success-missing-session",
+        "cookie-banner",
+        "cookie-manage-btn",
+        "cookie-reject-btn",
+        "cookie-accept-btn"
+      ],
+      "text_preview": "Compliance Vault Pro\nCheckout details missing\n\nThis page needs a checkout reference from your payment. If you have just paid, check your email for the next step. Do not start another registration.\n\nNeed help? Contact info@pleerityenterprise.co.uk\n\nWe value your privacy\n\nWe use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking \"Accept All\", you consent to our use of cookies. Read our Privacy Policy and Cookie Policy.\n\nManage Preferences\nReject Non-Essential\nAccept All",
+      "screenshot": "prod_route_missing.png",
+      "console_error_count": 2,
+      "pass": true
+    },
+    "session": {
+      "final_url": "https://pleerityenterprise.co.uk/checkout/success?session_id=cs_test_safe_reference_0001",
+      "has_success_page": true,
+      "hero_cta_count": 0,
+      "testids": [
+        "checkout-success-page",
+        "checkout-success-invalid-session",
+        "checkout-success-session-id"
+      ],
+      "text_preview": "Compliance Vault Pro\nWe could not match this checkout\n\nIf you have just paid, check your email for the next step. Do not start another registration.\n\nCheckout reference: cs_test_safe_reference_0001\n\nNeed help? Contact info@pleerityenterprise.co.uk",
+      "screenshot": "prod_route_session.png",
+      "console_error_count": 3,
+      "pass": true
+    },
+    "malformed": {
+      "final_url": "https://pleerityenterprise.co.uk/checkout/success?session_id=not-a-session",
+      "has_success_page": true,
+      "hero_cta_count": 0,
+      "testids": [
+        "checkout-success-page",
+        "checkout-success-invalid-session",
+        "checkout-success-session-id"
+      ],
+      "text_preview": "Compliance Vault Pro\nWe could not match this checkout\n\nIf you have just paid, check your email for the next step. Do not start another registration.\n\nCheckout reference: not-a-session\n\nNeed help? Contact info@pleerityenterprise.co.uk",
+      "screenshot": "prod_route_malformed.png",
+      "console_error_count": 3,
+      "pass": true
+    }
+  },
+  "route_ok": true,
+  "finished_at": "2026-08-18T15:04:55.670592+00:00"
+}

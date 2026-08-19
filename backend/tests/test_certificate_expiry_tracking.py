@@ -166,7 +166,10 @@ class TestReminderWritesReminderTypeAndRefs:
             with patch.dict(os.environ, {"MONGO_URL": "mongodb://localhost:27017", "DB_NAME": "test"}):
                 scheduler = JobScheduler()
                 scheduler.db = MagicMock()
+                scheduler._client_allowed_for_background = AsyncMock(return_value=True)
                 scheduler.db.clients = MagicMock()
+                scheduler.db.client_billing = MagicMock()
+                scheduler.db.client_billing.find_one = AsyncMock(return_value={"client_id": "c1", "entitlement_status": "ENABLED"})
                 scheduler.db.notification_preferences = MagicMock()
                 scheduler.db.requirements = MagicMock()
                 scheduler.db.audit_logs = MagicMock()
@@ -247,7 +250,10 @@ class TestReminderWritesReminderTypeAndRefs:
             with patch.dict(os.environ, {"MONGO_URL": "mongodb://localhost:27017", "DB_NAME": "test"}):
                 scheduler = JobScheduler()
                 scheduler.db = MagicMock()
+                scheduler._client_allowed_for_background = AsyncMock(return_value=True)
                 scheduler.db.clients = MagicMock()
+                scheduler.db.client_billing = MagicMock()
+                scheduler.db.client_billing.find_one = AsyncMock(return_value={"client_id": "c1", "entitlement_status": "ENABLED"})
                 scheduler.db.notification_preferences = MagicMock()
                 scheduler.db.requirements = MagicMock()
                 scheduler.db.audit_logs = MagicMock()

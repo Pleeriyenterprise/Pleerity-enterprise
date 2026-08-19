@@ -250,6 +250,43 @@ def test_invoice_payment_failed_sets_grace_and_open_invoice(
     assert row.get("canonical_entitlement_state") in ("GRACE", "SUSPENDED")
 
 
+def test_invoice_payment_failed_basil_parent_subscription_is_handled(
+    client, mongodb_reachable, sync_db, iter26_ids, cleanup_iter26, no_notifications
+):
+    """2025-06-30.basil webhooks nest subscription under parent, not invoice.subscription."""
+    _seed_client_and_billing(sync_db, iter26_ids)
+    inv_id = f"in_iter26_basil_pf_{uuid.uuid4().hex[:8]}"
+    npt = int(datetime.now(timezone.utc).timestamp()) + 86400
+    body = {
+        "id": _evt(),
+        "type": "invoice.payment_failed",
+        "data": {
+            "object": {
+                "id": inv_id,
+                "customer": iter26_ids["cus"],
+                "amount_due": 1900,
+                "currency": "gbp",
+                "status": "open",
+                "next_payment_attempt": npt,
+                "parent": {
+                    "type": "subscription_details",
+                    "subscription_details": {"subscription": iter26_ids["sub"]},
+                },
+            }
+        },
+    }
+    with patch(
+        "services.stripe_webhook_service.stripe.Subscription.retrieve",
+        return_value={"id": iter26_ids["sub"], "status": "past_due", "customer": iter26_ids["cus"]},
+    ):
+        r = client.post(STRIPE_WEBHOOK_PATH_PRIMARY, json=body)
+    assert r.status_code == 200
+    row = sync_db.client_billing.find_one({"client_id": iter26_ids["client_id"]}, {"_id": 0})
+    assert row.get("subscription_status") == "PAST_DUE"
+    assert row.get("open_invoice_id") == inv_id
+    assert row.get("stripe_next_payment_attempt_at") is not None
+
+
 def test_invoice_paid_updates_last_payment_and_enabled_canonical(
     client, sync_db, iter26_ids, cleanup_iter26, no_notifications
 ):

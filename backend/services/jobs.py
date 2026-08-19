@@ -25,6 +25,7 @@ from presentation.label_service import requirement_label
 from services.requirement_code_registry import normalize_requirement_code
 from services.notification_send_idempotency import (
     compliance_alert_property_scope_fingerprint,
+    daily_compliance_reminder_item_idempotency_key,
     daily_compliance_reminder_scope_fingerprint,
 )
 
@@ -68,7 +69,9 @@ def _reminder_item_label_from_req(current_req: dict) -> str:
     if desc:
         return desc
     code = current_req.get("code") or current_req.get("requirement_type") or current_req.get("requirement_code")
-    return requirement_label(code) if code else "Certificate"
+    if code:
+        return requirement_label(code)
+    return "Compliance requirement"
 
 
 def _requirement_detail_label_from_req(current_req: dict) -> str:
@@ -155,16 +158,20 @@ def _workflow_aware_reminder_line(current_req: dict, *, classification: str, day
         return "Required evidence incomplete — action required"
     # Safe default path for DOCUMENT_UPLOAD + GENERIC.
     if classification == "overdue":
-        return f"Evidence required before expiry (overdue by {abs(int(days_until_due))} days)"
+        return f"This requirement is overdue by {abs(int(days_until_due))} days"
     if int(days_until_due) <= 7:
-        return "Inspection due soon"
-    return "Evidence required before expiry"
+        return "Action is due soon"
+    return "Action is required before the due date"
 
 
 def _group_key_for_workflow_bucket(bucket: str) -> str:
     b = str(bucket or "").strip().upper()
-    if b in ("DOCUMENT_UPLOAD", "MULTI_EVIDENCE", "REGISTRATION_TRACKING", "TENANT_DELIVERY"):
+    if b in ("DOCUMENT_UPLOAD",):
         return "certificate_reminders"
+    if b in ("MULTI_EVIDENCE", "REGISTRATION_TRACKING"):
+        return "other_reminders"
+    if b == "TENANT_DELIVERY":
+        return "other_reminders"
     if b == "GUIDED_DECLARATION":
         return "declaration_reminders"
     if b == "EXTERNAL_ASSESSMENT_EVIDENCE":
@@ -202,6 +209,87 @@ def _build_grouped_reminder_context(expiring: List[Dict[str, Any]], overdue: Lis
             }
         )
     return grouped
+
+
+def _build_daily_reminder_item(
+    current_req: dict,
+    *,
+    due_date,
+    days_until_due: int,
+    prop_addr: str,
+    lifecycle_attention_kind,
+    state_key,
+) -> dict:
+    is_overdue = days_until_due < 0
+    compact_title = _reminder_item_label_from_req(current_req)
+    detail_title = _requirement_detail_label_from_req(current_req)
+    item = {
+        "type": compact_title,
+        "code": current_req.get("requirement_code")
+        or current_req.get("code")
+        or current_req.get("requirement_type")
+        or "",
+        "due_date": _reminder_customer_due_display(current_req, due_date),
+        "due_date_iso": due_date.strftime("%Y-%m-%d") if due_date is not None else "",
+        "property_address": prop_addr,
+        "property_id": current_req.get("property_id") or "",
+        "requirement_id": current_req.get("requirement_id") or "",
+        "detail_type": detail_title,
+        "semantic_line": _workflow_aware_reminder_line(
+            current_req,
+            classification="overdue" if is_overdue else "expiring",
+            days_until_due=days_until_due,
+        ),
+        "workflow_semantics_bucket": _infer_reminder_workflow_bucket(current_req),
+        "__state_key": state_key,
+        "lifecycle_attention_kind": lifecycle_attention_kind,
+        "is_overdue": is_overdue,
+        "lifecycle_window": "overdue" if is_overdue else "upcoming",
+    }
+    if is_overdue:
+        item["days_overdue"] = -days_until_due
+        item["days_remaining"] = 0
+    else:
+        item["days_remaining"] = days_until_due
+        item["status"] = "URGENT" if days_until_due <= 7 else "WARNING"
+    return item
+
+
+def _reminder_cta_label(item: dict) -> str:
+    from lifecycle_communication.context import infer_communication_family
+
+    name = str(item.get("type") or item.get("detail_type") or "").strip()
+    row = {
+        "requirement_name": name,
+        "requirement_code": item.get("code"),
+        "lifecycle_attention_kind": item.get("lifecycle_attention_kind"),
+        "workflow_class": item.get("workflow_semantics_bucket"),
+    }
+    fam = str(infer_communication_family(row) or "")
+    low = name.lower()
+    if fam == "DOCUMENT_EVIDENCE" or "fire" in low:
+        if "hmo" in low and "fire" in low:
+            return "Upload HMO fire safety evidence"
+        return f"Upload evidence for {name}" if name and len(name) <= 48 else "Upload evidence"
+    if fam == "REGISTRATION":
+        return f"View {name}" if name and len(name) <= 48 else "View registration"
+    if fam == "LICENSING":
+        return f"View {name}" if name and len(name) <= 48 else "View licence"
+    if fam == "EXPIRY_BASED":
+        return f"Review {name}" if name and len(name) <= 48 else "Review requirement"
+    if fam in ("REVIEW_BASED", "OCCUPANCY_LIFECYCLE"):
+        if "occupancy" in low:
+            return "Complete occupancy review"
+        return f"Complete {name}" if name and len(name) <= 48 else "Complete review"
+    if fam == "TENANCY_LIFECYCLE":
+        return "Review tenancy requirement"
+    if fam == "OPERATIONAL":
+        return "Review operational action"
+    if fam == "ASSESSMENT":
+        return f"Review {name}" if name and len(name) <= 48 else "Review assessment"
+    if fam == "INSPECTION":
+        return "Review inspection"
+    return f"View {name}" if name and len(name) <= 48 else "Open portal for details"
 
 
 def _format_digest_inbox_activity_lines(activity_feed, limit: int = 5):
@@ -414,54 +502,23 @@ class JobScheduler:
                         continue
                     days_until_due = (due_date - now_utc).days
 
-                    if days_until_due < 0:
-                        prop_addr = properties_map.get(current_req.get("property_id"), "Your property")
-                        compact_title = _reminder_item_label_from_req(current_req)
-                        detail_title = _requirement_detail_label_from_req(current_req)
-                        overdue_requirements.append({
-                            "type": compact_title,
-                            "code": current_req.get("code") or current_req.get("requirement_type") or "",
-                            "due_date": _reminder_customer_due_display(current_req, due_date),
-                            "days_overdue": -days_until_due,
-                            "property_address": prop_addr,
-                            "detail_type": detail_title,
-                            "semantic_line": _workflow_aware_reminder_line(
-                                current_req,
-                                classification="overdue",
-                                days_until_due=days_until_due,
-                            ),
-                            "workflow_semantics_bucket": _infer_reminder_workflow_bucket(current_req),
-                            "__state_key": truth.get("state_key"),
-                            "lifecycle_attention_kind": lifecycle_attention_kind,
-                        })
-                        reminder_refs.append({
-                            "property_id": current_req.get("property_id"),
-                            "requirement_type": current_req.get("requirement_type", ""),
-                            "due_date": due_date.strftime("%Y-%m-%d"),
-                            "requirement_id": current_req.get("requirement_id"),
-                        })
-                        properties_status_changed.add(current_req.get("property_id"))
-                    elif 0 <= days_until_due <= reminder_days:
-                        prop_addr = properties_map.get(current_req.get("property_id"), "Your property")
-                        compact_title = _reminder_item_label_from_req(current_req)
-                        detail_title = _requirement_detail_label_from_req(current_req)
-                        expiring_requirements.append({
-                            "type": compact_title,
-                            "code": current_req.get("code") or current_req.get("requirement_type") or "",
-                            "due_date": _reminder_customer_due_display(current_req, due_date),
-                            "days_remaining": days_until_due,
-                            "status": "URGENT" if days_until_due <= 7 else "WARNING",
-                            "property_address": prop_addr,
-                            "detail_type": detail_title,
-                            "semantic_line": _workflow_aware_reminder_line(
-                                current_req,
-                                classification="expiring",
-                                days_until_due=days_until_due,
-                            ),
-                            "workflow_semantics_bucket": _infer_reminder_workflow_bucket(current_req),
-                            "__state_key": truth.get("state_key"),
-                            "lifecycle_attention_kind": lifecycle_attention_kind,
-                        })
+                    if days_until_due < 0 or 0 <= days_until_due <= reminder_days:
+                        pid = current_req.get("property_id")
+                        prop_addr = properties_map.get(pid) if pid else ""
+                        if pid and not prop_addr:
+                            prop_addr = "Your property"
+                        item = _build_daily_reminder_item(
+                            current_req,
+                            due_date=due_date,
+                            days_until_due=days_until_due,
+                            prop_addr=prop_addr,
+                            lifecycle_attention_kind=lifecycle_attention_kind,
+                            state_key=truth.get("state_key"),
+                        )
+                        if days_until_due < 0:
+                            overdue_requirements.append(item)
+                        else:
+                            expiring_requirements.append(item)
                         reminder_refs.append({
                             "property_id": current_req.get("property_id"),
                             "requirement_type": current_req.get("requirement_type", ""),
@@ -487,33 +544,43 @@ class JobScheduler:
                             correlation_id=f"REMINDER_JOB:{property_id}:{date_str}",
                         )
                 
-                # Send reminder if there are expiring or overdue requirements
+                # One independently governed email per eligible requirement.
+                # Failure of one send does not abort remaining eligible items.
                 if expiring_requirements or overdue_requirements:
-                    all_state_keys = []
-                    for row in overdue_requirements + expiring_requirements:
-                        sk = row.pop("__state_key", None)
-                        if sk:
-                            all_state_keys.append(sk)
                     reminder_recipients = await self._resolve_reminder_recipients(client)
-                    for recipient_email in reminder_recipients:
-                        attempted_count += 1
-                        ok = await self._send_reminder_email(
-                            client,
-                            expiring_requirements,
-                            overdue_requirements,
-                            recipient_email=recipient_email,
-                            reminder_refs=reminder_refs,
-                        )
-                        if ok:
-                            success_count += 1
-                            for sk in all_state_keys:
-                                await mark_requirement_reminder_sent(
-                                    self.db,
-                                    sk,
-                                    cooldown_hours=get_reminder_cooldown_hours("DAILY_COMPLIANCE_EXPIRY_EMAIL"),
-                                )
-                        else:
-                            failed_count += 1
+                    for item in overdue_requirements + expiring_requirements:
+                        sk = item.pop("__state_key", None)
+                        item_refs = [
+                            {
+                                "property_id": item.get("property_id"),
+                                "requirement_type": item.get("code") or "",
+                                "due_date": item.get("due_date_iso") or "",
+                                "requirement_id": item.get("requirement_id"),
+                            }
+                        ]
+                        item_overdue = [item] if item.get("is_overdue") else []
+                        item_expiring = [] if item.get("is_overdue") else [item]
+                        item_ok = False
+                        for recipient_email in reminder_recipients:
+                            attempted_count += 1
+                            ok = await self._send_reminder_email(
+                                client,
+                                item_expiring,
+                                item_overdue,
+                                recipient_email=recipient_email,
+                                reminder_refs=item_refs,
+                            )
+                            if ok:
+                                success_count += 1
+                                item_ok = True
+                            else:
+                                failed_count += 1
+                        if item_ok and sk:
+                            await mark_requirement_reminder_sent(
+                                self.db,
+                                sk,
+                                cooldown_hours=get_reminder_cooldown_hours("DAILY_COMPLIANCE_EXPIRY_EMAIL"),
+                            )
                     # Portfolio and above: runtime contract capability before SMS
                     from services.account_capability_enforcement import CapabilityEnforcementService
                     from services.account_lifecycle_runtime_contract import resolve_runtime_contract_for_client
@@ -1092,7 +1159,6 @@ class JobScheduler:
                 resolve_lifecycle_reminder_template_key,
             )
             from services.lifecycle_reminder_template_registry import (
-                legacy_reminder_template_keys,
                 lifecycle_reminder_subject,
             )
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -1100,14 +1166,38 @@ class JobScheduler:
             if not to_addr:
                 return False
             key_suffix = to_addr.replace("@", "_at_") if recipient_email else "client"
-            _scope_fp = daily_compliance_reminder_scope_fingerprint(reminder_refs=reminder_refs)
             attention_kind = dominant_attention_kind_for_batch(expiring, overdue)
             template_key = resolve_lifecycle_reminder_template_key(attention_kind, channel="EMAIL")
-            idempotency_key = f"{client['client_id']}_{template_key}_{date_key}_{key_suffix}_{_scope_fp}"
-            from utils.app_urls import get_app_base_url, client_portal_requirements_list_url
+            first_item = (overdue[0] if overdue else expiring[0]) if (overdue or expiring) else None
+            if first_item:
+                idempotency_key = daily_compliance_reminder_item_idempotency_key(
+                    client_id=client["client_id"],
+                    template_key=template_key,
+                    date_key=date_key,
+                    recipient_suffix=key_suffix,
+                    requirement_id=str(first_item.get("requirement_id") or ""),
+                    property_id=str(first_item.get("property_id") or ""),
+                    due_date=str(first_item.get("due_date_iso") or ""),
+                    lifecycle_window=str(first_item.get("lifecycle_window") or ("overdue" if overdue else "upcoming")),
+                )
+            else:
+                _scope_fp = daily_compliance_reminder_scope_fingerprint(reminder_refs=reminder_refs)
+                idempotency_key = f"{client['client_id']}_{template_key}_{date_key}_{key_suffix}_{_scope_fp}"
+            from utils.app_urls import (
+                get_app_base_url,
+                client_portal_requirement_item_url,
+                client_portal_requirements_list_url,
+            )
 
             base_url = get_app_base_url(for_email_links=True).strip().rstrip("/")
-            if overdue:
+            if first_item:
+                portal_link = client_portal_requirement_item_url(
+                    base_url,
+                    property_id=str(first_item.get("property_id") or ""),
+                    requirement_id=str(first_item.get("requirement_id") or ""),
+                    overdue=bool(overdue),
+                )
+            elif overdue:
                 portal_link = client_portal_requirements_list_url(base_url, status="OVERDUE_OR_MISSING")
             elif expiring:
                 portal_link = client_portal_requirements_list_url(base_url, status="DUE_SOON")
@@ -1119,6 +1209,7 @@ class JobScheduler:
                 "overdue_count": len(overdue),
                 "portal_link": portal_link,
                 "company_name": client.get("company_name") or "Pleerity Enterprise Ltd",
+                "single_requirement_reminder": True,
             }
             grouped = _build_grouped_reminder_context(expiring, overdue)
             # Phase 2B additive narrative context for existing template key; keep legacy arrays untouched.
@@ -1132,35 +1223,37 @@ class JobScheduler:
                 context["recipient"] = recipient_email
             if reminder_refs is not None:
                 context["reminder_refs"] = json.dumps(reminder_refs)
-            # Fill single-requirement placeholders for template (subject/body use first item)
-            first_item = (overdue[0] if overdue else expiring[0]) if (overdue or expiring) else None
             if first_item:
-                context["requirement_name"] = first_item.get("type", "Certificate")
+                req_name = str(first_item.get("type") or first_item.get("detail_type") or "").strip() or "Compliance requirement"
+                context["requirement_name"] = req_name
                 rc_item = (first_item.get("code") or "").strip()
                 if rc_item:
                     context["requirement_code"] = rc_item
-                context["property_address"] = first_item.get("property_address", "Your property")
+                if first_item.get("property_id") and first_item.get("property_address"):
+                    context["property_address"] = first_item.get("property_address")
+                elif first_item.get("property_address"):
+                    context["property_address"] = first_item.get("property_address")
                 context["due_date"] = first_item.get("due_date", "")
                 if attention_kind:
                     context["lifecycle_attention_kind"] = attention_kind
-                is_overdue = first_item.get("days_overdue") is not None
+                is_overdue = bool(first_item.get("is_overdue")) or first_item.get("days_overdue") is not None
+                context["is_overdue"] = is_overdue
                 if is_overdue:
                     context["days_remaining"] = 0
                     context["days_overdue"] = first_item.get("days_overdue", 0)
                 else:
                     context["days_remaining"] = first_item.get("days_remaining", 0)
                     context["days_overdue"] = None
-                legacy_email_key, _ = legacy_reminder_template_keys()
-                if template_key != legacy_email_key:
-                    context["subject"] = lifecycle_reminder_subject(
-                        attention_kind=attention_kind,
-                        requirement_name=context["requirement_name"],
-                        is_overdue=is_overdue,
-                    )
-                elif is_overdue:
-                    context["subject"] = f"Renewal reminder: {context['requirement_name']} is overdue"
-                else:
-                    context["subject"] = f"Renewal reminder: {context['requirement_name']} due soon"
+                context["cta_label"] = _reminder_cta_label(first_item)
+                context["semantic_line"] = first_item.get("semantic_line") or ""
+                days_remaining_subj = None if is_overdue else first_item.get("days_remaining")
+                context["subject"] = lifecycle_reminder_subject(
+                    attention_kind=attention_kind,
+                    requirement_name=req_name,
+                    is_overdue=is_overdue,
+                    days_remaining=days_remaining_subj,
+                    requirement_code=rc_item or None,
+                )
             result = await notification_orchestrator.send(
                 template_key=template_key,
                 client_id=client["client_id"],
@@ -1553,7 +1646,12 @@ class JobScheduler:
 
     async def check_compliance_status_changes(self, client_id: Optional[str] = None):
         """Check for compliance status changes and send alerts.
-        
+
+        Distinct from daily per-requirement reminders:
+        - Daily reminder: one email per eligible requirement due/overdue window.
+        - COMPLIANCE_ALERT: property dashboard RAG indicator changed (GREEN/AMBER/RED).
+        - MONTHLY_DIGEST: intentional multi-item monthly summary.
+
         This job:
         1. Evaluates current compliance status for all properties
         2. Compares with stored previous status
@@ -1827,6 +1925,7 @@ class JobScheduler:
             grace_period_days,
             build_renewal_email_context,
             renewal_reminder_days,
+            subscription_renewal_reminder_subject,
         )
         from services.billing_period_utils import normalize_stored_period_end_for_api
         from services.notification_orchestrator import notification_orchestrator
@@ -1978,7 +2077,7 @@ class JobScheduler:
                         context={
                             "client_name": name,
                             "message": msg_html,
-                            "subject": "Subscription renewal in about 7 days",
+                            "subject": subscription_renewal_reminder_subject(days_until),
                         },
                         idempotency_key=f"{client_id}_RENEW7_{period_key}",
                         event_type="subscription_renewal_reminder_7d",
@@ -1995,7 +2094,7 @@ class JobScheduler:
                         context={
                             "client_name": name,
                             "message": msg_html,
-                            "subject": "Subscription renewal in about 3 days",
+                            "subject": subscription_renewal_reminder_subject(days_until),
                         },
                         idempotency_key=f"{client_id}_RENEW3_{period_key}",
                         event_type="subscription_renewal_reminder_3d",

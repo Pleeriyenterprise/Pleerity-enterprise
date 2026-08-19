@@ -127,6 +127,60 @@ def normalize_stored_period_end_for_api(cpe: Any) -> Optional[datetime]:
     return coerce_stored_period_end_to_datetime(cpe)
 
 
+def _stripe_object_id(value: Any) -> str:
+    """Return a Stripe id from a string or expanded object."""
+    if value is None:
+        return ""
+    if isinstance(value, dict):
+        return str(value.get("id") or "").strip()
+    return str(value).strip()
+
+
+def subscription_id_from_stripe_invoice_dict(inv_d: Optional[Dict[str, Any]]) -> str:
+    """Resolve invoice subscription id across pre-basil and 2025-06-30.basil shapes.
+
+    Staging Stripe webhooks use ``api_version=2025-06-30.basil``. That payload nests
+    the subscription under ``parent.subscription_details.subscription`` and omits
+    top-level ``invoice.subscription``. Payment-failed / invoice-paid handlers must
+    not treat those invoices as non-subscription.
+    """
+    if not isinstance(inv_d, dict):
+        return ""
+    sid = _stripe_object_id(inv_d.get("subscription"))
+    if sid:
+        return sid
+    parent = inv_d.get("parent")
+    if isinstance(parent, dict):
+        details = parent.get("subscription_details")
+        if isinstance(details, dict):
+            sid = _stripe_object_id(details.get("subscription"))
+            if sid:
+                return sid
+    details = inv_d.get("subscription_details")
+    if isinstance(details, dict):
+        sid = _stripe_object_id(details.get("subscription"))
+        if sid:
+            return sid
+    lines = inv_d.get("lines")
+    line_data = (lines or {}).get("data") if isinstance(lines, dict) else None
+    for line in line_data or []:
+        if not isinstance(line, dict):
+            continue
+        sid = _stripe_object_id(line.get("subscription"))
+        if sid:
+            return sid
+        line_parent = line.get("parent")
+        if not isinstance(line_parent, dict):
+            continue
+        for key in ("invoice_item_details", "subscription_item_details"):
+            nested = line_parent.get(key)
+            if isinstance(nested, dict):
+                sid = _stripe_object_id(nested.get("subscription"))
+                if sid:
+                    return sid
+    return ""
+
+
 def billing_period_from_stripe_invoice_dict(inv_d: Dict[str, Any]) -> Tuple[Optional[datetime], Optional[datetime]]:
     """
     Billing window from the first invoice line that defines ``period`` (subscription cycle / proration).

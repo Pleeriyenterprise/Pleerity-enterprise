@@ -6,6 +6,7 @@ Gated by MAINTENANCE_WORKFLOWS feature flag for client/tenant.
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 import hashlib
+import html as html_module
 import os
 import uuid
 from database import database
@@ -37,6 +38,32 @@ from services.work_order_pricing_constants import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _contractor_assignment_message_html(
+    *,
+    kind_label: str,
+    work_order_id: str,
+    description: str,
+    property_address: str,
+    due_date_str: str,
+    job_link: str,
+    extra_note: str = "",
+) -> str:
+    esc = html_module.escape
+    extra = f"<p>{esc(extra_note)}</p>" if extra_note else ""
+    return (
+        f"<p>You have been assigned to a {esc(kind_label)} work order.</p>"
+        f"<p><strong>Work order:</strong> {esc(work_order_id)}<br/>"
+        f"<strong>Property:</strong> {esc(property_address or 'See portal')}<br/>"
+        f"<strong>Due:</strong> {esc(due_date_str or 'See portal')}<br/>"
+        f"<strong>Description:</strong> {esc(description or 'See portal')}</p>"
+        f"{extra}"
+        f"<p>Open your secure job link to view the assignment and take the next step:</p>"
+        f"<p><a href=\"{esc(job_link, quote=True)}\">{esc(job_link)}</a></p>"
+        "<p>Payment responsibility: Pleerity coordinates work orders and invoice approval but does not "
+        "process contractor payments. Follow up with the client for payment.</p>"
+    )
 
 # Secure job-link token lifetime (days). Stored hashed; tied to work_order_id + contractor_id.
 # Default 30 balances tighter exposure with typical windows; use CONTRACTOR_JOB_TOKEN_TTL_DAYS=90 for long-cycle work.
@@ -1021,15 +1048,33 @@ async def update_work_order(
                             f"Payment responsibility: Pleerity coordinates work orders and invoice approval but does not process "
                             f"contractor payments; follow up with the client for payment."
                         )
+                        extra_note = (
+                            "This assignment is for compliance evidence work, not ad-hoc maintenance repair unless stated."
+                        )
+                        message_html = _contractor_assignment_message_html(
+                            kind_label="compliance execution",
+                            work_order_id=work_order_id,
+                            description=desc,
+                            property_address=property_address or "See portal",
+                            due_date_str=due_date_str,
+                            job_link=job_link_final,
+                            extra_note=extra_note,
+                        )
                         await notification_orchestrator.send(
                             template_key="CONTRACTOR_ASSIGNED",
                             client_id=result.get("client_id"),
                             context={
                                 "recipient": str(to_email).strip(),
                                 "subject": subj,
+                                "message": message_html,
                                 "body": body,
                                 "job_link": job_link_final,
+                                "cta_url": job_link_final,
+                                "cta_label": "Open job",
                                 "due_date": due_date_str,
+                                "work_order_id": work_order_id,
+                                "property_address": property_address or "See portal",
+                                "contractor_assignment_layout": True,
                             },
                             idempotency_key=f"contractor_assign_{work_order_id}_{contractor_id}",
                             event_type="CONTRACTOR_ASSIGNED",
@@ -1053,15 +1098,30 @@ async def update_work_order(
                             f"Payment responsibility: Pleerity coordinates work orders and invoice approval but does not process "
                             f"contractor payments. Payment responsibility lies with the client; please follow up with the client for payment."
                         )
+                        message_html = _contractor_assignment_message_html(
+                            kind_label="maintenance repair",
+                            work_order_id=work_order_id,
+                            description=desc,
+                            property_address=property_address or "See portal",
+                            due_date_str=due_date_str,
+                            job_link=job_link_final,
+                            extra_note=inspect_note.strip(),
+                        )
                         await notification_orchestrator.send(
                             template_key="CONTRACTOR_ASSIGNED",
                             client_id=result.get("client_id"),
                             context={
                                 "recipient": str(to_email).strip(),
                                 "subject": subj,
+                                "message": message_html,
                                 "body": body,
                                 "job_link": job_link_final,
+                                "cta_url": job_link_final,
+                                "cta_label": "Open job",
                                 "due_date": due_date_str,
+                                "work_order_id": work_order_id,
+                                "property_address": property_address or "See portal",
+                                "contractor_assignment_layout": True,
                             },
                             idempotency_key=f"contractor_assign_{work_order_id}_{contractor_id}",
                             event_type="CONTRACTOR_ASSIGNED",

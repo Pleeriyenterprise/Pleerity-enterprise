@@ -39,6 +39,7 @@ from services.billing_period_utils import (
     period_start_from_stripe_subscription_dict,
     period_start_from_stripe_unix,
     normalize_stored_period_end_for_api,
+    subscription_id_from_stripe_invoice_dict,
 )
 from services.billing_stripe_sync_service import (
     retrieve_stripe_subscription_dict,
@@ -193,6 +194,13 @@ def _extract_webhook_context(event: Dict) -> Dict[str, Any]:
         "subscription_id": obj.get("subscription") if isinstance(obj.get("subscription"), str) else (obj.get("subscription", {}).get("id") if isinstance(obj.get("subscription"), dict) else None),
         "checkout_session_id": obj.get("id") if event.get("type") == "checkout.session.completed" else None,
     }
+
+
+def resolve_client_notification_email(client: Optional[Dict[str, Any]]) -> str:
+    """Match orchestrator recipient fallback: contact_email, then email."""
+    if not isinstance(client, dict):
+        return ""
+    return str(client.get("contact_email") or client.get("email") or "").strip()
 
 
 class StripeWebhookService:
@@ -1890,13 +1898,39 @@ class StripeWebhookService:
         try:
             client = await db.clients.find_one(
                 {"client_id": client_id},
-                {"_id": 0, "contact_email": 1, "contact_name": 1}
+                {"_id": 0, "contact_email": 1, "email": 1, "contact_name": 1, "full_name": 1}
             )
-            
-            if client and client.get("contact_email"):
+            to_email = resolve_client_notification_email(client)
+            if to_email:
                 from utils.public_app_url import get_public_app_url
+                from services.subscription_lifecycle_service import resolve_subscription_canceled_customer_copy
+                from services.account_lifecycle_runtime_contract import resolve_runtime_contract_for_client
+
                 base_url = get_public_app_url(for_email_links=False)
-                access_end_date = datetime.now(timezone.utc).strftime("%B %d, %Y")
+                commercial_overlay_active = False
+                effective_ent = "DISABLED"
+                billing_live = billing
+                try:
+                    contract = await resolve_runtime_contract_for_client(db, client_id)
+                    commercial_overlay_active = bool(
+                        (contract or {}).get("commercial_overlay")
+                        or ((contract or {}).get("lifecycle_context") or {}).get("commercial_overlay_active")
+                    )
+                    billing_live = await db.client_billing.find_one(
+                        {"client_id": client_id},
+                        {"_id": 0, "entitlement_status": 1, "current_period_end": 1, "cancel_at_period_end": 1},
+                    ) or billing
+                    effective_ent = str((billing_live or {}).get("entitlement_status") or "DISABLED")
+                    if commercial_overlay_active:
+                        effective_ent = "ENABLED"
+                except Exception as contract_err:
+                    logger.warning("canceled communication contract lookup failed client_id=%s: %s", client_id, contract_err)
+                copy = resolve_subscription_canceled_customer_copy(
+                    stripe_subscription=subscription,
+                    billing=billing_live,
+                    commercial_overlay_active=commercial_overlay_active,
+                    effective_entitlement=effective_ent,
+                )
                 event_id = (event or {}).get("id", "")
                 idempotency_key = f"{event_id}_SUBSCRIPTION_CANCELED" if event_id else None
                 from services.notification_orchestrator import notification_orchestrator
@@ -1904,9 +1938,19 @@ class StripeWebhookService:
                     template_key="SUBSCRIPTION_CANCELED",
                     client_id=client_id,
                     context={
-                        "client_name": client.get("contact_name", "Valued Customer"),
-                        "access_end_date": access_end_date,
+                        "client_name": (
+                            (client or {}).get("contact_name")
+                            or (client or {}).get("full_name")
+                            or "Valued Customer"
+                        ),
+                        "access_end_date": copy.get("access_end_date") or "",
+                        "access_body_html": copy.get("access_body_html") or "",
+                        "access_body_text": copy.get("access_body_text") or "",
+                        "cancel_mode": copy.get("cancel_mode") or "",
+                        "subject": copy.get("subject") or "Your subscription has been cancelled",
                         "billing_portal_link": f"{base_url}/settings/billing",
+                        "cta_label": "Open Billing",
+                        "cta_url": f"{base_url}/settings/billing",
                         "company_name": "Pleerity Enterprise Ltd",
                         "support_email": "info@pleerityenterprise.co.uk",
                     },
@@ -1914,6 +1958,11 @@ class StripeWebhookService:
                     event_type="customer.subscription.deleted",
                 )
                 logger.info(f"Subscription canceled notification sent for client {client_id}")
+            else:
+                logger.warning(
+                    "Skipping SUBSCRIPTION_CANCELED email; no contact_email/email on client_id=%s",
+                    client_id,
+                )
         except Exception as e:
             logger.error(f"Failed to send subscription canceled notification: {e}")
         
@@ -1956,7 +2005,7 @@ class StripeWebhookService:
         """Handle invoice.paid / invoice.payment_succeeded — renewal or recovery after failure."""
         db = database.get_db()
         stripe_customer_id = invoice.get("customer")
-        subscription_id = invoice.get("subscription")
+        subscription_id = subscription_id_from_stripe_invoice_dict(invoice)
         event_type = (event or {}).get("type") or "invoice.paid"
         logger.info(
             "HANDLER_START event.type=%s stripe_customer_id=%s subscription_id=%s",
@@ -2456,7 +2505,7 @@ class StripeWebhookService:
         """
         db = database.get_db()
         stripe_customer_id = invoice.get("customer")
-        subscription_id = invoice.get("subscription")
+        subscription_id = subscription_id_from_stripe_invoice_dict(invoice)
         logger.info(
             "HANDLER_START event.type=invoice.payment_failed stripe_customer_id=%s subscription_id=%s checkout_session_id=(n/a) metadata.client_id=(from_billing) computed_client_id=(lookup)",
             stripe_customer_id, subscription_id,
@@ -2605,14 +2654,24 @@ class StripeWebhookService:
                 retry_date = retry_dt.strftime("%B %d, %Y")
             event_id = (event or {}).get("id", "")
             idempotency_key = f"{event_id}_PAYMENT_FAILED" if event_id else None
+            plan_code = str(billing.get("current_plan_code") or "").strip()
+            access_suspended = str(final_ent).upper() == "DISABLED"
+            billing_portal_link = f"{base_url}/settings/billing"
             from services.notification_orchestrator import notification_orchestrator
             result = await notification_orchestrator.send(
                 template_key="PAYMENT_FAILED",
                 client_id=client_id,
                 context={
                     "client_name": client_name,
-                    "billing_portal_link": f"{base_url}/settings/billing",
+                    "billing_portal_link": billing_portal_link,
+                    "cta_url": billing_portal_link,
+                    "cta_label": "Update billing details",
                     "retry_date": retry_date or "",
+                    "has_stripe_retry_date": bool(retry_date),
+                    "plan_code": plan_code,
+                    "entitlement_status": str(final_ent),
+                    "access_suspended": access_suspended,
+                    "subject": "Payment unsuccessful",
                     "grace_period_days": str(g_days),
                 },
                 idempotency_key=idempotency_key,

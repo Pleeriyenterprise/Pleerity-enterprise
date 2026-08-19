@@ -1,0 +1,645 @@
+{
+  "programme": "CUSTOMER-COMMUNICATION-QUALITY-REMEDIATION-02",
+  "at_utc": "2026-08-18T18:53:22.456158+00:00",
+  "expected_sha": "a9a2efd329f827f335ca2d759cfa2cf0fb883302",
+  "production_touched": false,
+  "main_merged": false,
+  "final_verdict": "CUSTOMER_COMMUNICATION_REMEDIATION_INCOMPLETE",
+  "followup_artifact": "customer_communication_runtime_followup_02.json",
+  "live_proven": {
+    "one_requirement_per_email": true,
+    "per_requirement_idempotency": true,
+    "duplicate_second_run": true,
+    "hmo_evidence_language": true,
+    "eicr_calculated_days": true,
+    "onboarding_day1_state_aware": true,
+    "payment_failed_live": false,
+    "cancellation_live": false,
+    "contractor_assigned_live": false
+  },
+  "staging_version": {
+    "commit_sha": "a9a2efd329f827f335ca2d759cfa2cf0fb883302",
+    "environment": "staging"
+  },
+  "production_version": {
+    "commit_sha": "1fcb5fbcdf99ded01a45fe2fcf1123587efd117d",
+    "environment": "production"
+  },
+  "sha_match": true,
+  "production_untouched": true,
+  "auth_ok": true,
+  "yopmail_search_status": 200,
+  "safe_clients": [
+    {
+      "client_id": "11457c25-d5f6-4713-bae9-1639e83a3cdd",
+      "email": "so.paid.202608171609@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "1cb4b67d-4f47-4af6-aeec-f9c540cfde10",
+      "email": "so.paid.202608171708@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "1cddc485-0ed2-4f9a-8d7c-ea6343f4c17b",
+      "email": "so.release.202608171634@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "2c8abc55-baa0-4140-96df-57de6d9c7694",
+      "email": "so.paid.202608171559@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "38907123-9ab9-49b0-8316-2d5b6e0a2803",
+      "email": "jeffery@yopmail.com",
+      "entitlement": "ENABLED",
+      "overdue_count": 8,
+      "upcoming_count": 0,
+      "distinct_overdue_names": [
+        "emergency_lighting",
+        "fire_alarm",
+        "fire_extinguisher",
+        "gas_safety",
+        "hmo_fire_risk",
+        "hmo_fire_risk_evidence",
+        "legionella",
+        "portable_appliance_test"
+      ]
+    },
+    {
+      "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+      "email": "lucas@yopmail.com",
+      "entitlement": "ENABLED",
+      "overdue_count": 8,
+      "upcoming_count": 5,
+      "distinct_overdue_names": [
+        "communal_cleaning",
+        "communal_fire_doors",
+        "emergency_lighting",
+        "fire_alarm",
+        "fire_extinguisher",
+        "how_to_rent",
+        "right_to_rent",
+        "tenancy_agreement"
+      ]
+    },
+    {
+      "client_id": "42c3152c-41b1-49ce-9850-028794972672",
+      "email": "so.release.202608171708@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "51a35925-620e-4d3e-b552-b6417333274b",
+      "email": "so.select.202608171609@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "5ac41f8d-061d-4cae-8928-8036141d4a8e",
+      "email": "lucas.w@yopmail.com",
+      "entitlement": "ENABLED",
+      "overdue_count": 0,
+      "upcoming_count": 8,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+      "email": "allison@yopmail.com",
+      "entitlement": "DISABLED",
+      "overdue_count": 16,
+      "upcoming_count": 0,
+      "distinct_overdue_names": [
+        "emergency_lighting",
+        "fire_alarm",
+        "fire_extinguisher",
+        "hmo_fire_risk",
+        "hmo_fire_risk_evidence",
+        "hmo_license",
+        "landlord_registration",
+        "landlord_registration_ni",
+        "legionella",
+        "occupation_contract",
+        "portable_appliance_test"
+      ]
+    },
+    {
+      "client_id": "6aa7906f-ed85-4367-8ca4-6ef1bb76668f",
+      "email": "isabella@yopmail.com",
+      "entitlement": "DISABLED",
+      "overdue_count": 6,
+      "upcoming_count": 0,
+      "distinct_overdue_names": [
+        "eicr",
+        "fire_alarm",
+        "gas_safety",
+        "hmo_fire_risk",
+        "legionella",
+        "portable_appliance_test"
+      ]
+    },
+    {
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "email": "david@yopmail.com",
+      "entitlement": "DISABLED",
+      "overdue_count": 78,
+      "upcoming_count": 2,
+      "distinct_overdue_names": [
+        "communal_cleaning",
+        "communal_fire_doors",
+        "deposit_pi",
+        "eicr",
+        "emergency_lighting",
+        "fire_alarm",
+        "fire_extinguisher",
+        "fire_risk_assessment",
+        "gas_safety",
+        "hmo_fire_risk",
+        "hmo_fire_risk_evidence",
+        "hmo_license"
+      ]
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "email": "nancy@yopmail.com",
+      "entitlement": "ENABLED",
+      "overdue_count": 67,
+      "upcoming_count": 1,
+      "distinct_overdue_names": [
+        "eicr",
+        "emergency_lighting",
+        "epc",
+        "fire_alarm",
+        "fire_extinguisher",
+        "gas_safety",
+        "hmo_fire_risk",
+        "hmo_fire_risk_evidence",
+        "hmo_license",
+        "landlord_registration_ni",
+        "legionella",
+        "occupation_contract"
+      ]
+    },
+    {
+      "client_id": "6fe591d1-b6b5-45d3-923a-204b95fc73bb",
+      "email": "so.select.202608171559@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "718fae2d-5063-4bd6-9e4f-6f03837748e5",
+      "email": "so.promo.202608171708@yopmail.com",
+      "entitlement": "ENABLED",
+      "overdue_count": 0,
+      "upcoming_count": 4,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "780c70e0-ab03-4b45-b69a-64b814537a75",
+      "email": "so.promo.202608171634@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "email": "confidence.cvp000011@yopmail.com",
+      "entitlement": "ENABLED",
+      "overdue_count": 27,
+      "upcoming_count": 4,
+      "distinct_overdue_names": [
+        "eicr",
+        "epc",
+        "fire_alarm",
+        "gas_safety",
+        "hmo_fire_risk",
+        "legionella",
+        "portable_appliance_test"
+      ]
+    },
+    {
+      "client_id": "894f0002-cdfe-4f4f-afd1-50ab55fe8e33",
+      "email": "so.regrel.202608181438@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "94fd6021-30d2-40af-8b2c-b1b5a61398f8",
+      "email": "priya@yopmail.com",
+      "entitlement": "ENABLED",
+      "overdue_count": 14,
+      "upcoming_count": 1,
+      "distinct_overdue_names": [
+        "communal_cleaning",
+        "communal_fire_doors",
+        "deposit_pi",
+        "emergency_lighting",
+        "fire_alarm",
+        "fire_extinguisher",
+        "gas_safety",
+        "hmo_fire_risk",
+        "hmo_fire_risk_evidence",
+        "how_to_rent",
+        "legionella",
+        "portable_appliance_test"
+      ]
+    },
+    {
+      "client_id": "ae003c31-3fae-4516-bd13-d602d0796e28",
+      "email": "mabel@yopmail.com",
+      "entitlement": "ENABLED",
+      "overdue_count": 0,
+      "upcoming_count": 10,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "b18f9b75-4cc0-4184-beb2-aae11eed439b",
+      "email": "so.release.202608171609@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "b85072d8-698d-4af8-806b-d4cccc8d8c3f",
+      "email": "so.promo.202608171609@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
+      "email": "elena@yopmail.com",
+      "entitlement": "ENABLED",
+      "overdue_count": 0,
+      "upcoming_count": 8,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "cc04-plan-unresolved-c28c510f-f559-4ce2-ae48-223dbb9d1eb4",
+      "email": "cc04-plan-unresolved@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+      "email": "lere@yopmail.com",
+      "entitlement": "ENABLED",
+      "overdue_count": 13,
+      "upcoming_count": 0,
+      "distinct_overdue_names": [
+        "eicr",
+        "emergency_lighting",
+        "epc",
+        "fire_alarm",
+        "fire_extinguisher",
+        "gas_safety",
+        "hmo_fire_risk",
+        "hmo_fire_risk_evidence",
+        "hmo_license",
+        "landlord_registration",
+        "legionella",
+        "occupation_contract"
+      ]
+    },
+    {
+      "client_id": "cf814b79-2d28-4357-b1b4-1475830c5878",
+      "email": "so.release.202608171559@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "d71a6136-7fcb-4fc2-8d7f-bae4f220c6bd",
+      "email": "so.promo.202608171559@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    },
+    {
+      "client_id": "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8",
+      "email": "felix@yopmail.com",
+      "entitlement": "DISABLED",
+      "overdue_count": 14,
+      "upcoming_count": 1,
+      "distinct_overdue_names": [
+        "communal_cleaning",
+        "communal_fire_doors",
+        "deposit_pi",
+        "eicr",
+        "emergency_lighting",
+        "fire_alarm",
+        "fire_extinguisher",
+        "gas_safety",
+        "hmo_fire_risk",
+        "hmo_fire_risk_evidence",
+        "how_to_rent",
+        "legionella"
+      ]
+    },
+    {
+      "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+      "email": "nicole@yopmail.com",
+      "entitlement": "DISABLED",
+      "overdue_count": 19,
+      "upcoming_count": 0,
+      "distinct_overdue_names": [
+        "communal_cleaning",
+        "communal_fire_doors",
+        "deposit_pi",
+        "eicr",
+        "emergency_lighting",
+        "epc",
+        "fire_alarm",
+        "fire_extinguisher",
+        "gas_safety",
+        "hmo_fire_risk",
+        "hmo_fire_risk_evidence",
+        "hmo_license"
+      ]
+    },
+    {
+      "client_id": "fa86a1b5-5edd-4a7b-a0db-30e25d72a170",
+      "email": "so.paid.202608171634@yopmail.com",
+      "entitlement": null,
+      "overdue_count": 0,
+      "upcoming_count": 0,
+      "distinct_overdue_names": []
+    }
+  ],
+  "chosen_reminder_client": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "email": "nancy@yopmail.com"
+  },
+  "onboarding_due": {
+    "count": 1,
+    "unsafe": 0
+  },
+  "contractor_fixture": {
+    "contractor_id": "07058157-beab-4b02-8dff-335850e181a0",
+    "email": "grace@yopmail.com",
+    "safe": true
+  },
+  "reminders": {
+    "skipped": false,
+    "cooldown_cleared": {
+      "email": "nancy@yopmail.com",
+      "allowed": 3,
+      "suppressed": 76,
+      "fixtures": {
+        "overdue_reg": {
+          "requirement_id": "ad878819-8de2-4a32-85f2-9ee21f09817c",
+          "code": "scotland_landlord_registration",
+          "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+          "due_date": "2026-06-09T12:56:05.461665+00:00",
+          "name": null
+        },
+        "overdue_hmo": {
+          "requirement_id": "88480afd-ca64-4acb-be74-c44901c91369",
+          "code": "hmo_fire_risk",
+          "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+          "due_date": "2026-05-25T12:55:59.706919+00:00",
+          "name": null
+        },
+        "upcoming_eicr": {
+          "requirement_id": "9d3ad68d-a130-4cc9-b58f-d6e0d7629ffc",
+          "code": "eicr",
+          "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+          "due_date": "2026-08-23T15:14:37.803412+00:00",
+          "name": null
+        }
+      }
+    },
+    "started_at": "2026-08-18T18:53:48.070938+00:00",
+    "run1": {
+      "status": 200,
+      "body": {
+        "success": true,
+        "job": "daily_reminders",
+        "message": "Daily reminders sent: 2",
+        "result": {
+          "message": "Daily reminders sent: 2",
+          "count": 2,
+          "outcome_status": "success",
+          "outcome_metrics": {
+            "expected_count": 2,
+            "attempted_count": 2,
+            "success_count": 2,
+            "failed_count": 0,
+            "skipped_count": 0,
+            "evaluated_items_count": 12,
+            "suppressed_items_count": 11,
+            "suppressed_by_reason": {
+              "COOLDOWN_ACTIVE": 9,
+              "NO_LONGER_DUE": 1,
+              "ALREADY_RESOLVED": 1
+            }
+          }
+        },
+        "scope_type": "CLIENT",
+        "estimated_impact": {
+          "scope_type": "CLIENT",
+          "is_portfolio_wide": false,
+          "clients_affected": 1,
+          "properties_affected": 7,
+          "summary_lines": [
+            "1 client(s) affected",
+            "~7 properties under those clients",
+            "~3 reminders estimated (approx.)"
+          ]
+        }
+      }
+    },
+    "run2": {
+      "status": 200,
+      "body": {
+        "success": true,
+        "job": "daily_reminders",
+        "message": "Daily reminders: no reminders due",
+        "result": {
+          "message": "Daily reminders: no reminders due",
+          "count": 0,
+          "outcome_status": "success",
+          "outcome_metrics": {
+            "expected_count": 0,
+            "attempted_count": 0,
+            "success_count": 0,
+            "failed_count": 0,
+            "skipped_count": 0,
+            "evaluated_items_count": 12,
+            "suppressed_items_count": 12,
+            "suppressed_by_reason": {
+              "COOLDOWN_ACTIVE": 10,
+              "NO_LONGER_DUE": 1,
+              "ALREADY_RESOLVED": 1
+            }
+          }
+        },
+        "scope_type": "CLIENT",
+        "estimated_impact": {
+          "scope_type": "CLIENT",
+          "is_portfolio_wide": false,
+          "clients_affected": 1,
+          "properties_affected": 7,
+          "summary_lines": [
+            "1 client(s) affected",
+            "~7 properties under those clients",
+            "~3 reminders estimated (approx.)"
+          ]
+        }
+      }
+    },
+    "monthly_digest": {
+      "status": 200,
+      "ok": true
+    },
+    "new_after_first": [
+      {
+        "message_id": "3d49be9e-12da-4708-a90a-66a249f7d2c5",
+        "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+        "status": "DELIVERED",
+        "idempotency_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f_COMPLIANCE_EXPIRY_REMINDER_2026-08-18_agent_at_yopmail.com_24237401d1ce52db",
+        "provider_message_id": "a41ba6f6-4252-4d08-96b8-c42a08acca4b",
+        "subject": "Your Electrical Installation Condition Report (EICR) expires in 4 days",
+        "recipient": "agent@yopmail.com",
+        "requirement_name": "Electrical Installation Condition Report (EICR)",
+        "cta": "Review Electrical Installation Condition Report (EICR)",
+        "portal_link": "https://pleerity-enterprise-9jjg.vercel.app/properties/9786b4ea-3523-4665-9849-db93745d457d?requirement_id=9d3ad68d-a130-4cc9-b58f-d6e0d7629ffc",
+        "single_requirement_reminder": "True",
+        "created_at": "2026-08-18T18:54:10.404000",
+        "delivered_at": "2026-08-18T18:54:13Z"
+      },
+      {
+        "message_id": "eca6255a-ca02-45d3-9ab6-9775680932fc",
+        "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+        "status": "DELIVERED",
+        "idempotency_key": "6fd5ac4c-3fd4-4112-ade7-156977deb49f_COMPLIANCE_EXPIRY_REMINDER_2026-08-18_nancy_at_yopmail.com_24237401d1ce52db",
+        "provider_message_id": "9cde6d88-e3c2-4b1f-b713-7990cd529dd8",
+        "subject": "Your Electrical Installation Condition Report (EICR) expires in 4 days",
+        "recipient": "nancy@yopmail.com",
+        "requirement_name": "Electrical Installation Condition Report (EICR)",
+        "cta": "Review Electrical Installation Condition Report (EICR)",
+        "portal_link": "https://pleerity-enterprise-9jjg.vercel.app/properties/9786b4ea-3523-4665-9849-db93745d457d?requirement_id=9d3ad68d-a130-4cc9-b58f-d6e0d7629ffc",
+        "single_requirement_reminder": "True",
+        "created_at": "2026-08-18T18:54:06.047000",
+        "delivered_at": "2026-08-18T18:54:09Z"
+      }
+    ],
+    "new_after_second_count": 0,
+    "duplicate_second_run": true,
+    "mixed_content_detected": false,
+    "independent_reminder_count": 2
+  },
+  "contractor": {
+    "skipped": false,
+    "create_status": 200,
+    "work_order_id": "e8aced55-c89f-4fd5-94e3-bc31704ccda5",
+    "assign_status": 400,
+    "assign_ok": false,
+    "messages": []
+  },
+  "billing_existing_logs": {
+    "payment_failed_status": 200,
+    "payment_failed_total": 0,
+    "canceled_status": 200,
+    "canceled_total": 0,
+    "note": "Live Stripe webhook not invoked; no production charge; local .env has no Stripe key."
+  },
+  "onboarding_due_at_execute": {
+    "safe": [
+      {
+        "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
+        "event_id": "ONBOARDING_DAY1_SETUP_REMINDER",
+        "email": "elena@yopmail.com"
+      }
+    ],
+    "unsafe_count": 0
+  },
+  "onboarding": {
+    "skipped": false,
+    "run_status": 200,
+    "run_ok": true,
+    "run_body": {
+      "success": true,
+      "job": "onboarding_sequence_processing",
+      "message": "Onboarding sequence: 1 sent, 0 cancelled, 0 skipped",
+      "result": {
+        "message": "Onboarding sequence: 1 sent, 0 cancelled, 0 skipped",
+        "sent": 1,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "scope_type": "PORTFOLIO_WIDE",
+      "estimated_impact": {
+        "scope_type": "PORTFOLIO_WIDE",
+        "is_portfolio_wide": true,
+        "clients_affected": 35,
+        "properties_affected": 96,
+        "summary_lines": [
+          "~35 active clients affected",
+          "~96 properties in portfolio",
+          "Job will run for 35 client(s)"
+        ]
+      }
+    },
+    "messages": [
+      {
+        "message_id": "e1a9824b-d757-4bcd-b28d-4d22f8f68f6a",
+        "template_key": "ONBOARDING_DAY1_SETUP_REMINDER",
+        "status": "DELIVERED",
+        "idempotency_key": "ONBOARDING_ONBOARDING_DAY1_SETUP_REMINDER_b8705b33-c380-461e-89f4-9eba727ea00a",
+        "provider_message_id": "637c2ee4-4f05-46cd-a472-7c4371dad832",
+        "subject": "Review your property in Compliance Vault Pro",
+        "recipient": "elena@yopmail.com",
+        "requirement_name": null,
+        "cta": "https://pleerity-enterprise-9jjg.vercel.app/dashboard",
+        "portal_link": "https://pleerity-enterprise-9jjg.vercel.app/dashboard",
+        "single_requirement_reminder": null,
+        "created_at": "2026-08-18T18:57:09.713000",
+        "delivered_at": "2026-08-18T18:57:13Z"
+      },
+      {
+        "message_id": "4fabcaec-e625-4840-a2ea-39e72bc6e3c9",
+        "template_key": "ONBOARDING_DAY0_WELCOME",
+        "status": "DELIVERED",
+        "idempotency_key": "ONBOARDING_ONBOARDING_DAY0_WELCOME_b8705b33-c380-461e-89f4-9eba727ea00a",
+        "provider_message_id": "d72fdf14-2fd0-4004-b887-7b63a09b8c39",
+        "subject": "Add your first property in Compliance Vault Pro",
+        "recipient": "elena@yopmail.com",
+        "requirement_name": null,
+        "cta": "https://pleerity-enterprise-9jjg.vercel.app/dashboard",
+        "portal_link": "https://pleerity-enterprise-9jjg.vercel.app/dashboard",
+        "single_requirement_reminder": null,
+        "created_at": "2026-08-17T19:30:03.719000",
+        "delivered_at": "2026-08-17T19:30:07Z"
+      }
+    ]
+  }
+}

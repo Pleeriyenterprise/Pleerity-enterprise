@@ -171,6 +171,11 @@ async def process_onboarding_email_queue() -> dict:
             "portal_base_url": portal_base,
             "portal_link": (portal_base + "/dashboard") if portal_base else "#",
             "customer_reference": client.get("customer_reference"),
+            "has_added_property": bool(state.get("has_added_property")),
+            "has_uploaded_certificate": bool(state.get("has_uploaded_certificate")),
+            "monitoring_enabled": bool(state.get("monitoring_enabled")),
+            "jurisdiction_label": state.get("jurisdiction_label") or "",
+            "jurisdiction_known": bool(state.get("jurisdiction_known")),
         }
         idempotency_key = f"ONBOARDING_{event_id}_{client_id}"
         try:
@@ -178,7 +183,11 @@ async def process_onboarding_email_queue() -> dict:
             result = await notification_orchestrator.send(
                 template_key=template_key,
                 client_id=client_id,
-                context={**context, "recipient": recipient, "subject": _subject_for_event(event_id)},
+                context={
+                    **context,
+                    "recipient": recipient,
+                    "subject": _subject_for_event(event_id, state),
+                },
                 idempotency_key=idempotency_key,
                 event_type=f"onboarding_{event_id.lower()}",
             )
@@ -196,16 +205,26 @@ async def process_onboarding_email_queue() -> dict:
     return {"sent": sent, "cancelled": cancelled, "skipped": skipped}
 
 
-def _subject_for_event(event_id: str) -> str:
-    """Default subject line per onboarding event."""
+def _subject_for_event(event_id: str, state: Optional[dict] = None) -> str:
+    """Default subject line per onboarding event, adapted to known customer state."""
+    state = state or {}
+    has_property = bool(state.get("has_added_property"))
+    monitoring = bool(state.get("monitoring_enabled"))
+    if event_id == "ONBOARDING_DAY0_WELCOME":
+        return (
+            "Continue setting up Compliance Vault Pro"
+            if has_property
+            else "Add your first property in Compliance Vault Pro"
+        )
+    if event_id == "ONBOARDING_DAY1_SETUP_REMINDER":
+        return "Review your property in Compliance Vault Pro" if has_property else "Complete your setup"
+    if event_id == "ONBOARDING_DAY7_ACTIVATION_PUSH":
+        return "Your Compliance Vault Pro recap" if monitoring else "Activate monitoring"
     subjects = {
-        "ONBOARDING_DAY0_WELCOME": "Add your first property in Compliance Vault Pro",
-        "ONBOARDING_DAY1_SETUP_REMINDER": "Complete your setup",
         "ONBOARDING_DAY2_COMPLIANCE_EDUCATION": "Track your compliance requirements",
         "ONBOARDING_DAY3_PRODUCT_VALUE": "Your compliance dashboard",
         "ONBOARDING_DAY4_DOCUMENT_PACK_INTRO": "Landlord document packs",
         "ONBOARDING_DAY5_RISK_AWARENESS": "Why compliance alerts matter",
         "ONBOARDING_DAY6_CASE_EXAMPLE": "How we helped one landlord",
-        "ONBOARDING_DAY7_ACTIVATION_PUSH": "Activate monitoring",
     }
     return subjects.get(event_id, "Compliance Vault Pro")

@@ -53,7 +53,7 @@ def test_reminder_semantics_are_workflow_aware_and_non_forbidden():
     assert "declaration" in guided_line.lower()
     assert "assessment" in assess_line.lower()
     assert "condition" in cond_line.lower()
-    assert "inspection due soon" in doc_line.lower()
+    assert "action is due soon" in doc_line.lower()
 
     all_text = " ".join([guided_line, assess_line, cond_line, doc_line]).lower()
     assert "blocking compliance" not in all_text
@@ -275,15 +275,15 @@ def test_reminder_template_renders_grouped_sections_when_present():
             "other_reminders": [],
         },
     )
-    assert "Certificates &amp; Expiring Evidence" in html
-    assert "Declarations &amp; Tenancy Records" in html
-    assert "Assessments &amp; Reviews" in html
-    assert "Property Conditions &amp; Remediation" in html
-    assert "Other Compliance Actions" in html
-    assert "Certificates & Expiring Evidence:" in text
-    assert "Declarations & Tenancy Records:" in text
-    assert "Assessments & Reviews:" in text
-    assert "Property Conditions & Remediation:" in text
+    assert "Certificates, licences and registrations" in html
+    assert "Declarations and tenancy records" in html
+    assert "Assessments and reviews" in html
+    assert "Property conditions and remediation" in html
+    assert "Outstanding compliance obligations" in html
+    assert "Certificates, licences and registrations:" in text
+    assert "Declarations and tenancy records:" in text
+    assert "Assessments and reviews:" in text
+    assert "Property conditions and remediation:" in text
     lower_all = (html + "\n" + text).lower()
     assert "blocking compliance" not in lower_all
     assert "declaration verified" not in lower_all
@@ -318,7 +318,7 @@ def test_reminder_template_legacy_rendering_works_when_grouped_arrays_missing():
             "days_remaining": 3,
         },
     )
-    assert "This is a reminder that" in html
-    assert "This is a reminder that" in text
-    assert "Certificates &amp; Expiring Evidence" not in html
-    assert "Certificates & Expiring Evidence:" not in text
+    assert "This is a reminder about" in html
+    assert "This is a reminder about" in text
+    assert "Certificates, licences and registrations" not in html
+    assert "Certificates, licences and registrations:" not in text

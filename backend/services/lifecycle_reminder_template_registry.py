@@ -179,16 +179,23 @@ def lifecycle_reminder_subject(
     attention_kind: Optional[str],
     requirement_name: str,
     is_overdue: bool,
+    days_remaining: Optional[int] = None,
+    requirement_code: Optional[str] = None,
 ) -> str:
     try:
         from lifecycle_communication.resolver import resolve_reminder_subject
 
         row = {
             "requirement_name": requirement_name,
+            "requirement_code": requirement_code,
             "lifecycle_attention_kind": attention_kind,
             "attention_kind": attention_kind,
         }
-        return resolve_reminder_subject(row, is_overdue=is_overdue)
+        return resolve_reminder_subject(
+            row,
+            is_overdue=is_overdue,
+            days_remaining=days_remaining,
+        )
     except Exception:
         spec = lifecycle_reminder_spec(attention_kind)
         pattern = spec["subject_overdue"] if is_overdue else spec["subject_expiring"]

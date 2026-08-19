@@ -9,6 +9,7 @@ from services.billing_period_utils import (
     period_end_from_stripe_unix,
     period_end_stored_value_is_valid,
     period_start_from_stripe_subscription_dict,
+    subscription_id_from_stripe_invoice_dict,
 )
 
 
@@ -93,3 +94,42 @@ def test_coerce_any_timestamp_to_utc_datetime_handles_unix_iso_and_naive():
     assert out_iso is not None and out_iso.tzinfo == timezone.utc
     out_naive = coerce_any_timestamp_to_utc_datetime(datetime(2026, 4, 15, 12, 0, 0))
     assert out_naive is not None and out_naive.tzinfo == timezone.utc
+
+
+def test_subscription_id_from_pre_basil_invoice():
+    assert subscription_id_from_stripe_invoice_dict({"subscription": "sub_legacy"}) == "sub_legacy"
+    assert subscription_id_from_stripe_invoice_dict({"subscription": {"id": "sub_exp"}}) == "sub_exp"
+
+
+def test_subscription_id_from_basil_parent_subscription_details():
+    invoice = {
+        "id": "in_basil",
+        "parent": {
+            "type": "subscription_details",
+            "subscription_details": {"subscription": "sub_1U5pnUCF0O5oqdUzJd1Yj4jY"},
+        },
+    }
+    assert subscription_id_from_stripe_invoice_dict(invoice) == "sub_1U5pnUCF0O5oqdUzJd1Yj4jY"
+
+
+def test_subscription_id_from_basil_line_item_when_parent_missing():
+    invoice = {
+        "id": "in_line",
+        "lines": {
+            "data": [
+                {
+                    "parent": {
+                        "invoice_item_details": {
+                            "subscription": "sub_from_line",
+                        }
+                    }
+                }
+            ]
+        },
+    }
+    assert subscription_id_from_stripe_invoice_dict(invoice) == "sub_from_line"
+
+
+def test_subscription_id_absent_is_empty():
+    assert subscription_id_from_stripe_invoice_dict({}) == ""
+    assert subscription_id_from_stripe_invoice_dict(None) == ""

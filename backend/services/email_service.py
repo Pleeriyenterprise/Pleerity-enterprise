@@ -85,12 +85,14 @@ def _lifecycle_reminder_intro_html(model: Dict[str, Any], template_alias: EmailT
         context=model,
         due_date=model.get("due_date"),
         is_overdue=bool(model.get("is_overdue")),
+        days_remaining=model.get("days_remaining"),
+        days_overdue=model.get("days_overdue"),
     )
     sv = comm.get("surface_variants") or {}
     if sv.get("intro_html"):
         return str(sv["intro_html"])
     spec = lifecycle_reminder_spec(kind)
-    req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Certificate")
+    req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Compliance requirement")
     return spec["intro_html"].format(
         req_name=req_name,
         prop_addr=model.get("property_address", "Your property"),
@@ -116,12 +118,14 @@ def _lifecycle_reminder_intro_text(model: Dict[str, Any], template_alias: EmailT
         context=model,
         due_date=model.get("due_date"),
         is_overdue=bool(model.get("is_overdue")),
+        days_remaining=model.get("days_remaining"),
+        days_overdue=model.get("days_overdue"),
     )
     sv = comm.get("surface_variants") or {}
     if sv.get("intro_text"):
         return str(sv["intro_text"])
     spec = lifecycle_reminder_spec(kind)
-    req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Certificate")
+    req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Compliance requirement")
     return spec["intro_text"].format(
         req_name=req_name,
         prop_addr=model.get("property_address", "Your property"),
@@ -352,7 +356,41 @@ ONBOARDING_ALIASES = {
 }
 
 # Content per onboarding template: body (HTML), cta_label, cta_url_suffix (appended to portal base), why_received, header_title.
-def _get_onboarding_content(template_alias: EmailTemplateAlias) -> Dict[str, Any]:
+def _truthy_state(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    s = str(value or "").strip().lower()
+    return s in ("1", "true", "yes")
+
+
+def _get_onboarding_content(template_alias: EmailTemplateAlias, model: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    state = model if isinstance(model, dict) else {}
+    has_property = _truthy_state(state.get("has_added_property"))
+    has_docs = _truthy_state(state.get("has_uploaded_certificate"))
+    monitoring = _truthy_state(state.get("monitoring_enabled"))
+    jur = str(state.get("jurisdiction_label") or "").strip()
+    jur_known = _truthy_state(state.get("jurisdiction_known")) and bool(jur)
+
+    if jur_known and jur.lower() == "scotland":
+        day1_list = (
+            "<p>Pleerity can help you keep the safety certificates, registrations and records "
+            "that apply to your Scottish property in one place.</p>"
+        )
+    elif jur_known and jur.lower() == "england":
+        day1_list = (
+            "<p>Just a quick reminder to complete your setup. Pleerity can monitor key compliance items "
+            "for your properties in England, including:</p>"
+            "<ul><li>Gas Safety (CP12)</li><li>EICR</li><li>EPC</li>"
+            "<li>Fire alarm inspections</li><li>Legionella assessments</li></ul>"
+            "<p>You can mark any requirement as not applicable if it doesn't apply to your property.</p>"
+        )
+    else:
+        day1_list = (
+            "<p>Just a quick reminder to complete your setup. Pleerity can monitor "
+            "the safety certificates, registrations and records that apply to your property.</p>"
+            "<p>You can mark any requirement as not applicable if it doesn't apply.</p>"
+        )
+
     base = {
         "header_title": "Compliance Vault Pro",
         "why_received": "you have signed up for Compliance Vault Pro and we send occasional onboarding tips to help you get the most from your account.",
@@ -360,19 +398,27 @@ def _get_onboarding_content(template_alias: EmailTemplateAlias) -> Dict[str, Any
     content = {
         EmailTemplateAlias.ONBOARDING_DAY0_WELCOME: {
             **base,
-            "body": "<p>Now that you’re signed in, add your first property so Compliance Vault Pro can track certificates, renewals, and your compliance score.</p>",
-            "cta_label": "Add your first property",
+            "body": (
+                "<p>Your first property is on the account. Next, add documents so we can track dates and reminders.</p>"
+                if has_property
+                else "<p>Now that you’re signed in, add your first property so Compliance Vault Pro can track certificates, renewals, and your compliance score.</p>"
+            ),
+            "cta_label": "View your properties" if has_property else "Add your first property",
             "cta_url_suffix": "/properties",
         },
         EmailTemplateAlias.ONBOARDING_DAY1_SETUP_REMINDER: {
             **base,
-            "body": "<p>Just a quick reminder to complete your setup. Pleerity can monitor key compliance items for your properties, including:</p><ul><li>Gas Safety (CP12)</li><li>EICR</li><li>EPC</li><li>Fire alarm inspections</li><li>Legionella assessments</li></ul><p>You can mark any requirement as not applicable if it doesn't apply to your property.</p>",
-            "cta_label": "Continue setup",
+            "body": (
+                f"{day1_list}<p>You have already added a property. Continue by uploading records or reviewing requirements.</p>"
+                if has_property
+                else day1_list
+            ),
+            "cta_label": "Review your property" if has_property else "Continue setup",
             "cta_url_suffix": "/properties",
         },
         EmailTemplateAlias.ONBOARDING_DAY2_COMPLIANCE_EDUCATION: {
             **base,
-            "body": "<p>We track the core compliance requirements that landlords typically need—certificates, renewals, and expiry dates. If something isn't relevant to a property, you can mark it as not applicable.</p>",
+            "body": "<p>We track the core compliance requirements that landlords typically need—certificates, registrations, renewals, and review dates. If something isn't relevant to a property, you can mark it as not applicable.</p>",
             "cta_label": "Track these automatically in Pleerity",
             "cta_url_suffix": "/properties",
         },
@@ -390,21 +436,36 @@ def _get_onboarding_content(template_alias: EmailTemplateAlias) -> Dict[str, Any
         },
         EmailTemplateAlias.ONBOARDING_DAY5_RISK_AWARENESS: {
             **base,
-            "body": "<p>Missing or expired compliance certificates can lead to legal penalties, insurance issues, and tenant disputes. Enabling compliance alerts helps you renew in good time.</p>",
-            "cta_label": "Enable compliance alerts",
+            "body": (
+                "<p>Missing or expired compliance records can lead to legal penalties, insurance issues, and tenant disputes. "
+                "You already have monitoring enabled — keep your records up to date in the portal.</p>"
+                if monitoring
+                else "<p>Missing or expired compliance certificates can lead to legal penalties, insurance issues, and tenant disputes. Enabling compliance alerts helps you renew in good time.</p>"
+            ),
+            "cta_label": "View notification settings" if monitoring else "Enable compliance alerts",
             "cta_url_suffix": "/settings/notifications",
         },
         EmailTemplateAlias.ONBOARDING_DAY6_CASE_EXAMPLE: {
             **base,
             "body": "<p>One landlord nearly missed a Gas Safety renewal. Pleerity detected the upcoming expiry and sent a reminder 10 days early—so they renewed in time with no stress.</p>",
-            "cta_label": "Start monitoring your property",
+            "cta_label": "View your properties" if has_property else "Start monitoring your property",
             "cta_url_suffix": "/properties",
         },
         EmailTemplateAlias.ONBOARDING_DAY7_ACTIVATION_PUSH: {
             **base,
-            "body": "<p>Quick recap: certificate tracking, automated reminders, compliance score, and secure document storage are all ready when you activate monitoring for your properties.</p>",
-            "cta_label": "Activate monitoring",
-            "cta_url_suffix": "/properties",
+            "body": (
+                "<p>Quick recap: tracking, automated reminders, compliance score, and secure document storage are available in your portal. "
+                "Monitoring is already enabled for your account.</p>"
+                if monitoring
+                else (
+                    "<p>Quick recap: certificate tracking, automated reminders, compliance score, and secure document storage are ready. "
+                    "Activate monitoring when you want ongoing alerts for your properties.</p>"
+                    if has_property
+                    else "<p>Quick recap: certificate tracking, automated reminders, compliance score, and secure document storage are all ready when you activate monitoring for your properties.</p>"
+                )
+            ),
+            "cta_label": "Open your dashboard" if monitoring or has_docs else ("View your properties" if has_property else "Activate monitoring"),
+            "cta_url_suffix": "/dashboard" if monitoring else "/properties",
         },
     }
     return content.get(template_alias, base)
@@ -1127,24 +1188,32 @@ class EmailService:
             spec = lifecycle_reminder_spec(_attention_kind_for_reminder_alias(template_alias, model))
             days_overdue = model.get("days_overdue")
             days_remaining = model.get("days_remaining", 0)
-            if days_overdue is not None and days_overdue >= 0:
-                urgency_line = f"<p><strong>This requirement is {'overdue' if days_overdue == 0 else f'{days_overdue} days overdue'}.</strong></p>"
+            is_overdue_model = bool(model.get("is_overdue")) or (days_overdue is not None and days_overdue >= 0)
+            if is_overdue_model:
+                od = days_overdue if days_overdue is not None else 0
+                urgency_line = f"<p><strong>This requirement is {'overdue' if od == 0 else f'{od} days overdue'}.</strong></p>"
             else:
                 urgency_line = f"<p><strong>{days_remaining}</strong> days remaining to complete this requirement.</p>"
-            grouped_sections_html = _build_grouped_reminder_sections_html(model)
-            grouped_block = f"{grouped_sections_html}" if grouped_sections_html else ""
+            semantic = str(model.get("semantic_line") or "").strip()
+            semantic_html = f"<p>{html_module.escape(semantic)}</p>" if semantic else ""
+            grouped_block = ""
+            if not model.get("single_requirement_reminder"):
+                grouped_sections_html = _build_grouped_reminder_sections_html(model)
+                grouped_block = f"{grouped_sections_html}" if grouped_sections_html else ""
             body = (
                 f"<p>{_lifecycle_reminder_intro_html(model, template_alias)}</p>"
                 f"{urgency_line}"
+                f"{semantic_html}"
                 f"{grouped_block}"
             )
             greeting = _format_greeting(model.get("client_name"))
+            cta = str(model.get("cta_label") or "").strip() or CTA_OPEN_PORTAL_DETAILS
             return _customer_email_html(
                 model,
                 greeting=greeting,
                 body_html=body,
                 header_title=spec["header_title"],
-                cta_label=CTA_OPEN_PORTAL_DETAILS,
+                cta_label=cta,
                 cta_url=model.get('portal_link', '#'),
                 why_received=spec["why_received"],
                 show_preferences_link=True,
@@ -1862,7 +1931,7 @@ class EmailService:
             return build_internal_alert_html(model)
         elif template_alias in ONBOARDING_ALIASES:
             portal_base = (model.get("portal_base_url") or model.get("portal_link") or _email_app_base()).strip().rstrip("/")
-            c = _get_onboarding_content(template_alias)
+            c = _get_onboarding_content(template_alias, model)
             cta_url = (portal_base + c.get("cta_url_suffix", "/dashboard")) if portal_base else "#"
             greeting = _format_greeting(model.get("client_name"))
             ref_badge = ""
@@ -1879,6 +1948,71 @@ class EmailService:
                 why_received=c.get("why_received", "you have an account with Pleerity."),
                 show_preferences_link=True,
                 preferences_url=_notification_preferences_url(model) or None,
+                customer_reference=model.get("customer_reference"),
+            )
+        elif template_alias == EmailTemplateAlias.PAYMENT_FAILED:
+            billing_url = str(model.get("billing_portal_link") or model.get("cta_url") or "#").strip() or "#"
+            retry_date = str(model.get("retry_date") or "").strip()
+            plan_code = str(model.get("plan_code") or model.get("subscription_plan") or "").strip()
+            ent = str(model.get("entitlement_status") or "").strip().upper()
+            access_suspended = bool(model.get("access_suspended")) or ent == "DISABLED"
+            plan_line = f"<p>This relates to your <strong>{html_module.escape(plan_code)}</strong> subscription.</p>" if plan_code else "<p>This relates to the subscription on your Pleerity account.</p>"
+            if retry_date:
+                retry_html = (
+                    f"<p>Stripe is scheduled to retry this payment on <strong>{html_module.escape(retry_date)}</strong>. "
+                    "That is Stripe's retry time, not a Pleerity grace-period end.</p>"
+                )
+            else:
+                retry_html = "<p>Stripe may retry this payment. We do not have a confirmed retry date to share.</p>"
+            if access_suspended:
+                access_html = "<p>Paid-feature access is currently unavailable. Update your billing details to restore access.</p>"
+            else:
+                access_html = "<p>Your account access has not been suspended.</p>"
+            body = (
+                "<p>We were unable to collect a subscription payment.</p>"
+                f"{plan_line}"
+                f"{access_html}"
+                f"{retry_html}"
+                "<p>Please update or review your billing details so we can complete payment.</p>"
+            )
+            greeting = _format_greeting(model.get("client_name"))
+            return _customer_email_html(
+                model,
+                greeting=greeting,
+                body_html=body,
+                header_title="Payment unsuccessful",
+                cta_label=str(model.get("cta_label") or "Update billing details").strip() or "Update billing details",
+                cta_url=billing_url,
+                why_received="a subscription payment for your account was unsuccessful.",
+                show_preferences_link=False,
+                customer_reference=model.get("customer_reference"),
+            )
+        elif template_alias == EmailTemplateAlias.SUBSCRIPTION_CANCELED:
+            billing_url = str(model.get("billing_portal_link") or model.get("cta_url") or "#").strip() or "#"
+            access_html = str(model.get("access_body_html") or "").strip()
+            if not access_html:
+                date_disp = str(model.get("access_end_date") or "").strip()
+                if date_disp:
+                    access_html = (
+                        f"<p>Your subscription has been cancelled. Paid-feature access ended on "
+                        f"<strong>{html_module.escape(date_disp)}</strong>.</p>"
+                    )
+                else:
+                    access_html = (
+                        "<p>Your subscription has been cancelled and paid-feature access is no longer available. "
+                        "We cannot confirm a precise access-end date from the billing records we hold.</p>"
+                    )
+            body = access_html + "<p>You can review billing and restart a subscription from Billing if you wish to continue.</p>"
+            greeting = _format_greeting(model.get("client_name"))
+            return _customer_email_html(
+                model,
+                greeting=greeting,
+                body_html=body,
+                header_title=str(model.get("subject") or "Your subscription has been cancelled").strip(),
+                cta_label=str(model.get("cta_label") or "Open Billing").strip() or "Open Billing",
+                cta_url=billing_url,
+                why_received="your subscription was cancelled.",
+                show_preferences_link=False,
                 customer_reference=model.get("customer_reference"),
             )
         else:
@@ -2078,12 +2212,18 @@ This message is informational; the portal is authoritative for obligation state 
             spec = lifecycle_reminder_spec(_attention_kind_for_reminder_alias(template_alias, model))
             days_overdue = model.get("days_overdue")
             days_remaining = model.get("days_remaining", 0)
-            if days_overdue is not None and days_overdue >= 0:
-                urgency_line = f"This requirement is {'overdue' if days_overdue == 0 else f'{days_overdue} days overdue'}."
+            is_overdue_model = bool(model.get("is_overdue")) or (days_overdue is not None and days_overdue >= 0)
+            if is_overdue_model:
+                od = days_overdue if days_overdue is not None else 0
+                urgency_line = f"This requirement is {'overdue' if od == 0 else f'{od} days overdue'}."
             else:
                 urgency_line = f"{days_remaining} days remaining to complete this requirement."
-            grouped_sections_text = _build_grouped_reminder_sections_text(model)
-            grouped_block = f"\n\n{grouped_sections_text}" if grouped_sections_text else ""
+            semantic = str(model.get("semantic_line") or "").strip()
+            grouped_block = ""
+            if not model.get("single_requirement_reminder"):
+                grouped_sections_text = _build_grouped_reminder_sections_text(model)
+                grouped_block = f"\n\n{grouped_sections_text}" if grouped_sections_text else ""
+            cta = str(model.get("cta_label") or "").strip() or "Open portal for details"
             return f"""
 {spec['header_title']}
 =========================
@@ -2094,9 +2234,10 @@ This message is informational; the portal is authoritative for obligation state 
 {_lifecycle_reminder_intro_text(model, template_alias)}
 
 {urgency_line}
+{semantic}
 {grouped_block}
 
-Open portal for details: {model.get('portal_link', '#')}
+{cta}: {model.get('portal_link', '#')}
 {footer}
             """
         elif template_alias == EmailTemplateAlias.ADMIN_INVITE:
@@ -2678,7 +2819,7 @@ Always review the output and seek professional advice for legal matters.
                 lines.insert(2, f"Reference: {model['customer_reference']}")
             return "\n".join(lines) + "\n" + footer
         elif template_alias in ONBOARDING_ALIASES:
-            c = _get_onboarding_content(template_alias)
+            c = _get_onboarding_content(template_alias, model)
             body_html = c.get("body", "")
             body_text = body_html.replace("</p>", "\n").replace("<p>", "").replace("<ul>", "\n").replace("</ul>", "").replace("<li>", "• ").replace("</li>", "\n")
             body_text = html_module.unescape(body_text.strip())
@@ -2709,12 +2850,68 @@ Compliance Vault Pro
 
 {_format_greeting(model.get("client_name"))}
 
-{model.get('message', 'You have a new notification from Compliance Vault Pro.')}
+{model.get('message') or model.get('body') or 'You have a new notification from Compliance Vault Pro.'}
 {footer}
 
 --
 {model.get('company_name', 'Pleerity Enterprise Ltd')}
 {model.get('tagline', 'AI-Driven Solutions & Compliance')}
+            """
+        elif template_alias == EmailTemplateAlias.PAYMENT_FAILED:
+            billing_url = str(model.get("billing_portal_link") or model.get("cta_url") or "#").strip() or "#"
+            retry_date = str(model.get("retry_date") or "").strip()
+            plan_code = str(model.get("plan_code") or "").strip()
+            ent = str(model.get("entitlement_status") or "").strip().upper()
+            access_suspended = bool(model.get("access_suspended")) or ent == "DISABLED"
+            plan_line = f"This relates to your {plan_code} subscription." if plan_code else "This relates to the subscription on your Pleerity account."
+            retry_line = (
+                f"Stripe is scheduled to retry this payment on {retry_date}. That is Stripe's retry time, not a Pleerity grace-period end."
+                if retry_date
+                else "Stripe may retry this payment. We do not have a confirmed retry date to share."
+            )
+            access_line = (
+                "Paid-feature access is currently unavailable. Update your billing details to restore access."
+                if access_suspended
+                else "Your account access has not been suspended."
+            )
+            return f"""
+Payment unsuccessful
+{ref_line}
+
+{_format_greeting(model.get("client_name"))}
+
+We were unable to collect a subscription payment.
+{plan_line}
+{access_line}
+{retry_line}
+
+Please update or review your billing details so we can complete payment.
+Update billing details: {billing_url}
+{footer}
+            """
+        elif template_alias == EmailTemplateAlias.SUBSCRIPTION_CANCELED:
+            billing_url = str(model.get("billing_portal_link") or model.get("cta_url") or "#").strip() or "#"
+            access_text = str(model.get("access_body_text") or "").strip()
+            if not access_text:
+                date_disp = str(model.get("access_end_date") or "").strip()
+                if date_disp:
+                    access_text = f"Your subscription has been cancelled. Paid-feature access ended on {date_disp}."
+                else:
+                    access_text = (
+                        "Your subscription has been cancelled and paid-feature access is no longer available. "
+                        "We cannot confirm a precise access-end date from the billing records we hold."
+                    )
+            return f"""
+Your subscription has been cancelled
+{ref_line}
+
+{_format_greeting(model.get("client_name"))}
+
+{access_text}
+
+You can review billing and restart a subscription from Billing if you wish to continue.
+Open Billing: {billing_url}
+{footer}
             """
         else:
             return f"""

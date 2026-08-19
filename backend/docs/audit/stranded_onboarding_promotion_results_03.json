@@ -194,5 +194,71 @@
   "route_ok": true,
   "landing_ok": true,
   "finished_at": "2026-08-18T14:37:13.643486+00:00",
-  "verdict": "GO_FOR_STRANDED_ONBOARDING_PRODUCTION_PROMOTION"
+  "verdict": "GO_FOR_STRANDED_ONBOARDING_PRODUCTION_PROMOTION",
+  "so01_authority": "STRANDED_ONBOARDING_VERIFIED",
+  "so01_sha": "7b2f83fd5fd77cf8a844fcd9b897ebc43f7fff50",
+  "so01_evidence": "b3c2d76b",
+  "gate": "GO_FOR_STRANDED_ONBOARDING_PRODUCTION_PROMOTION",
+  "promotion": {
+    "rollback_sha": "b6b7ddf553482fa2797f317ce69296b21a494230",
+    "merge_sha": "1fcb5fbcdf99ded01a45fe2fcf1123587efd117d",
+    "merge_parents": [
+      "b6b7ddf553482fa2797f317ce69296b21a494230",
+      "a803af04205710a3280322beeb7d6b5aa7aa2180"
+    ],
+    "fast_forward": false,
+    "force_push": false,
+    "backend": {
+      "service": "pleerity-api-production",
+      "service_id": "srv-d8m59gmgvqtc73cmbu6g",
+      "deploy_id": "dep-da270tpsrm7s738h0mhg",
+      "status": "live",
+      "commit_sha": "1fcb5fbcdf99ded01a45fe2fcf1123587efd117d",
+      "environment": "production",
+      "stripe_mode": "live",
+      "db_name": "pleerity_production"
+    },
+    "frontend": {
+      "project": "pleerity-enterprise",
+      "domain": "https://pleerityenterprise.co.uk",
+      "deployment_id": "dpl_7aMvyBNxQX3mpFXC1CfuLJ2WLNDD",
+      "deployment_url_host": "pleerity-enterprise-59iauw4f5",
+      "bundle": "/static/js/main.b993e884.js",
+      "api_host": "https://api.pleerityenterprise.co.uk",
+      "staging_api_in_bundle": false,
+      "allow_promotion_codes": false
+    }
+  },
+  "observation": {
+    "started_at": "2026-08-18T14:52:00+00:00",
+    "closed_at": "2026-08-18T15:40:24.827281+00:00",
+    "window_minutes": 46,
+    "closing_health": {
+      "status": "healthy",
+      "environment": "production",
+      "readiness_stage": "ready",
+      "degraded": false,
+      "scheduler_reason": "heartbeat_fresh",
+      "last_heartbeat_at": "2026-08-18T15:36:41.161051+00:00"
+    },
+    "closing_version": {
+      "commit_sha": "1fcb5fbcdf99ded01a45fe2fcf1123587efd117d",
+      "environment": "production"
+    },
+    "http": {
+      "cutover_502_at": "2026-08-18T14:51:00Z",
+      "cutover_502_count": 1,
+      "5xx_after_14:52Z": 0,
+      "smoke_404_unknown_session": 3,
+      "smoke_400_malformed_session": 1,
+      "error_level_app_logs": 0
+    },
+    "frontend_bundle_after_observation": "/static/js/main.b993e884.js",
+    "success_route_after_observation": "https://pleerityenterprise.co.uk/checkout/success?session_id=cs_test_safe_reference_0001",
+    "p0_p1_attributable": false
+  },
+  "conditions": [
+    "Staging project pleerity-enterprise-9jjg Git Production remains on main; default 9jjg alias may track a later Production deploy that still uses the staging API. Customer production project pleerity-enterprise is unaffected."
+  ],
+  "final_verdict": "STRANDED_ONBOARDING_PRODUCTION_DEPLOYMENT_SUCCESSFUL_WITH_CONDITIONS"
 }
