@@ -39,6 +39,7 @@ from services.billing_period_utils import (
     period_start_from_stripe_subscription_dict,
     period_start_from_stripe_unix,
     normalize_stored_period_end_for_api,
+    subscription_id_from_stripe_invoice_dict,
 )
 from services.billing_stripe_sync_service import (
     retrieve_stripe_subscription_dict,
@@ -2004,7 +2005,7 @@ class StripeWebhookService:
         """Handle invoice.paid / invoice.payment_succeeded — renewal or recovery after failure."""
         db = database.get_db()
         stripe_customer_id = invoice.get("customer")
-        subscription_id = invoice.get("subscription")
+        subscription_id = subscription_id_from_stripe_invoice_dict(invoice)
         event_type = (event or {}).get("type") or "invoice.paid"
         logger.info(
             "HANDLER_START event.type=%s stripe_customer_id=%s subscription_id=%s",
@@ -2504,7 +2505,7 @@ class StripeWebhookService:
         """
         db = database.get_db()
         stripe_customer_id = invoice.get("customer")
-        subscription_id = invoice.get("subscription")
+        subscription_id = subscription_id_from_stripe_invoice_dict(invoice)
         logger.info(
             "HANDLER_START event.type=invoice.payment_failed stripe_customer_id=%s subscription_id=%s checkout_session_id=(n/a) metadata.client_id=(from_billing) computed_client_id=(lookup)",
             stripe_customer_id, subscription_id,
