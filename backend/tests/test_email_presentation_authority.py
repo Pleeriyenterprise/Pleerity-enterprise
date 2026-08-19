@@ -78,7 +78,7 @@ class TestStatusColourAuthority:
             },
         )
         assert f'color: {RAG_AMBER_HEX}' in html
-        assert "AMBER" in html
+        assert "Needs review" in html
 
 
 class TestBrandingAndDomain:

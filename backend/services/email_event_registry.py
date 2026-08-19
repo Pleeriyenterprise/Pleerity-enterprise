@@ -29,6 +29,7 @@ EMAIL_EVENTS: Dict[str, Dict[str, Any]] = {
         "category": "system_critical",
         "template_key": "PASSWORD_CHANGED_CONFIRMATION",
         "trigger": "password_successfully_updated (e.g. profile change-password)",
+        "lifecycle_status": "UNKNOWN_RUNTIME",
     },
     # --- PORTAL ACCESS EVENTS ---
     "PORTAL_INVITATION_ADMIN": {
@@ -76,6 +77,7 @@ EMAIL_EVENTS: Dict[str, Dict[str, Any]] = {
         "category": "compliance_notifications",
         "template_key": "DOCUMENT_MISSING_ALERT",
         "trigger": "required_documents_missing (template ready; trigger when implemented)",
+        "lifecycle_status": "NOT_IMPLEMENTED",
     },
     # --- DOCUMENT VAULT EVENTS ---
     "DOCUMENT_UPLOADED_CONFIRMATION": {
@@ -107,7 +109,8 @@ EMAIL_EVENTS: Dict[str, Dict[str, Any]] = {
     "RENEWAL_REMINDER": {
         "category": "reporting_notifications",
         "template_key": "RENEWAL_REMINDER",
-        "trigger": "scheduler; jobs send_renewal_reminders",
+        "trigger": "legacy registry id; live subscription renewal uses SUBSCRIPTION_RENEWAL_REMINDER_7D / _3D",
+        "lifecycle_status": "LEGACY_ALIAS",
     },
     # --- LANDLORD ONBOARDING SEQUENCE (7-day behaviour-aware) ---
     "ONBOARDING_DAY0_WELCOME": {
@@ -164,7 +167,8 @@ EMAIL_EVENTS: Dict[str, Dict[str, Any]] = {
     "DOCUMENT_PACK_DELIVERY": {
         "category": "system_critical",
         "template_key": "ORDER_DELIVERED",
-        "trigger": "order_delivery_service when documents ready",
+        "trigger": "legacy registry id; live delivery uses ORDER_DOCUMENTS_READY (do not rename historical key)",
+        "lifecycle_status": "SUPERSEDED",
     },
     # --- BILLING EVENTS ---
     "SUBSCRIPTION_STARTED": {
@@ -216,6 +220,7 @@ EMAIL_EVENTS: Dict[str, Dict[str, Any]] = {
         "category": "system_critical",
         "template_key": "INVOICE_AVAILABLE",
         "trigger": "invoice_available (template ready; trigger when implemented)",
+        "lifecycle_status": "NOT_IMPLEMENTED",
     },
     "SUBSCRIPTION_CANCELLED": {
         "category": "system_critical",
@@ -232,11 +237,13 @@ EMAIL_EVENTS: Dict[str, Dict[str, Any]] = {
         "category": "internal",
         "template_key": "SUPPORT_TICKET_UPDATED",
         "trigger": "support_ticket_updated (template ready; trigger when implemented)",
+        "lifecycle_status": "NOT_IMPLEMENTED",
     },
     "SUPPORT_TICKET_RESOLVED": {
         "category": "internal",
         "template_key": "SUPPORT_TICKET_RESOLVED",
         "trigger": "support_ticket_resolved (template ready; trigger when implemented)",
+        "lifecycle_status": "NOT_IMPLEMENTED",
     },
     # --- MARKETING EVENTS ---
     "FEATURE_ANNOUNCEMENT": {
