@@ -1,0 +1,130 @@
+{
+  "programme": "CUSTOMER-COMMUNICATION-QUALITY-CLEANUP-05",
+  "verdict": "CUSTOMER_COMMUNICATION_CLEANUP_INCOMPLETE",
+  "verdict_reason": "Implementation is on develop at 2b2bae4c; staging /api/version still observed at 0097b85f; Render MCP unavailable so deploy id and runtime proofs of resolve_greeting / collision / support send are missing.",
+  "PRODUCTION_04_EVIDENCE_PRESERVED": true,
+  "EVIDENCE_COMMIT_SHA": "9ca92228",
+  "UNRELATED_FILES_EXCLUDED": true,
+  "IMPLEMENTATION_SHA": "2b2bae4cea8723ab1e76eae0b7b15c268072992a",
+    "implementation_commits": [
+      "9ca92228e064597728959ef6d1e112b30b867694",
+      "c68e4b5e5f1fec153979ea83e08497cfd4180c1d",
+      "8cafa61d94e5008ef5a17e3983cce17ebcf2f555",
+      "2b2bae4cea8723ab1e76eae0b7b15c268072992a"
+    ],
+  "STAGING_RUNTIME_SHA_LAST_OBSERVED": "0097b85f041970719c20c2670003a29ddf001e26",
+  "DEPLOYMENT_ID": null,
+  "production_touched": false,
+  "main_merged": false,
+  "production_version": {
+    "commit_sha": "626f35de80ca71dd03b4782552126213cab414b4",
+    "environment": "production"
+  },
+  "resolve_greeting": {
+    "root_cause": "finalize_db_email_html called resolve_greeting without import",
+    "fixed": true,
+    "runtime_proven_on_staging": false
+  },
+  "compliance_alert": {
+    "purpose": "property dashboard state-change (degradation)",
+    "daily_reminder_collision": "suppressed when daily reminders enabled and exactly one contributing requirement",
+    "not_globally_disabled": true
+  },
+  "tests": {
+    "focused_passed": 86,
+    "focused_skipped": 22,
+    "focused_failed": 0,
+    "orchestrator_resolve_greeting_four": "PASSED",
+    "PRE_EXISTING_FAILURES": [
+      "tests/test_monthly_digest_email_copy.py::test_monthly_digest_email_html_executive_structure_no_alert_spam",
+      "tests/test_monthly_digest_email_copy.py::test_monthly_digest_full_html_cta_and_attachment_note"
+    ],
+    "NEW_FAILURES": []
+  },
+  "cta_verdict": "CTA_END_TO_END_VERIFIED_WITH_GAPS",
+  "PRODUCTION_VOLUME_OBSERVATION": "UNAVAILABLE",
+  "P2_remaining": [
+    "Staging runtime certification of DB-template greeting and COMPLIANCE_ALERT suppression not yet executed on 2b2bae4c"
+  ],
+  "P3_deferred": [
+    "Emoji subjects",
+    "Destructive deletion of dead notification keys",
+    "Chatbot FAQ 24-hour wording",
+    "FEATURE_ANNOUNCEMENT / PRODUCT_UPDATE / COMPLIANCE_SCORE_UPDATE unused events",
+    "Full CTA click-through for every order/quote template"
+  ],
+  "matrix": [
+    {
+      "finding": "resolve_greeting",
+      "previous_severity": "P2",
+      "runtime_reachable": true,
+      "fix": "import canonical greeting in finalize_db_email_html",
+      "staging_proof": "PENDING",
+      "residual": "needs live DB-fragment send on new SHA",
+      "verdict": "INCOMPLETE"
+    },
+    {
+      "finding": "COMPLIANCE_ALERT collision",
+      "previous_severity": "P2/P3",
+      "runtime_reachable": true,
+      "fix": "suppress single-requirement alert when daily reminders on",
+      "staging_proof": "PENDING",
+      "residual": "multi-requirement alerts still send (intended)",
+      "verdict": "INCOMPLETE"
+    },
+    {
+      "finding": "Tenant terminology",
+      "previous_severity": "P2/P3",
+      "runtime_reachable": true,
+      "fix": "plain-language labels; TENANT_INVITE copy",
+      "staging_proof": "UNIT",
+      "residual": "none material",
+      "verdict": "PASS_LOCAL"
+    },
+    {
+      "finding": "Support acknowledgement",
+      "previous_severity": "P2/P3",
+      "runtime_reachable": true,
+      "fix": "no invented SLA; /help CTA",
+      "staging_proof": "PENDING",
+      "residual": "chatbot FAQ 24h deferred; CTA DESTINATION_ONLY",
+      "verdict": "PASS_LOCAL"
+    },
+    {
+      "finding": "Dead keys",
+      "previous_severity": "P3",
+      "runtime_reachable": false,
+      "fix": "lifecycle_status notes only",
+      "staging_proof": "N/A",
+      "residual": "keys not deleted",
+      "verdict": "DEFERRED_WITH_REASON"
+    },
+    {
+      "finding": "Registry drift",
+      "previous_severity": "P3",
+      "runtime_reachable": false,
+      "fix": "legacy/unimplemented annotations",
+      "staging_proof": "N/A",
+      "residual": "aliases preserved",
+      "verdict": "PASS_LOCAL"
+    },
+    {
+      "finding": "Onboarding Day 2+",
+      "previous_severity": "P2/P3",
+      "runtime_reachable": true,
+      "fix": "state-aware educational copy",
+      "staging_proof": "UNIT",
+      "residual": "portfolio-wide onboarding job not run",
+      "verdict": "PASS_LOCAL"
+    },
+    {
+      "finding": "Documentation drift",
+      "previous_severity": "P3",
+      "runtime_reachable": false,
+      "fix": "inventory/matrix/presentation overlay",
+      "staging_proof": "N/A",
+      "residual": "historical 01-04 not rewritten",
+      "verdict": "PASS_LOCAL"
+    }
+  ]
+}

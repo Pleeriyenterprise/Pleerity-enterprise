@@ -214,7 +214,7 @@ def test_build_public_ticket_created_response_includes_reference_and_sla():
     assert body["ticket_id"] == "TKT-123"
     assert body["conversation_id"] == "CONV-456"
     assert body["response_channel"] == "email"
-    assert "24 hours" in body["response_window"]
+    assert "no guaranteed" in body["response_window"]
     assert body["transcript_included"] is True
     m = body["message"]
     assert "TKT-123" in m

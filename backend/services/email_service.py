@@ -26,6 +26,7 @@ from services.scoring_explanation_copy import email_score_delta_line
 from services.lifecycle_reminder_template_registry import lifecycle_reminder_spec
 from email_presentation.greeting import resolve_greeting as _resolve_greeting
 from email_presentation.status_colors import (
+    customer_facing_status_label,
     enrich_affected_properties,
     rag_legend_html,
     rag_status_chip_html,
@@ -418,37 +419,40 @@ def _get_onboarding_content(template_alias: EmailTemplateAlias, model: Optional[
         },
         EmailTemplateAlias.ONBOARDING_DAY2_COMPLIANCE_EDUCATION: {
             **base,
-            "body": "<p>We track the core compliance requirements that landlords typically need—certificates, registrations, renewals, and review dates. If something isn't relevant to a property, you can mark it as not applicable.</p>",
-            "cta_label": "Track these automatically in Pleerity",
+            "body": (
+                "<p>Requirements for a property depend on where it is and how it is let. Pleerity helps you track the certificates, registrations, renewals, and review dates that apply — you can mark anything that is not relevant as not applicable.</p>"
+                if has_property
+                else "<p>Requirements depend on where a property is and how it is let. When you add a property, Pleerity helps you track the certificates, registrations, and review dates that apply. You can mark anything that is not relevant as not applicable.</p>"
+            ),
+            "cta_label": "Review your requirements" if has_property else "Add a property to start tracking",
             "cta_url_suffix": "/properties",
         },
         EmailTemplateAlias.ONBOARDING_DAY3_PRODUCT_VALUE: {
             **base,
-            "body": "<p>Pleerity's automation helps you stay on top of compliance: certificate monitoring, automated reminders, a compliance score per property, and secure document storage—all in one place.</p>",
-            "cta_label": "View your compliance dashboard",
+            "body": "<p>In one place you can store documents, see upcoming dates, and receive reminders for items that still need attention. The portal is the live picture of what has been recorded — not a legal certificate.</p>",
+            "cta_label": "Open your dashboard" if has_property else "See your dashboard",
             "cta_url_suffix": "/dashboard",
         },
         EmailTemplateAlias.ONBOARDING_DAY4_DOCUMENT_PACK_INTRO: {
             **base,
-            "body": "<p>Landlord document packs can help you with tenancy agreements, inventory forms, compliance declarations, and other common paperwork—all drafted to save you time.</p>",
-            "cta_label": "View landlord document packs",
+            "body": "<p>If you use landlord document packs, they can help with common paperwork such as tenancy agreements and inventories. Availability depends on your account. These packs are documents to review — they are not legal advice.</p>",
+            "cta_label": "View available document packs",
             "cta_url_suffix": "/services",
         },
         EmailTemplateAlias.ONBOARDING_DAY5_RISK_AWARENESS: {
             **base,
             "body": (
-                "<p>Missing or expired compliance records can lead to legal penalties, insurance issues, and tenant disputes. "
-                "You already have monitoring enabled — keep your records up to date in the portal.</p>"
+                "<p>Keeping records current helps you see what still needs attention. Monitoring is already on for your account — review dates and documents in the portal when something changes.</p>"
                 if monitoring
-                else "<p>Missing or expired compliance certificates can lead to legal penalties, insurance issues, and tenant disputes. Enabling compliance alerts helps you renew in good time.</p>"
+                else "<p>Keeping records current helps you see upcoming dates and anything that still needs attention. You can turn on reminders in notification settings when you are ready.</p>"
             ),
-            "cta_label": "View notification settings" if monitoring else "Enable compliance alerts",
+            "cta_label": "View notification settings" if monitoring else "Open notification settings",
             "cta_url_suffix": "/settings/notifications",
         },
         EmailTemplateAlias.ONBOARDING_DAY6_CASE_EXAMPLE: {
             **base,
-            "body": "<p>One landlord nearly missed a Gas Safety renewal. Pleerity detected the upcoming expiry and sent a reminder 10 days early—so they renewed in time with no stress.</p>",
-            "cta_label": "View your properties" if has_property else "Start monitoring your property",
+            "body": "<p>When a certificate date is approaching, a reminder can point you to that item in the portal so you can renew or upload evidence in good time. Reminders follow the dates on your records — they are not legal advice.</p>",
+            "cta_label": "View your properties" if has_property else "Add a property",
             "cta_url_suffix": "/properties",
         },
         EmailTemplateAlias.ONBOARDING_DAY7_ACTIVATION_PUSH: {
@@ -1179,7 +1183,7 @@ class EmailService:
                 ref_badge=ref_badge,
                 cta_label=CTA_OPEN_PORTAL,
                 cta_url=model.get('portal_link', '#'),
-                why_received="compliance monitoring is enabled for your account and a property dashboard indicator changed.",
+                why_received="a property's overall compliance picture changed and may need a review in the portal.",
                 show_preferences_link=True,
                 preferences_url=_notification_preferences_url(model) or None,
                 customer_reference=customer_ref or None,
@@ -1221,7 +1225,16 @@ class EmailService:
                 customer_reference=model.get('customer_reference'),
             )
         elif template_alias == EmailTemplateAlias.TENANT_INVITE:
-            body = "<p>Your landlord has invited you to view the compliance status of your rental property.</p><p>The tenant portal allows you to:</p><ul style=\"color: #64748b;\"><li>View property compliance status (GREEN/AMBER/RED)</li><li>See certificate expiry dates</li><li>Track overall compliance health</li></ul><p style=\"color: #666; font-size: 14px;\">This link expires in 7 days. If you have questions, please contact your landlord.</p>"
+            body = (
+                "<p>Your landlord has invited you to view records for your rental property.</p>"
+                "<p>The tenant portal lets you:</p>"
+                "<ul style=\"color: #64748b;\">"
+                "<li>See whether property records look in order, need a review, or need action</li>"
+                "<li>See certificate and document dates that your landlord has shared</li>"
+                "<li>Download documents they have made available to you</li>"
+                "</ul>"
+                "<p style=\"color: #666; font-size: 14px;\">This link expires in 7 days. If you have questions, please contact your landlord.</p>"
+            )
             if model.get('login_url'):
                 body += f'<p style="color: #666; font-size: 14px; margin-top: 16px;">After you\'ve set your password, you can log in anytime at: <a href="{model.get("login_url", "#")}" style="color: #00B8A9;">{model.get("login_url", "")}</a></p>'
             greeting = _format_greeting(model.get("tenant_name"))
@@ -2185,7 +2198,9 @@ Go to your dashboard: {model.get('portal_link', '#')}
                 return build_admin_manual_structured_plain_text(model, footer=footer)
             properties_text = ""
             for prop in model.get('affected_properties', []):
-                properties_text += f"- {prop.get('address', 'N/A')}: {prop.get('previous_status', 'GREEN')} → {prop.get('new_status', 'RED')} ({prop.get('reason', 'Status changed')})\n"
+                prev_label = customer_facing_status_label(prop.get("previous_status", "GREEN"))
+                new_label = customer_facing_status_label(prop.get("new_status", "RED"))
+                properties_text += f"- {prop.get('address', 'N/A')}: {prev_label} → {new_label} ({prop.get('reason', 'Status changed')})\n"
             
             return f"""
 Compliance status update
@@ -2193,7 +2208,7 @@ Compliance status update
 
 {_format_greeting(model.get("client_name"))}
 
-The dashboard compliance indicator for one or more of your properties has changed and may need your review.
+The overall compliance picture for one or more of your properties has changed and may need a review.
 
 AFFECTED PROPERTIES:
 {properties_text}
@@ -2201,9 +2216,9 @@ AFFECTED PROPERTIES:
 Open portal to review: {model.get('portal_link', '#')}
 
 HOW TO READ THIS:
-• GREEN = Dashboard indicator: tracked requirements appear satisfied on the last calculation (not a legal guarantee).
-• AMBER = Some tracked requirements are due soon or need review in the portal.
-• RED = One or more tracked requirements need attention — review details in the portal.
+• In order — tracked requirements appear satisfied on the last check (not a legal guarantee).
+• Needs review — some tracked items are due soon or need a look in the portal.
+• Needs attention — one or more tracked items need action. Review details in the portal.
 
 This message is informational; the portal is authoritative for obligation state and evidence.
 {footer}

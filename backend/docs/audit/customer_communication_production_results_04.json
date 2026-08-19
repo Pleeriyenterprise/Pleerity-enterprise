@@ -1,0 +1,76 @@
+{
+  "programme": "CUSTOMER-COMMUNICATION-PRODUCTION-PROMOTION-GATE-04",
+  "verdict": "CUSTOMER_COMMUNICATION_PRODUCTION_DEPLOYMENT_SUCCESSFUL_WITH_CONDITIONS",
+  "staging_verdict": "CUSTOMER_COMMUNICATION_REMEDIATION_VERIFIED_WITH_CONDITIONS",
+  "STAGING_RUNTIME_SHA": "0097b85f041970719c20c2670003a29ddf001e26",
+  "PROMOTION_APPLICATION_SHA": "0097b85f041970719c20c2670003a29ddf001e26",
+  "merge_sha": "626f35de80ca71dd03b4782552126213cab414b4",
+  "origin_main_before": "1fcb5fbcdf99ded01a45fe2fcf1123587efd117d",
+  "origin_main_after": "626f35de80ca71dd03b4782552126213cab414b4",
+  "push_result": "1fcb5fbc..626f35de  main -> main",
+  "fast_forward": false,
+  "merge_strategy": "ort",
+  "conflicts": [],
+  "force_push": false,
+  "frontend_deployed": false,
+  "frontend_project_customer": "pleerity-enterprise",
+  "frontend_project_9jjg_deployed": false,
+  "PRE_PROMOTION_FRONTEND_BUNDLE": "static/js/main.b993e884.js",
+  "ROLLBACK_BACKEND_SHA": "1fcb5fbcdf99ded01a45fe2fcf1123587efd117d",
+  "production": {
+    "service": "pleerity-api-production",
+    "service_id": "srv-d8m59gmgvqtc73cmbu6g",
+    "deploy_id": "dep-da2lsdqd0e5s73fuu0j0",
+    "commit_sha": "626f35de80ca71dd03b4782552126213cab414b4",
+    "environment": "production",
+    "instance": "srv-d8m59gmgvqtc73cmbu6g-zqmg7",
+    "guard": {
+      "tier": "production",
+      "DB_NAME": "pleerity_production",
+      "STRIPE_MODE": "live"
+    },
+    "health_recovered_at": "2026-08-19T07:53:02Z"
+  },
+  "regression": {
+    "tests_run": 145,
+    "tests_passed": 123,
+    "tests_failed": 0,
+    "tests_skipped": 22,
+    "known_pre_existing_failures": {
+      "suite": "tests/test_notification_orchestrator.py",
+      "failed": 4,
+      "passed": 10,
+      "defect": "resolve_greeting NameError on DB-template finalize_db_email_html"
+    }
+  },
+  "recycle": {
+    "http_503_count_07_46": 2,
+    "http_502_count_07_46": 1,
+    "heartbeat_stale_incident_id": "6a856036eb413d81cff75bf4",
+    "internal_alert_postmark_message_id": "6d6d3fca-6e06-48f9-ab61-ad2cbefda824"
+  },
+  "natural_billing_webhooks": "NOT_NATURALLY_EXERCISED_IN_PRODUCTION_WINDOW",
+  "observation": {
+    "health_window_start": "2026-08-19T07:53:02Z",
+    "health_window_end": "2026-08-19T09:27:02Z",
+    "duration_minutes": 94,
+    "final_health": "healthy",
+    "final_readiness": "ready",
+    "final_scheduler": "heartbeat_fresh"
+  },
+  "daily_reminders_first_run": {
+    "scheduled_at": "2026-08-19T09:00:00Z",
+    "log_capture": "NOT_RETRIEVED",
+    "reason": "Render MCP unavailable after 2026-08-19T08:01Z"
+  },
+  "subscription_lifecycle_first_run": {
+    "scheduled_at": "2026-08-19T09:15:00Z",
+    "log_capture": "NOT_RETRIEVED",
+    "reason": "Render MCP unavailable after 2026-08-19T08:01Z"
+  },
+  "references": {
+    "audit_01": "CUSTOMER_COMMUNICATION_INVENTORY_01.md",
+    "remediation_02": "CUSTOMER_COMMUNICATION_STAGING_RUNTIME_CERTIFICATION_02.md",
+    "closure_03": "CUSTOMER_COMMUNICATION_P0_P1_CLOSURE_03.md"
+  }
+}

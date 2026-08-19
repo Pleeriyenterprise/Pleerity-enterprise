@@ -3,6 +3,18 @@
 Mapping of `template_key` → channel, gating flags, and rate-limit behaviour.  
 Source: `database._seed_notification_templates` (notification_templates collection).
 
+## Cleanup 05 current vs legacy (do not rename live keys)
+
+| template_key / event | Status |
+| --- | --- |
+| PAYMENT_FAILED, SUBSCRIPTION_RENEWAL_REMINDER_7D/3D, COMPLIANCE_EXPIRY_REMINDER, COMPLIANCE_ALERT | ACTIVE |
+| RENEWAL_REMINDER | LEGACY_ALIAS (live keys are 7D/3D) |
+| ORDER_DELIVERED / DOCUMENT_PACK_DELIVERY registry id | SUPERSEDED by ORDER_DOCUMENTS_READY |
+| INVOICE_AVAILABLE, DOCUMENT_MISSING_ALERT, SUPPORT_TICKET_UPDATED, SUPPORT_TICKET_RESOLVED | NOT_IMPLEMENTED (kept) |
+| PASSWORD_CHANGED_CONFIRMATION | UNKNOWN_RUNTIME |
+
+Historical seed table follows.
+
 | template_key | channel | requires_provisioned | requires_active_subscription | requires_entitlement_enabled | plan_required_feature_key | rate_limit_window_seconds |
 |--------------|---------|----------------------|------------------------------|------------------------------|----------------------------|---------------------------|
 | WELCOME_EMAIL | EMAIL | true | false | false | null | — |

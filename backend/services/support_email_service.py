@@ -5,6 +5,7 @@ Sends transactional emails for support tickets:
 - Customer ticket confirmation (SUPPORT_TICKET_CONFIRMATION)
 - Internal support team notification (SUPPORT_INTERNAL_NOTIFICATION)
 """
+import html
 import logging
 from typing import Optional
 
@@ -28,13 +29,26 @@ async def send_ticket_confirmation_email(
     """Send ticket confirmation email to customer via NotificationOrchestrator."""
     try:
         from services.notification_orchestrator import notification_orchestrator
+        from utils.app_urls import get_app_base_url
+
+        safe_ticket = html.escape(str(ticket_id or "").strip())
+        safe_subject = html.escape(str(subject or "").strip())
+        safe_category = html.escape(str(category or "").replace("_", " ").title())
+        excerpt = (description or "").strip()[:500]
+        if len((description or "").strip()) > 500:
+            excerpt += "..."
+        safe_excerpt = html.escape(excerpt)
+        support_url = get_app_base_url(for_email_links=True).rstrip("/") + "/help"
         message = (
-            f"Thank you for contacting Pleerity Support. We've received your request and will respond within 24 hours.<br><br>"
-            f"<strong>Ticket Reference:</strong> {ticket_id}<br>"
-            f"<strong>Subject:</strong> {subject}<br>"
-            f"<strong>Category:</strong> {category.replace('_', ' ').title()}<br>"
-            f"<strong>Priority:</strong> {priority.title()}<br><br>"
-            f"Your message: {description[:500]}{'...' if len(description) > 500 else ''}<br><br>"
+            f"Thank you for contacting Pleerity Support. We have received your request.<br><br>"
+            f"<strong>Ticket reference:</strong> {safe_ticket}<br>"
+            f"<strong>Subject:</strong> {safe_subject}<br>"
+            f"<strong>Category:</strong> {safe_category}<br><br>"
+            f"What happens next: a member of the support team will review your request and reply by email. "
+            f"There is no guaranteed response time on this acknowledgement.<br><br>"
+            f"You can refer to this request using the ticket reference above.<br><br>"
+            f"Your message: {safe_excerpt}<br><br>"
+            f'<p><a href="{html.escape(support_url)}">Open Help</a></p>'
             f"{format_customer_support_footer_html('#00B8A9')}"
         )
         result = await notification_orchestrator.send(

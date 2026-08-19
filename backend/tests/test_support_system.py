@@ -187,7 +187,7 @@ class TestSupportPublicEndpoints:
         assert "ticket_id" in data, "Missing ticket_id"
         assert data["ticket_id"].startswith("TKT-"), f"Invalid ticket_id format: {data['ticket_id']}"
         assert data.get("response_channel") == "email"
-        assert "24 hours" in (data.get("response_window") or "").lower()
+        assert "no guaranteed response time" in (data.get("response_window") or "").lower()
         assert data.get("transcript_included") is False
         assert data["ticket_id"] in (data.get("message") or "")
         assert "no chat transcript" in (data.get("message") or "").lower()

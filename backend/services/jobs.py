@@ -27,6 +27,7 @@ from services.notification_send_idempotency import (
     compliance_alert_property_scope_fingerprint,
     daily_compliance_reminder_item_idempotency_key,
     daily_compliance_reminder_scope_fingerprint,
+    should_suppress_compliance_alert_for_property,
 )
 
 ROOT_DIR = Path(__file__).parent.parent
@@ -1701,6 +1702,10 @@ class JobScheduler:
                 
                 # Default to enabled if no preferences set
                 status_alerts_enabled = prefs.get("status_change_alerts", True) if prefs else True
+                daily_reminders_enabled = (
+                    (prefs.get("expiry_reminders", True) if prefs else True)
+                    and (prefs.get("daily_reminder_enabled", True) if prefs else True)
+                )
                 
                 if self._is_in_quiet_hours(prefs):
                     logger.info(f"Skipping compliance alert for {client['email']} - within quiet hours")
@@ -1771,13 +1776,27 @@ class JobScheduler:
                         
                         # Only add to email alert on degradation (getting worse)
                         if new_severity > old_severity:
-                            properties_with_changes.append({
-                                "property_id": prop["property_id"],
-                                "address": property_address,
-                                "previous_status": previous_notified_status,
-                                "new_status": new_status,
-                                "reason": reason
-                            })
+                            contributing_ids = self._contributing_requirement_ids(
+                                requirements, new_status
+                            )
+                            if should_suppress_compliance_alert_for_property(
+                                contributing_requirement_ids=contributing_ids,
+                                daily_reminders_enabled=daily_reminders_enabled,
+                            ):
+                                logger.info(
+                                    "Suppressing COMPLIANCE_ALERT for property %s — single requirement "
+                                    "already covered by the daily reminder window",
+                                    prop["property_id"],
+                                )
+                            else:
+                                properties_with_changes.append({
+                                    "property_id": prop["property_id"],
+                                    "address": property_address,
+                                    "previous_status": previous_notified_status,
+                                    "new_status": new_status,
+                                    "reason": reason,
+                                    "contributing_requirement_ids": contributing_ids,
+                                })
                             
                             # Update property with new status and last notified status
                             await self.db.properties.update_one(
@@ -1812,6 +1831,8 @@ class JobScheduler:
                         )
                         idempotency_key = f"{client['client_id']}_COMPLIANCE_ALERT_{date_key}_{alert_scope_fp}"
                         portal_link = compliance_alert_email_portal_url(frontend_url, properties_with_changes)
+                        from email_presentation.status_colors import customer_facing_compliance_alert_subject
+
                         await notification_orchestrator.send(
                             template_key="COMPLIANCE_ALERT",
                             client_id=client["client_id"],
@@ -1819,6 +1840,7 @@ class JobScheduler:
                                 "client_name": client.get("full_name", "Valued Customer"),
                                 "affected_properties": properties_with_changes,
                                 "portal_link": portal_link,
+                                "subject": customer_facing_compliance_alert_subject(properties_with_changes),
                             },
                             idempotency_key=idempotency_key,
                             event_type="compliance_status_changed",
@@ -1882,6 +1904,19 @@ class JobScheduler:
         from services.property_compliance_status_service import compute_property_compliance_rag
 
         return compute_property_compliance_rag(requirements)
+
+    def _contributing_requirement_ids(self, requirements, new_status):
+        """Requirement ids whose due/overdue state explains a dashboard status change."""
+        wanted = {"OVERDUE", "EXPIRED"} if new_status == "RED" else {"EXPIRING_SOON"} if new_status == "AMBER" else set()
+        ids = []
+        for req in requirements or []:
+            st = authority_runtime_requirement_status(req) or req.get("status")
+            if st not in wanted:
+                continue
+            rid = str(req.get("requirement_id") or "").strip()
+            if rid:
+                ids.append(rid)
+        return ids
 
     def _get_status_change_reason(self, requirements, new_status):
         """Generate a human-readable reason for the status change."""

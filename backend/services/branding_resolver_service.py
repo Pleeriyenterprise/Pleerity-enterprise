@@ -568,6 +568,7 @@ def finalize_db_email_html(
             _inject_branding_banner_into_full_html(html_body, context),
             _append_plain_text_branding_footer(text_body, context),
         )
+    from email_presentation.greeting import resolve_greeting, strip_embedded_greetings
     from email_presentation.shell import render_customer_email
 
     eb = context.get("_email_branding")

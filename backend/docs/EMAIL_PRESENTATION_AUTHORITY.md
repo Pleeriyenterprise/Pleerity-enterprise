@@ -17,7 +17,7 @@ Single governed presentation layer for all production-facing customer emails. Th
 | `authority.py` | `EmailPresentationAuthority` facade |
 | `brand.py` | Company, colours, support email, website (`APP_BASE_URL`) |
 | `greeting.py` | `resolve_greeting()` — `Hello {First},` or `Hello,` |
-| `status_colors.py` | GREEN / AMBER / RED hex and property row enrichment |
+| `status_colors.py` | GREEN / AMBER / RED **hex** (scoring unchanged). Customer-visible labels: In order / Needs review / Needs attention via `customer_facing_status_label`. |
 | `cta.py` | Governed CTA labels and button HTML |
 | `copy.py` | Portal authority and informational disclaimers |
 | `shell.py` | Canonical shell via `build_customer_email_layout` |
@@ -37,7 +37,7 @@ Single governed presentation layer for all production-facing customer emails. Th
 
 - `services/email_service.py` — code-built templates
 - `services/notification_orchestrator.py` — `enrich_presentation_context` + `compliance-alert` code path
-- `services/branding_resolver_service.py` — DB fragment wrapping
+- `services/branding_resolver_service.py` — DB fragment wrapping **imports** `resolve_greeting` / `strip_embedded_greetings` (Cleanup 05; missing import was a send-blocker)
 - `services/lead_automation_service.py` — lead sequences
 - `services/risk_lead_email_service.py` — footer/CTA domain
 - `services/enablement_service.py` — passes `client_name` for enablement emails

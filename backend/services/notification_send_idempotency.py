@@ -86,3 +86,24 @@ def compliance_alert_property_scope_fingerprint(property_ids: Iterable[str]) -> 
     if len(joined) <= 32:
         return joined
     return hashlib.sha256(joined.encode("utf-8")).hexdigest()
+
+
+def should_suppress_compliance_alert_for_property(
+    *,
+    contributing_requirement_ids: Iterable[str],
+    daily_reminders_enabled: bool,
+) -> bool:
+    """
+    COMPLIANCE_ALERT is a property-level dashboard state-change.
+
+    Daily/lifecycle reminders own the action for a single due/overdue requirement.
+    If the only contributing item is one reminder-window requirement and daily
+    reminders are enabled, sending both the same day duplicates customer intent.
+
+    Multi-requirement degradations remain eligible for a distinct status-change
+    email. Scoring and webhook side-effects are not owned here.
+    """
+    if not daily_reminders_enabled:
+        return False
+    ids = [str(x).strip() for x in contributing_requirement_ids if str(x or "").strip()]
+    return len(set(ids)) == 1
