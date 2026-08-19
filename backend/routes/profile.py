@@ -487,14 +487,15 @@ async def list_my_in_app_notifications(
 ):
     """List in-app notifications for the authenticated portal user (non-dismissed)."""
     user = await _require_profile_view(request)
-    from services.order_service import list_inbox_notifications
+    from services.order_service import get_unread_count, list_inbox_notifications
 
     items = await list_inbox_notifications(
         user["portal_user_id"],
         limit=min(limit, 200),
         inbox_filter=inbox_filter,
     )
-    return {"items": items}
+    unread_count = await get_unread_count(user["portal_user_id"])
+    return {"items": items, "unread_count": unread_count}
 
 
 @router.get("/in-app-notifications/unread-count")
