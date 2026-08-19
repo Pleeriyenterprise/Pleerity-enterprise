@@ -195,6 +195,13 @@ def _extract_webhook_context(event: Dict) -> Dict[str, Any]:
     }
 
 
+def resolve_client_notification_email(client: Optional[Dict[str, Any]]) -> str:
+    """Match orchestrator recipient fallback: contact_email, then email."""
+    if not isinstance(client, dict):
+        return ""
+    return str(client.get("contact_email") or client.get("email") or "").strip()
+
+
 class StripeWebhookService:
     """Production-ready Stripe webhook handler with idempotency."""
     
@@ -1890,10 +1897,10 @@ class StripeWebhookService:
         try:
             client = await db.clients.find_one(
                 {"client_id": client_id},
-                {"_id": 0, "contact_email": 1, "contact_name": 1}
+                {"_id": 0, "contact_email": 1, "email": 1, "contact_name": 1, "full_name": 1}
             )
-            
-            if client and client.get("contact_email"):
+            to_email = resolve_client_notification_email(client)
+            if to_email:
                 from utils.public_app_url import get_public_app_url
                 from services.subscription_lifecycle_service import resolve_subscription_canceled_customer_copy
                 from services.account_lifecycle_runtime_contract import resolve_runtime_contract_for_client
@@ -1930,7 +1937,11 @@ class StripeWebhookService:
                     template_key="SUBSCRIPTION_CANCELED",
                     client_id=client_id,
                     context={
-                        "client_name": client.get("contact_name", "Valued Customer"),
+                        "client_name": (
+                            (client or {}).get("contact_name")
+                            or (client or {}).get("full_name")
+                            or "Valued Customer"
+                        ),
                         "access_end_date": copy.get("access_end_date") or "",
                         "access_body_html": copy.get("access_body_html") or "",
                         "access_body_text": copy.get("access_body_text") or "",
@@ -1946,6 +1957,11 @@ class StripeWebhookService:
                     event_type="customer.subscription.deleted",
                 )
                 logger.info(f"Subscription canceled notification sent for client {client_id}")
+            else:
+                logger.warning(
+                    "Skipping SUBSCRIPTION_CANCELED email; no contact_email/email on client_id=%s",
+                    client_id,
+                )
         except Exception as e:
             logger.error(f"Failed to send subscription canceled notification: {e}")
         

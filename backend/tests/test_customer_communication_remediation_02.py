@@ -378,3 +378,12 @@ async def test_send_daily_reminders_emits_two_independent_emails():
     assert "registration" in (captured[0]["subject"] or "").lower()
     assert "hmo" in (captured[1]["subject"] or "").lower()
     assert "hmo" not in (captured[0]["subject"] or "").lower()
+
+
+def test_canceled_webhook_recipient_falls_back_to_email():
+    from services.stripe_webhook_service import resolve_client_notification_email
+
+    assert resolve_client_notification_email({"email": "a@yopmail.com"}) == "a@yopmail.com"
+    assert resolve_client_notification_email({"contact_email": "c@yopmail.com", "email": "a@yopmail.com"}) == "c@yopmail.com"
+    assert resolve_client_notification_email({}) == ""
+    assert resolve_client_notification_email(None) == ""
