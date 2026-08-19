@@ -38,7 +38,7 @@ async def send_ticket_confirmation_email(
         if len((description or "").strip()) > 500:
             excerpt += "..."
         safe_excerpt = html.escape(excerpt)
-        support_url = get_app_base_url(for_email_links=True).rstrip("/") + "/support"
+        support_url = get_app_base_url(for_email_links=True).rstrip("/") + "/help"
         message = (
             f"Thank you for contacting Pleerity Support. We have received your request.<br><br>"
             f"<strong>Ticket reference:</strong> {safe_ticket}<br>"
@@ -48,7 +48,7 @@ async def send_ticket_confirmation_email(
             f"There is no guaranteed response time on this acknowledgement.<br><br>"
             f"You can refer to this request using the ticket reference above.<br><br>"
             f"Your message: {safe_excerpt}<br><br>"
-            f'<p><a href="{html.escape(support_url)}">Open support</a></p>'
+            f'<p><a href="{html.escape(support_url)}">Open Help</a></p>'
             f"{format_customer_support_footer_html('#00B8A9')}"
         )
         result = await notification_orchestrator.send(

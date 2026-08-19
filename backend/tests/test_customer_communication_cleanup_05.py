@@ -98,6 +98,8 @@ async def test_support_confirmation_has_no_invented_sla(monkeypatch):
     assert "received your request" in message.lower()
     assert "no guaranteed response time" in message.lower()
     assert "You have a new notification from Pleerity" not in message
+    assert "/help" in captured["context"]["message"]
+    assert "/support\"" not in captured["context"]["message"]
 
 
 def test_onboarding_day2_adapts_when_property_exists():
