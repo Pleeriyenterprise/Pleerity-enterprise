@@ -121,7 +121,7 @@ def build_public_ticket_created_response(
     lines.extend(
         [
             "",
-            "Our team will reply **by email** within **24 hours**.",
+            "Our team will review your request and reply by email. There is no guaranteed response time on this acknowledgement.",
         ]
     )
     if transcript_included:
@@ -137,7 +137,7 @@ def build_public_ticket_created_response(
         "ticket_id": ticket_id,
         "conversation_id": conversation_id,
         "response_channel": "email",
-        "response_window": "within 24 hours",
+        "response_window": "no guaranteed response time",
         "transcript_included": transcript_included,
         "message": "\n".join(lines),
         "email_sent": email_sent,

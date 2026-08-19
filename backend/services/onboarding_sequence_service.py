@@ -221,10 +221,10 @@ def _subject_for_event(event_id: str, state: Optional[dict] = None) -> str:
     if event_id == "ONBOARDING_DAY7_ACTIVATION_PUSH":
         return "Your Compliance Vault Pro recap" if monitoring else "Activate monitoring"
     subjects = {
-        "ONBOARDING_DAY2_COMPLIANCE_EDUCATION": "Track your compliance requirements",
-        "ONBOARDING_DAY3_PRODUCT_VALUE": "Your compliance dashboard",
-        "ONBOARDING_DAY4_DOCUMENT_PACK_INTRO": "Landlord document packs",
-        "ONBOARDING_DAY5_RISK_AWARENESS": "Why compliance alerts matter",
-        "ONBOARDING_DAY6_CASE_EXAMPLE": "How we helped one landlord",
+        "ONBOARDING_DAY2_COMPLIANCE_EDUCATION": "Requirements depend on the property",
+        "ONBOARDING_DAY3_PRODUCT_VALUE": "Documents, dates, and reminders in one place",
+        "ONBOARDING_DAY4_DOCUMENT_PACK_INTRO": "Document packs, if you use them",
+        "ONBOARDING_DAY5_RISK_AWARENESS": "Keep your records current",
+        "ONBOARDING_DAY6_CASE_EXAMPLE": "How reminders work in the portal",
     }
     return subjects.get(event_id, "Compliance Vault Pro")
