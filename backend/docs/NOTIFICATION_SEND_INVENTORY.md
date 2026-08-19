@@ -1,5 +1,23 @@
 # Notification Send Inventory (Pre-Migration)
 
+## Current authority (Cleanup 05 overlay — 2026-08-19)
+
+Historical table below is the **pre-migration inventory**. Do not treat `email_service.send_*` rows as current send paths.
+
+| Area | Current authority | Legacy / deprecated |
+| --- | --- | --- |
+| All outbound email/SMS | `NotificationOrchestrator.send` | Direct Postmark in `email_service` raises deprecated |
+| Daily reminders | `jobs.py` per-requirement orchestrator send; idempotency per requirement | Old client-day batch key |
+| COMPLIANCE_ALERT | Orchestrator `COMPLIANCE_ALERT`; suppressed when daily reminders on and one contributing requirement | Deprecated `send_compliance_alert_email` |
+| Subscription renewal | `SUBSCRIPTION_RENEWAL_REMINDER_7D` / `_3D` via subscription lifecycle job | Registry id `RENEWAL_REMINDER` is LEGACY_ALIAS |
+| Cancellation / payment failed | Orchestrator code-built | `email_service.send_subscription_canceled_email` deprecated |
+| Support confirmation | `support_email_service` → orchestrator; no invented 24h SLA | Chatbot FAQ 24h still deferred |
+| Tenant invite | Orchestrator `TENANT_INVITE`; no raw RAG labels | — |
+
+Historical evidence: `docs/audit/CUSTOMER_COMMUNICATION_*_01.md` … `_04.md`.
+
+---
+
 All outbound email/SMS must go through `NotificationOrchestrator`. This table lists every send path before migration.
 
 | File | Function | Trigger/Event | Channel | Recipient type | Current send path | Proposed template_key | requires_provisioned | requires_active_subscription | requires_entitlement_enabled | plan_required_feature_key | Proposed idempotency_key formula |
