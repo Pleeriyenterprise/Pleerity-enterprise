@@ -1,7 +1,7 @@
 {
   "programme": "NOTIFICATION-BELL-AUTHORITY-DRIFT-01",
   "verdict": "NOTIFICATION_BELL_INCOMPLETE",
-  "verdict_reason": "Code and unit tests landed; staging runtime A/B/D pending deploy poll. Production pilot APIs not read. Atlas MCP unavailable. Local Mongo is staging.",
+  "verdict_reason": "Implementation is on staging API a5d71332 and unit tests passed. Live client-portal badge/dropdown session was not run. Production pilot APIs were not read. Atlas MCP unavailable.",
   "severity": "P1",
   "root_cause": [
     "FRONTEND_LIST_FAILURE_MASKED_AS_EMPTY",
@@ -23,8 +23,15 @@
     "backend_inbox_authority": "9 passed",
     "frontend_bell_and_centre": "8 passed"
   },
-  "IMPLEMENTATION_SHA": null,
-  "STAGING_RUNTIME_SHA": null,
+  "IMPLEMENTATION_SHA": "a5d71332663952870f69555f3725df4f24f68eef",
+  "STAGING_RUNTIME_SHA": "a5d71332663952870f69555f3725df4f24f68eef",
+  "staging_health": "healthy/ready after recycle",
+  "staging_mongo_predicates": {
+    "A_unread_visible": "1/1 then 0 after mark-read",
+    "B_dismiss": "unread 1 then 0",
+    "D_multi": "unread 3 visible 4",
+    "cleaned": true
+  },
   "production_backend_at_investigation": "13eca9092882aa434207ca0abc72915aaf516a04",
   "production_frontend_bundle": "main.2f1c2452.js"
 }
