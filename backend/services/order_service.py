@@ -816,7 +816,39 @@ _VALID_INBOX_FILTERS = frozenset(
 
 
 def _not_dismissed_query() -> Dict[str, Any]:
-    return {"$or": [{"dismissed_at": None}, {"dismissed_at": {"$exists": False}}]}
+    """Inbox-visible: not soft-dismissed. Legacy `dismissed=true` is treated as dismissed."""
+    return {
+        "$and": [
+            {"$or": [{"dismissed_at": None}, {"dismissed_at": {"$exists": False}}]},
+            {
+                "$or": [
+                    {"dismissed": {"$exists": False}},
+                    {"dismissed": False},
+                    {"dismissed": None},
+                ]
+            },
+        ]
+    }
+
+
+def _is_unread_query() -> Dict[str, Any]:
+    """Unread for count and unread-filter — missing is_read is unread, matching list rendering."""
+    return {
+        "$or": [
+            {"is_read": False},
+            {"is_read": None},
+            {"is_read": {"$exists": False}},
+        ]
+    }
+
+
+def inbox_visibility_query(recipient_id: str) -> Dict[str, Any]:
+    """Canonical visibility predicate shared by unread count and list."""
+    return {"$and": [{"recipient_id": recipient_id}, _not_dismissed_query()]}
+
+
+def inbox_unread_query(recipient_id: str) -> Dict[str, Any]:
+    return {"$and": [inbox_visibility_query(recipient_id), _is_unread_query()]}
 
 
 def priority_string_to_severity(priority: Optional[str]) -> str:
@@ -1006,12 +1038,9 @@ async def list_inbox_notifications(
     if inbox_filter not in _VALID_INBOX_FILTERS:
         inbox_filter = "all"
     db = database.get_db()
-    and_parts: List[Dict[str, Any]] = [
-        {"recipient_id": user_id},
-        _not_dismissed_query(),
-    ]
+    and_parts: List[Dict[str, Any]] = [inbox_visibility_query(user_id)]
     if inbox_filter == "unread":
-        and_parts.append({"is_read": False})
+        and_parts.append(_is_unread_query())
     elif inbox_filter == "critical":
         and_parts.append(
             {
@@ -1022,13 +1051,17 @@ async def list_inbox_notifications(
             }
         )
     query: Dict[str, Any] = {"$and": and_parts}
-    cursor = db.in_app_notifications.find(query, {"_id": 0})
-    items = await cursor.to_list(length=max(limit * 4, 400))
+    needs_python_category = inbox_filter in ("compliance", "billing", "operations", "system")
+    fetch_limit = max(limit * 8, 400) if needs_python_category else max(int(limit), 1)
+    cursor = db.in_app_notifications.find(query, {"_id": 0}).sort(
+        [("is_read", 1), ("created_at", -1)]
+    )
+    items = await cursor.to_list(length=fetch_limit)
 
-    if inbox_filter in ("compliance", "billing", "operations", "system"):
+    if needs_python_category:
         items = [d for d in items if infer_in_app_category(d) == inbox_filter]
-
-    items.sort(key=_inbox_sort_key)
+        items.sort(key=_inbox_sort_key)
+        items = items[:limit]
     return [serialize_in_app_notification(d) for d in items[:limit]]
 
 
@@ -1046,7 +1079,12 @@ async def mark_notification_read(notification_id: str, recipient_id: str) -> boo
     """Mark a notification as read; must belong to recipient_id."""
     db = database.get_db()
     result = await db.in_app_notifications.update_one(
-        {"notification_id": notification_id, "recipient_id": recipient_id, **_not_dismissed_query()},
+        {
+            "$and": [
+                {"notification_id": notification_id},
+                inbox_visibility_query(recipient_id),
+            ]
+        },
         {"$set": {"is_read": True, "read_at": datetime.now(timezone.utc)}},
     )
     return result.modified_count > 0
@@ -1066,18 +1104,16 @@ async def mark_all_notifications_read(user_id: str) -> int:
     """Mark all non-dismissed notifications as read for a user."""
     db = database.get_db()
     result = await db.in_app_notifications.update_many(
-        {"recipient_id": user_id, "is_read": False, **_not_dismissed_query()},
+        inbox_unread_query(user_id),
         {"$set": {"is_read": True, "read_at": datetime.now(timezone.utc)}},
     )
     return result.modified_count
 
 
 async def get_unread_count(user_id: str) -> int:
-    """Count unread, non-dismissed notifications."""
+    """Count unread notifications the same user can retrieve in the inbox list."""
     db = database.get_db()
-    return await db.in_app_notifications.count_documents(
-        {"recipient_id": user_id, "is_read": False, **_not_dismissed_query()}
-    )
+    return await db.in_app_notifications.count_documents(inbox_unread_query(user_id))
 
 
 async def record_in_app_cta_action(

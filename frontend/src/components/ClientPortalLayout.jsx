@@ -69,6 +69,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const [notifItems, setNotifItems] = useState([]);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifUnreadCount, setNotifUnreadCount] = useState(0);
+  const [notifListError, setNotifListError] = useState(false);
   const [portalTrust, setPortalTrust] = useState(null);
   const [portalTrustLoading, setPortalTrustLoading] = useState(false);
   const [portalTrustError, setPortalTrustError] = useState(false);
@@ -79,16 +80,23 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const loadInAppNotifications = () => {
     if (isTenant || !isClient) return;
     setNotifLoading(true);
-    Promise.all([
+    return Promise.allSettled([
       clientAPI.getInAppNotifications({ limit: 30, inbox_filter: 'all' }),
       clientAPI.getInAppNotificationsUnreadCount(),
     ])
-      .then(([listRes, countRes]) => {
-        setNotifItems(listRes.data.items || []);
-        const n = countRes.data?.unread_count;
-        setNotifUnreadCount(typeof n === 'number' ? n : 0);
+      .then(([listOutcome, countOutcome]) => {
+        if (countOutcome.status === 'fulfilled') {
+          const n = countOutcome.value.data?.unread_count;
+          setNotifUnreadCount(typeof n === 'number' ? n : 0);
+        }
+        if (listOutcome.status === 'fulfilled') {
+          const raw = listOutcome.value.data?.items;
+          setNotifItems(Array.isArray(raw) ? raw : []);
+          setNotifListError(false);
+        } else {
+          setNotifListError(true);
+        }
       })
-      .catch(() => {})
       .finally(() => setNotifLoading(false));
   };
 
@@ -385,7 +393,34 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                         </div>
                         <div className="overflow-y-auto flex-1">
                           {notifLoading && <p className="p-3 text-sm text-gray-500">Loading…</p>}
-                          {!notifLoading && notifItems.length === 0 && (
+                          {!notifLoading && notifListError && (
+                            <div className="p-3 text-sm text-gray-700">
+                              <p>We couldn&apos;t load notifications.</p>
+                              <button
+                                type="button"
+                                className="mt-2 text-xs text-electric-teal hover:underline"
+                                onClick={() => loadInAppNotifications()}
+                              >
+                                Try again
+                              </button>
+                            </div>
+                          )}
+                          {!notifLoading && !notifListError && notifItems.length === 0 && notifUnreadCount > 0 && (
+                            <div className="p-3 text-sm text-gray-700">
+                              <p>You have unread notifications that are not shown here.</p>
+                              <button
+                                type="button"
+                                className="mt-2 text-xs text-electric-teal hover:underline"
+                                onClick={() => {
+                                  setNotifOpen(false);
+                                  navigate('/settings/inbox');
+                                }}
+                              >
+                                View all notifications
+                              </button>
+                            </div>
+                          )}
+                          {!notifLoading && !notifListError && notifItems.length === 0 && notifUnreadCount === 0 && (
                             <p className="p-3 text-sm text-gray-500">No notifications yet.</p>
                           )}
                           {!notifLoading &&
@@ -404,6 +439,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                                         )
                                       );
                                       setNotifUnreadCount((c) => Math.max(0, c - 1));
+                                      loadInAppNotifications();
                                     }
                                   } catch (_) {
                                     /* ignore */

@@ -55,6 +55,7 @@ export default function InAppNotificationCenter({
   const [items, setItems] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,10 +63,11 @@ export default function InAppNotificationCenter({
       const res = await fetchList(filter);
       const raw = isAdmin ? res.data?.notifications : res.data?.items;
       setItems(Array.isArray(raw) ? raw : []);
+      setListError(false);
       const uc = res.data?.unread_count;
       if (typeof uc === 'number') setUnreadCount(uc);
     } catch {
-      setItems([]);
+      setListError(true);
     } finally {
       setLoading(false);
     }
@@ -116,7 +118,8 @@ export default function InAppNotificationCenter({
       await dismiss(id);
       setItems((prev) => prev.filter((x) => x.notification_id !== id));
       if (!n.is_read) setUnreadCount((c) => Math.max(0, c - 1));
-      refreshUnread();
+      await refreshUnread();
+      await load();
     } catch {
       /* ignore */
     }
@@ -174,11 +177,29 @@ export default function InAppNotificationCenter({
 
       {loading ? (
         <p className="text-gray-500 text-sm">Loading…</p>
+      ) : listError ? (
+        <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 py-16 text-center text-gray-700">
+          <Bell className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          <p className="font-medium">We couldn&apos;t load notifications.</p>
+          <p className="text-sm mt-1 text-gray-500">Try again. Your unread count may still be accurate.</p>
+          <Button variant="outline" size="sm" className="mt-4" onClick={() => load()}>
+            Try again
+          </Button>
+        </div>
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 py-16 text-center text-gray-500">
           <Bell className="h-10 w-10 mx-auto mb-3 opacity-40" />
-          <p className="font-medium text-gray-700">No notifications</p>
-          <p className="text-sm mt-1">When something needs your attention, it will appear here.</p>
+          {unreadCount > 0 ? (
+            <>
+              <p className="font-medium text-gray-700">Unread notifications are not shown in this view</p>
+              <p className="text-sm mt-1">Try All, or refresh. The header count still reflects unread items.</p>
+            </>
+          ) : (
+            <>
+              <p className="font-medium text-gray-700">No notifications</p>
+              <p className="text-sm mt-1">When something needs your attention, it will appear here.</p>
+            </>
+          )}
         </div>
       ) : (
         <ul className="space-y-2">
