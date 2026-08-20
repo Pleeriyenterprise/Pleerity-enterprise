@@ -16,6 +16,7 @@ from services.work_order_pricing_constants import (
 )
 from services.work_order_pricing_service import (
     approve_quote_for_work_order,
+    derive_quote_presentation_state,
     reject_quote_final_for_work_order,
     reject_quote_for_work_order,
     request_quote_revision_for_work_order,
@@ -204,4 +205,32 @@ def test_serialize_pricing_snapshot_includes_lineage():
     assert snap["pricing_workflow"] is True
     assert snap["revision_active"] is True
     assert snap["negotiation_status_label"] == "Changes requested"
+    assert snap["quote_presentation"]["key"] == "changes_requested"
+    assert snap["quote_presentation"]["label"] == "Changes requested"
     assert len(snap["quote_negotiation_history"]) == 1
+
+
+def test_derive_quote_presentation_state_lineage():
+    awaiting = _wo()
+    assert derive_quote_presentation_state(awaiting)["key"] == "quote_requested"
+    quoted = _wo(
+        price_status=PRICE_STATUS_QUOTED,
+        quoted_price=185.0,
+        quote_negotiation_history=[{"version": 1, "event": "submitted", "amount": 185.0}],
+    )
+    assert derive_quote_presentation_state(quoted)["label"] == "Quote submitted"
+    assert derive_quote_presentation_state(quoted)["is_approved"] is False
+    revision = {**quoted, "price_status": PRICE_STATUS_REVISION_REQUESTED}
+    assert derive_quote_presentation_state(revision)["key"] == "changes_requested"
+    revised = {
+        **quoted,
+        "quoted_price": 205.0,
+        "quote_negotiation_history": quoted["quote_negotiation_history"]
+        + [{"version": 2, "event": "resubmitted", "amount": 205.0}],
+    }
+    assert derive_quote_presentation_state(revised)["key"] == "revised_quote_submitted"
+    approved = {**revised, "price_status": PRICE_STATUS_APPROVED}
+    pres = derive_quote_presentation_state(approved)
+    assert pres["key"] == "quote_approved"
+    assert pres["is_approved"] is True
+    assert pres["label"] == "Quote approved"

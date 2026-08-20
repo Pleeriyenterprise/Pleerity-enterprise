@@ -71,6 +71,7 @@ import {
 import {
   assignDropdownEmptyMessage,
   groupedExclusionSamples,
+  namedCoverageExclusionNotice,
 } from '../utils/assignContractorRecovery';
 import {
   earlyNetworkSupportText,
@@ -747,6 +748,10 @@ function ClientJobDetailInner() {
 
   const excludedContractorGroups = useMemo(
     () => groupedExclusionSamples(assignableExclusionSamples),
+    [assignableExclusionSamples]
+  );
+  const coverageExclusionNotice = useMemo(
+    () => namedCoverageExclusionNotice(assignableExclusionSamples),
     [assignableExclusionSamples]
   );
 
@@ -1452,7 +1457,11 @@ function ClientJobDetailInner() {
               <p className="font-semibold text-midnight-blue">Quote status</p>
               <p>
                 <span className="text-gray-500">Status:</span>{' '}
-                <span className="font-medium">{operationalLabelForToken(job.pricing.price_status, { emptyLabel: '—' })}</span>
+                <span className="font-medium">
+                  {job.pricing.quote_presentation?.label ||
+                    job.pricing.negotiation_status_label ||
+                    operationalLabelForToken(job.pricing.price_status, { emptyLabel: '—' })}
+                </span>
               </p>
               {job.pricing.quoted_price != null && job.pricing.quoted_price !== '' ? (
                 <p>
@@ -1906,6 +1915,16 @@ function ClientJobDetailInner() {
             {assignModalError ? (
               <Alert className="border-red-200 bg-red-50 text-red-900 py-2" data-testid="assign-contractor-error">
                 <AlertDescription className="text-sm leading-relaxed">{assignModalError}</AlertDescription>
+              </Alert>
+            ) : null}
+            {!assignableLoading && coverageExclusionNotice ? (
+              <Alert className="border-amber-200 bg-amber-50/90 text-amber-950 py-2" data-testid="assign-contractor-coverage-exists">
+                <AlertDescription className="text-sm leading-relaxed space-y-1">
+                  <p>{coverageExclusionNotice}</p>
+                  <Link to="/contractors" className="text-teal-800 underline">
+                    Update coverage or re-invite the existing contractor
+                  </Link>
+                </AlertDescription>
               </Alert>
             ) : null}
             {!assignableLoading && serverEligibleCount === 0 ? (

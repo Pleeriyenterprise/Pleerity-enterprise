@@ -27,17 +27,21 @@ export function propertyDetailComplianceKpiLabels() {
 export const PROPERTY_DETAIL_COMPLIANCE_KPI_EXPLANATION =
   'Requirements satisfied counts obligations currently met through evidence, declarations, or accepted compliance records. Valid for scoring counts obligations currently contributing to compliance scoring. These measures use different authorities and may legitimately differ.';
 
+/** API field on compliance-detail.kpis for Dashboard-aligned missing evidence. */
+export const PROPERTY_DETAIL_KPI_FIELD_MISSING_EVIDENCE = 'missing_evidence';
+
 /**
  * Map compliance-detail KPI payload to presentation fields (API authority only).
  * @param {Record<string, unknown>|null|undefined} kpis
- * @returns {{ requirementsSatisfied: number|null, validForScoring: number|null }}
+ * @returns {{ requirementsSatisfied: number|null, validForScoring: number|null, missingEvidence: number|null }}
  */
 export function propertyDetailComplianceKpiCountsFromApi(kpis) {
   if (!kpis || typeof kpis !== 'object') {
-    return { requirementsSatisfied: null, validForScoring: null };
+    return { requirementsSatisfied: null, validForScoring: null, missingEvidence: null };
   }
   const lifecycle = kpis[PROPERTY_DETAIL_KPI_FIELD_LIFECYCLE_SATISFIED];
   const statusValid = kpis[PROPERTY_DETAIL_KPI_FIELD_STATUS_VALID];
+  const missingEvidence = kpis[PROPERTY_DETAIL_KPI_FIELD_MISSING_EVIDENCE];
   return {
     requirementsSatisfied:
       lifecycle != null && lifecycle !== '' && !Number.isNaN(Number(lifecycle))
@@ -46,6 +50,10 @@ export function propertyDetailComplianceKpiCountsFromApi(kpis) {
     validForScoring:
       statusValid != null && statusValid !== '' && !Number.isNaN(Number(statusValid))
         ? Number(statusValid)
+        : null,
+    missingEvidence:
+      missingEvidence != null && missingEvidence !== '' && !Number.isNaN(Number(missingEvidence))
+        ? Number(missingEvidence)
         : null,
   };
 }

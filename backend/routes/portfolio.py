@@ -509,7 +509,7 @@ async def get_property_compliance_detail_route(
         from services.requirement_satisfaction_service import row_counts_as_missing_evidence
 
         requirements, _fb_pres = await enrich_requirements_for_client(db, client_id, requirements)
-        kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0, "status_valid": 0}
+        kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0, "status_valid": 0, "missing_evidence": 0}
         matrix = []
         for r_raw in requirements:
             r = project_requirement_row_client_runtime(r_raw)
@@ -526,6 +526,7 @@ async def get_property_compliance_detail_route(
             elif s in ("PENDING", "MISSING"):
                 if row_counts_as_missing_evidence(r_raw):
                     kpis["missing"] += 1
+                    kpis["missing_evidence"] += 1
                 else:
                     kpis["compliant"] += 1
             else:

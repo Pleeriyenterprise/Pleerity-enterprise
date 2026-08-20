@@ -432,6 +432,34 @@ def contractor_location_matches_property(
     return False
 
 
+def email_duplicate_assignment_message(
+    clash: Dict[str, Any],
+    *,
+    client_id: str,
+    property_postcode: Optional[str] = None,
+    property_jurisdiction: Optional[str] = None,
+) -> str:
+    """Explain why an existing contractor cannot be duplicated for this job."""
+    name = (clash.get("company_name") or clash.get("name") or "This contractor").strip()
+    same_org = (clash.get("client_id") == client_id) or (clash.get("linked_client_id") == client_id)
+    covers = contractor_location_matches_property(
+        clash,
+        property_postcode,
+        property_jurisdiction=property_jurisdiction,
+    )
+    if same_org and not covers and (property_postcode or "").strip():
+        return (
+            f"{name} already exists but does not currently cover this postcode. "
+            "Update their coverage in the contractor directory instead of creating a duplicate."
+        )
+    if same_org:
+        return (
+            f"{name} already exists for this email. Use the existing contractor, "
+            "or update their coverage if they are not shown for this job."
+        )
+    return "A contractor with this email already exists"
+
+
 _UK_POSTCODE_FRAGMENT_RE = re.compile(
     r"^[A-Z]{1,2}\d{1,2}[A-Z]?$|^[A-Z]{1,2}\d{1,2}[A-Z]?\d[A-Z]{2}$",
     re.IGNORECASE,
@@ -1166,6 +1194,29 @@ async def create_contractor_for_client_job_portal(
 
     email_stripped = (email or "").strip()
     phone_stripped = (phone or "").strip()
+    if email_stripped:
+        clash = await get_contractor_by_email_normalized(email_stripped)
+        if clash:
+            prop_pc = None
+            job_j = None
+            if work_order:
+                db = database.get_db()
+                pid = (work_order.get("property_id") or "").strip()
+                if pid:
+                    prop = await db.properties.find_one(
+                        {"property_id": pid, "client_id": client_id},
+                        {"_id": 0, "postcode": 1},
+                    )
+                    prop_pc = (prop or {}).get("postcode")
+                job_j = await resolve_effective_work_order_jurisdiction(db, work_order, client_id)
+            raise ValueError(
+                email_duplicate_assignment_message(
+                    clash,
+                    client_id=client_id,
+                    property_postcode=prop_pc,
+                    property_jurisdiction=job_j,
+                )
+            )
     if email_stripped:
         if pending_client:
             display = (contact_name or "").strip() or (company_name or "").strip() or email_stripped.split("@")[0]
@@ -1917,6 +1968,7 @@ async def list_assignable_contractors_for_work_order(
         job_jurisdiction=job_jurisdiction,
         property_postcode=prop_pc,
         eligible=total,
+        exclusion_samples=exclusion_samples,
     )
     return {
         "contractors": page,

@@ -27,6 +27,7 @@ from services.work_order_pricing_constants import (
     PRICE_STATUS_REJECTED,
     PRICE_STATUS_REJECTED_FINAL,
     PRICE_STATUS_REVISION_REQUESTED,
+    PRICE_STATUS_DISPUTED,
     QUOTE_NEGOTIATION_STATUS_LABELS,
     QUOTE_REVISION_REASON_CODES,
     PRICING_MODE_COMPLIANCE_FIXED_QUOTE,
@@ -173,9 +174,61 @@ def _append_quote_history(
     return history
 
 
-def negotiation_status_label(wo: Dict[str, Any]) -> str:
+def _history_shows_revised_quote(wo: Dict[str, Any]) -> bool:
+    """True when the active quoted amount is a resubmission, not the first quote."""
+    history = wo.get("quote_negotiation_history") or []
+    if any(str(h.get("event") or "").strip().lower() == "resubmitted" for h in history):
+        return True
+    versions = []
+    for h in history:
+        try:
+            versions.append(int(h.get("version") or 0))
+        except (TypeError, ValueError):
+            continue
+    return max(versions) > 1 if versions else False
+
+
+def derive_quote_presentation_state(wo: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Single quote-state authority for header, Billing, progress rail, and API payloads.
+
+    Do not infer 'Quote approved' from an incomplete rail step. Approval is only
+    PRICE_STATUS_APPROVED.
+    """
     ps = _norm_price_status(wo)
-    return QUOTE_NEGOTIATION_STATUS_LABELS.get(ps, ps or "—")
+    if not pricing_workflow_applies(wo):
+        return {
+            "key": "not_applicable",
+            "label": None,
+            "price_status": ps or None,
+            "is_approved": True,
+            "revision_active": False,
+        }
+    if ps == PRICE_STATUS_APPROVED:
+        key, label = "quote_approved", QUOTE_NEGOTIATION_STATUS_LABELS[PRICE_STATUS_APPROVED]
+    elif ps == PRICE_STATUS_REJECTED_FINAL:
+        key, label = "quote_rejected", QUOTE_NEGOTIATION_STATUS_LABELS[PRICE_STATUS_REJECTED_FINAL]
+    elif ps in (PRICE_STATUS_REVISION_REQUESTED, PRICE_STATUS_REJECTED):
+        key, label = "changes_requested", QUOTE_NEGOTIATION_STATUS_LABELS[PRICE_STATUS_REVISION_REQUESTED]
+    elif ps == PRICE_STATUS_QUOTED and _history_shows_revised_quote(wo):
+        key, label = "revised_quote_submitted", "Revised quote submitted"
+    elif ps == PRICE_STATUS_QUOTED:
+        key, label = "quote_submitted", QUOTE_NEGOTIATION_STATUS_LABELS[PRICE_STATUS_QUOTED]
+    elif ps == PRICE_STATUS_DISPUTED:
+        key, label = "disputed", QUOTE_NEGOTIATION_STATUS_LABELS[PRICE_STATUS_DISPUTED]
+    else:
+        key, label = "quote_requested", QUOTE_NEGOTIATION_STATUS_LABELS[PRICE_STATUS_AWAITING_QUOTE]
+    return {
+        "key": key,
+        "label": label,
+        "price_status": ps or PRICE_STATUS_AWAITING_QUOTE,
+        "is_approved": ps == PRICE_STATUS_APPROVED,
+        "revision_active": ps in (PRICE_STATUS_REVISION_REQUESTED, PRICE_STATUS_REJECTED),
+    }
+
+
+def negotiation_status_label(wo: Dict[str, Any]) -> str:
+    return derive_quote_presentation_state(wo).get("label") or "—"
 
 
 async def _send_contractor_quote_revision_requested_email(
@@ -947,11 +1000,13 @@ def serialize_pricing_snapshot(wo: Dict[str, Any]) -> Dict[str, Any]:
     if not pricing_workflow_applies(wo):
         return {"pricing_workflow": False}
     ps = _norm_price_status(wo)
+    presentation = derive_quote_presentation_state(wo)
     out: Dict[str, Any] = {
         "pricing_workflow": True,
         "pricing_mode": wo.get("pricing_mode"),
         "price_status": wo.get("price_status"),
-        "negotiation_status_label": negotiation_status_label(wo),
+        "quote_presentation": presentation,
+        "negotiation_status_label": presentation.get("label") or negotiation_status_label(wo),
         "quoted_price": wo.get("quoted_price"),
         "price_currency": wo.get("price_currency") or DEFAULT_PRICE_CURRENCY,
         "quote_notes": wo.get("quote_notes"),

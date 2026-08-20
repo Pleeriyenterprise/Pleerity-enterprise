@@ -45,6 +45,15 @@ export function isRequirementMissingDocument(r) {
   return false;
 }
 
+/** Same missing-evidence bucket as Dashboard / scoring (backend row_counts_as_missing_evidence). */
+export function requirementCountsAsMissingEvidence(r) {
+  if (!r || typeof r !== 'object') return false;
+  if (r.requirement_satisfied === true) return false;
+  if (r.missing_required_document === false) return false;
+  if (r.missing_required_document === true) return true;
+  return isRequirementMissingDocument(r);
+}
+
 /** Requirements satisfied without an uploaded document (declarations / self-cert). */
 export function isRequirementSatisfiedWithoutUploadedDocument(r) {
   if (r?.requirement_satisfied === true && r?.missing_required_document === false) {

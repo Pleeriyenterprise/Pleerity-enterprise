@@ -894,7 +894,8 @@ export default function JobPage() {
           >
             <p className="font-semibold">
               Quote status:{' '}
-              {workOrder.pricing.negotiation_status_label ||
+              {workOrder.pricing.quote_presentation?.label ||
+                workOrder.pricing.negotiation_status_label ||
                 operationalLabelForToken(workOrder.pricing.price_status, { emptyLabel: '—' })}
             </p>
             {workOrder.pricing.revision_active ? (

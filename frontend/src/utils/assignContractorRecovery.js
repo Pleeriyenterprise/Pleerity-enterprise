@@ -78,3 +78,14 @@ export function groupedExclusionSamples(exclusionSamples) {
       contractors: rows,
     }));
 }
+
+/** Customer-facing explanation when a saved contractor exists but is out of coverage. */
+export function namedCoverageExclusionNotice(exclusionSamples) {
+  const rows = exclusionSamples?.excluded_location_postcode;
+  if (!Array.isArray(rows) || !rows.length) return null;
+  const names = rows.map((r) => (r?.name || '').trim()).filter(Boolean);
+  if (!names.length) return null;
+  const first = names[0];
+  const extra = names.length > 1 ? ` ${names.length - 1} more saved contractor${names.length === 2 ? '' : 's'} also need coverage updates.` : '';
+  return `${first} already exists but does not currently cover this postcode.${extra} Update coverage in the contractor directory instead of creating a duplicate.`;
+}

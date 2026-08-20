@@ -25,4 +25,13 @@ describe('assignContractorRecovery', () => {
     expect(groups).toHaveLength(1);
     expect(groups[0].label).toBe('Location / coverage');
   });
+
+  it('explains that a saved contractor exists but does not cover the postcode', () => {
+    const { namedCoverageExclusionNotice } = require('./assignContractorRecovery');
+    expect(
+      namedCoverageExclusionNotice({
+        excluded_location_postcode: [{ contractor_id: 'c1', name: 'Hartley Plumbing Ltd' }],
+      }),
+    ).toMatch(/Hartley Plumbing Ltd already exists but does not currently cover this postcode/);
+  });
 });

@@ -22,6 +22,7 @@ import { reinforcementToastOptions } from '../utils/confidenceUxCopy';
 import ListCognitionChip from '../components/operational/ListCognitionChip';
 import NextActionHero from '../components/operational/NextActionHero';
 import { resolveIssuePrimaryAction, normalizeOperationalPrimaryKey } from '../utils/primaryActionResolver';
+import { isIssueAssignContractorLocked } from '../utils/contractorNetworkEntitlement';
 import { isOpenIssueStatus } from '../utils/issueLifecycleAuthority';
 
 function ClientIssuesPageInner() {
