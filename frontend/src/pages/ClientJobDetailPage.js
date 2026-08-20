@@ -295,6 +295,7 @@ function ClientJobDetailInner() {
   const [tradeTypeFilter, setTradeTypeFilter] = useState('all');
   const [assignContractorId, setAssignContractorId] = useState('');
   const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assignModalError, setAssignModalError] = useState('');
   const [bookingGuardOpen, setBookingGuardOpen] = useState(false);
   const [showAddContractorForm, setShowAddContractorForm] = useState(false);
   /** After soft-duplicate warning, user explicitly chooses to create a new record anyway. */
@@ -498,7 +499,11 @@ function ClientJobDetailInner() {
         window.dispatchEvent(new CustomEvent('compliance-outcome', { detail }));
       }
     } catch (err) {
-      toast.error(parseApiError(err, 'Action failed'));
+      const msg = parseApiError(err, 'Action failed');
+      toast.error(msg);
+      if (key === 'assign' || key === 'create_contractor_assign') {
+        setAssignModalError(msg);
+      }
     } finally {
       setActionBusy(null);
     }
@@ -1783,6 +1788,9 @@ function ClientJobDetailInner() {
             setShowExcludedContractors(false);
             setShowEligibilityDiagnostics(false);
             setAssignablePropertyPostcode(null);
+            setAssignModalError('');
+          } else {
+            setAssignModalError('');
           }
         }}
       >
@@ -1817,6 +1825,11 @@ function ClientJobDetailInner() {
                 <AlertDescription className="text-xs">
                   Portal activation required before this contractor can respond to the assignment.
                 </AlertDescription>
+              </Alert>
+            ) : null}
+            {assignModalError ? (
+              <Alert className="border-red-200 bg-red-50 text-red-900 py-2" data-testid="assign-contractor-error">
+                <AlertDescription className="text-sm leading-relaxed">{assignModalError}</AlertDescription>
               </Alert>
             ) : null}
             {!assignableLoading && serverEligibleCount === 0 ? (

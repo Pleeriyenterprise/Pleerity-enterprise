@@ -160,3 +160,19 @@ def test_no_duplicate_event_summary_for_risk_created():
     }
     row = ReportPresentationAuthority.present_timeline_row(ev)
     assert row["business_event"].lower() != row["summary"].lower()
+
+
+def test_work_order_created_human_readable():
+    ev = {
+        "action": "WORK_ORDER_CREATED",
+        "timestamp": "2026-08-18T10:42:00+00:00",
+        "metadata": {
+            "property_name": "Oak City",
+            "description": "Bathroom sink leak",
+        },
+    }
+    row = ReportPresentationAuthority.present_timeline_row(ev)
+    assert "Maintenance job created" in row["business_event"]
+    assert "Bathroom sink leak" in row["summary"]
+    assert "Oak City" in row["summary"]
+    assert "property_id" not in row["summary"]

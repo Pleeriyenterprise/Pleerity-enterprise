@@ -663,6 +663,13 @@ export const clientAPI = {
   /** Client-scoped audit timeline (read-only). */
   getAuditTimeline: (limit = 50) =>
     apiClient.get('/portfolio/audit-timeline', { params: { limit } }),
+  getPropertyActivityEvidenceReport: (propertyId, params = {}) =>
+    apiClient.get(`/client/properties/${propertyId}/activity-evidence-report`, { params }),
+  downloadPropertyActivityEvidenceReportHtml: (propertyId, params = {}) =>
+    apiClient.get(`/client/properties/${propertyId}/activity-evidence-report`, {
+      params: { ...params, format: 'html' },
+      responseType: 'blob',
+    }),
   /** Score ledger: paginated list of score change events. */
   getLedger: (params = {}) =>
     apiClient.get('/client/ledger', { params: { limit: 50, ...params } }),

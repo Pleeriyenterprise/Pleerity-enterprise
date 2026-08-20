@@ -386,6 +386,25 @@ describe('todayPresentationAuthority', () => {
       expect(model.banner.needsAction).toBeNull();
     });
 
+    it('Dashboard Needs action matches Today operational count, not priority-urgent', () => {
+      const upcoming = {
+        id: 'wo1',
+        source_type: 'work_order',
+        section: 'upcoming',
+        take_action: { primary: { label: 'Assign' } },
+      };
+      const model = buildTodayPresentationModel({
+        payload: makePayload({ summary: { urgent_count: 0, habit: { urgent_open_total: 0 } } }),
+        sections: makeSections({ upcoming: [upcoming] }),
+        applyFilter: identityFilter,
+        requirementsById: new Map(),
+        propertyById: new Map(),
+      });
+      assertPresentationConsistency(model);
+      expect(model.counters.needsAction).toBe(1);
+      expect(model.priorityEngine.urgentLaneCount).toBe(0);
+    });
+
     it('12. fresh onboarding landlord — genuinely empty with guidance', () => {
       const model = buildTodayPresentationModel({
         payload: makePayload(),

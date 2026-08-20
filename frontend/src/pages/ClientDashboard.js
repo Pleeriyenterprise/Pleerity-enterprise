@@ -81,6 +81,7 @@ import {
   alignTodayPayloadTaskSections,
   requirementMapFromList,
 } from '../utils/portalRequirementAttention';
+import { buildTodayPresentationModel } from '../utils/todayPresentationAuthority';
 import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
 import { shouldShowDocumentsSetupStep } from '../utils/presentationAuthority';
 import { portfolioHasV2BucketBreakdown } from '../utils/complianceScoreBuckets';
@@ -517,11 +518,18 @@ const ClientDashboard = () => {
     [todayInboxPayload, dashboardInboxRequirementById],
   );
 
-  const todayInboxSum = useMemo(() => {
+  const dashboardTodayPresentation = useMemo(() => {
     if (todayInboxPayload === undefined || todayInboxPayload === null) return null;
-    const s = dashboardAlignedInboxSections;
-    return s.urgent.length + s.upcoming.length + s.in_progress.length;
-  }, [todayInboxPayload, dashboardAlignedInboxSections]);
+    return buildTodayPresentationModel({
+      payload: todayInboxPayload,
+      sections: dashboardAlignedInboxSections,
+      applyFilter: (rows) => rows || [],
+      requirementsById: dashboardInboxRequirementById,
+      propertyById: {},
+    });
+  }, [todayInboxPayload, dashboardAlignedInboxSections, dashboardInboxRequirementById]);
+
+  const todayInboxSum = dashboardTodayPresentation == null ? null : dashboardTodayPresentation.counters.needsAction;
 
   // Command center bundle: digest summary + activity + urgent rows + risks + compliance (one round-trip)
   useEffect(() => {
@@ -1761,11 +1769,11 @@ const ClientDashboard = () => {
             <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/today')}>
               <CardContent className="p-3 sm:p-4 min-w-0">
                 <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center">
-                  Today (inbox)
-                  <DashboardKpiHint label="Today inbox total">
-                    Sum of urgent, upcoming, and in-progress items from the same Today inbox as the Today page, after the same
-                    tracked-requirement filter. Snoozed and hidden are separate buckets below. If this fails to load, open Today for
-                    live counts.
+                  Needs action
+                  <DashboardKpiHint label="Needs action (Today)">
+                    Same Needs action count as the Today page: operational items that need landlord action now,
+                    after the same tracked-requirement filter. Priority-urgent is a subset and is labelled separately
+                    under Needs attention. Snoozed and hidden are excluded.
                   </DashboardKpiHint>
                 </p>
                 {tasksDigest === undefined || todayInboxPayload === undefined ? (
@@ -1784,7 +1792,12 @@ const ClientDashboard = () => {
                   <>
                     <p className="text-xl font-bold text-midnight-blue mt-1">{todayInboxSum ?? 0}</p>
                     {todayInboxSum === 0 && (
-                      <p className="text-xs text-gray-500 mt-1">Nothing in those buckets in this snapshot.</p>
+                      <p className="text-xs text-gray-500 mt-1">Nothing needs action in this snapshot.</p>
+                    )}
+                    {todayInboxSum > 0 && dashboardTodayPresentation?.priorityEngine?.urgentLaneCount != null && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {dashboardTodayPresentation.priorityEngine.urgentLaneCount} of these are priority urgent
+                      </p>
                     )}
                   </>
                 )}
@@ -1931,7 +1944,7 @@ const ClientDashboard = () => {
                 <p className="text-2xl font-bold text-amber-800 tabular-nums mt-2">{valueInsights.at_risk?.expiring_soon_requirements ?? 0}</p>
                 <p className="text-xs text-gray-600 mt-0.5">Expiring soon</p>
                 <p className="text-2xl font-bold text-midnight-blue tabular-nums mt-2">{valueInsights.at_risk?.command_centre_urgent_open ?? 0}</p>
-                <p className="text-xs text-gray-600 mt-0.5">Urgent inbox items</p>
+                <p className="text-xs text-gray-600 mt-0.5">Priority urgent</p>
               </div>
               <div className="rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
                 <p className="text-[11px] text-gray-500 uppercase tracking-wide">Next tier</p>

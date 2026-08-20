@@ -74,7 +74,7 @@ async def test_create_schedule_response_has_no_object_id():
     mock_db = MagicMock()
     schedules = MagicMock()
     schedules.find_one = AsyncMock(return_value=None)
-    schedules.insert_one = MagicMock(side_effect=lambda d: d.update({"_id": "fake_oid"}))
+    schedules.insert_one = AsyncMock(side_effect=lambda d: d.update({"_id": "fake_oid"}))
     schedules.update_many = AsyncMock()
     periods = MagicMock()
     periods.find_one = AsyncMock(return_value=None)
@@ -185,6 +185,53 @@ async def test_create_tenancy_requires_occupancy():
                 property_id,
                 rent_tracking_enabled=True,
             )
+
+
+@pytest.mark.asyncio
+async def test_create_tenancy_from_occupancy_flag_without_portal_tenants():
+    client_id = "c_occ"
+    property_id = "p_occ"
+    mock_db = MagicMock()
+    tenancies = MagicMock()
+    tenancies.find_one = AsyncMock(return_value=None)
+    tenancies.insert_one = AsyncMock()
+    props = MagicMock()
+    props.find_one = AsyncMock(
+        return_value={
+            "property_id": property_id,
+            "client_id": client_id,
+            "tenancy_active": True,
+            "occupancy": "student",
+            "nickname": "Oak City",
+        }
+    )
+    portal_users = MagicMock()
+    portal_users.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+    assignments = MagicMock()
+    assignments.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+    mock_db.properties = props
+    mock_db.portal_users = portal_users
+    mock_db.tenant_assignments = assignments
+    mock_db.__getitem__ = MagicMock(return_value=tenancies)
+
+    with patch("services.rent_tenancy_authority_service.database.get_db", return_value=mock_db):
+        out = await tenancy_authority.resolve_or_create_active_tenancy(
+            client_id,
+            property_id,
+            rent_tracking_enabled=True,
+        )
+    assert out["occupancy_backed"] is True
+    assert out["tenant_ids"] == []
+    assert out["tenant_display_name"] == "Oak City"
+    assert out["status"] == "active"
+    tenancies.insert_one.assert_awaited()
+
+
+def test_occupancy_allows_rent_tenancy():
+    assert tenancy_authority.occupancy_allows_rent_tenancy({"tenancy_active": True}) is True
+    assert tenancy_authority.occupancy_allows_rent_tenancy({"occupancy": "student"}) is True
+    assert tenancy_authority.occupancy_allows_rent_tenancy({"occupancy": "vacant"}) is False
+    assert tenancy_authority.occupancy_allows_rent_tenancy({}) is False
 
 
 @pytest.mark.asyncio

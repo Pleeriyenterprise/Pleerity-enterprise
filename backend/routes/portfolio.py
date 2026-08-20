@@ -880,6 +880,13 @@ _TIMELINE_ACTIONS = [
     "REMINDER_SENT",
     "DIGEST_SENT",
     "COMPLIANCE_STATUS_UPDATED",
+    "MAINTENANCE_ISSUE_CREATED",
+    "WORK_ORDER_CREATED",
+    "WORK_ORDER_CREATED_FROM_RISK_SIGNAL",
+    "CONTRACTOR_ASSIGNED_TO_WORK_ORDER",
+    "RENT_PAYMENT_RECORDED",
+    "RENT_LEDGER_CREATED",
+    "RENT_LEDGER_UPDATED",
 ]
 
 
@@ -901,6 +908,23 @@ async def get_portfolio_audit_timeline(
         {"client_id": client_id, "action": {"$in": _TIMELINE_ACTIONS}},
         {"_id": 0},
     ).sort("timestamp", -1).limit(limit).to_list(limit)
+    property_ids = []
+    for log in logs:
+        md = log.get("metadata") if isinstance(log.get("metadata"), dict) else {}
+        pid = md.get("property_id") or (log.get("resource_id") if log.get("resource_type") == "property" else None)
+        if pid:
+            property_ids.append(str(pid))
+    name_by_id = {}
+    if property_ids:
+        from presentation.property_display_name import get_property_display_name
+
+        props = await db.properties.find(
+            {"client_id": client_id, "property_id": {"$in": list(set(property_ids))}},
+            {"_id": 0, "property_id": 1, "nickname": 1, "name": 1, "address_line_1": 1, "city": 1, "postcode": 1},
+        ).to_list(len(set(property_ids)))
+        name_by_id = {p["property_id"]: get_property_display_name(p) for p in props}
+    from report_presentation.timeline import present_timeline_row
+
     categorized = {
         "intake": [],
         "provisioning": [],
@@ -908,8 +932,18 @@ async def get_portfolio_audit_timeline(
         "documents": [],
         "notifications": [],
         "compliance": [],
+        "operations": [],
     }
     for log in logs:
+        md = log.get("metadata") if isinstance(log.get("metadata"), dict) else {}
+        pid = md.get("property_id") or (log.get("resource_id") if log.get("resource_type") == "property" else None)
+        if pid and pid in name_by_id:
+            md = {**md, "property_name": name_by_id[pid]}
+            log["metadata"] = md
+            log["property_name"] = name_by_id[pid]
+        presented = present_timeline_row(log)
+        log["summary"] = presented.get("summary") or presented.get("business_event")
+        log["headline"] = presented.get("business_event")
         action = log.get("action", "")
         if action.startswith("INTAKE_"):
             categorized["intake"].append(log)
@@ -926,6 +960,8 @@ async def get_portfolio_audit_timeline(
             categorized["notifications"].append(log)
         elif action.startswith("COMPLIANCE_"):
             categorized["compliance"].append(log)
+        else:
+            categorized["operations"].append(log)
     return {
         "client_id": client_id,
         "timeline": logs,

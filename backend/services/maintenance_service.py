@@ -453,6 +453,13 @@ async def create_work_order(
         except Exception as e:
             logger.warning("Triage failed for work order, using defaults: %s", e)
 
+    if kind != WORK_ORDER_KIND_COMPLIANCE and (not category or eff_category == CATEGORY_GENERAL):
+        from services.contractor_service import infer_maintenance_category
+
+        inferred = infer_maintenance_category(description, recommended_contractor_type)
+        if inferred:
+            eff_category = inferred
+
     doc = {
         "work_order_id": work_order_id,
         "client_id": client_id,
@@ -552,6 +559,27 @@ async def create_work_order(
         )
     except Exception:
         pass
+    try:
+        from models import AuditAction
+        from utils.audit import create_audit_log
+
+        await create_audit_log(
+            action=AuditAction.WORK_ORDER_CREATED,
+            actor_id=reporter_id,
+            client_id=client_id,
+            resource_type="work_order",
+            resource_id=work_order_id,
+            metadata={
+                "property_id": property_id,
+                "category": doc.get("category"),
+                "description": (description or "").strip()[:200],
+                "work_order_kind": kind,
+                "severity": doc.get("severity"),
+                "source": source,
+            },
+        )
+    except Exception:
+        logger.warning("audit WORK_ORDER_CREATED failed", exc_info=True)
     return doc
 
 

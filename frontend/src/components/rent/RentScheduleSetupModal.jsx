@@ -148,21 +148,35 @@ export function RentScheduleSetupModal({
     setCreatingTenancy(true);
     try {
       let occupancyTenants = [];
+      let occupancySummary = null;
       try {
         const occ = await clientAPI.getPropertyOccupancyOperationalSummary(form.property_id);
+        occupancySummary = occ.data || null;
         occupancyTenants = occ.data?.active_tenants || [];
       } catch {
         occupancyTenants = [];
       }
 
       if (occupancyTenants.length === 0) {
-        openOccupancySetup(form.property_id);
-        return;
+        const occupancyBacked = Boolean(
+          occupancySummary?.tenancy_lifecycle?.tenancy_active
+            || occupancySummary?.applicability?.tenancy_active
+            || occupancySummary?.tenancy_lifecycle?.rent_tenancy_ready,
+        );
+        if (occupancySummary && !occupancyBacked) {
+          openOccupancySetup(form.property_id);
+          return;
+        }
       }
 
       const res = await clientAPI.createRentTenancy({
         property_id: form.property_id,
         rent_tracking_enabled: true,
+        tenant_ids: occupancyTenants.map((t) => t.tenant_id).filter(Boolean),
+        tenant_display_name:
+          occupancyTenants[0]?.full_name
+          || occupancyTenants[0]?.email
+          || undefined,
       });
       const created = res.data;
       const rows = await refreshTenancies(form.property_id);
