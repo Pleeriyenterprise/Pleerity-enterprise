@@ -1194,8 +1194,8 @@ const ClientDashboard = () => {
         const oa = Number(a.overdue_count ?? 0);
         const ob = Number(b.overdue_count ?? 0);
         if (oa !== ob) return ob - oa;
-        const ma = propertyMissingDocuments(a);
-        const mb = propertyMissingDocuments(b);
+        const ma = missingEvidenceByPropertyId[a.property_id] ?? Number(a.missing_count ?? 0);
+        const mb = missingEvidenceByPropertyId[b.property_id] ?? Number(b.missing_count ?? 0);
         return mb - ma;
       })
       .slice(0, DASHBOARD_FOCUS_PROPERTY_LIMIT);
