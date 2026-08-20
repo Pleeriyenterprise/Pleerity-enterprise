@@ -1,0 +1,46 @@
+{
+  "programme": "NOTIFICATION-BELL-STAGING-UI-CERTIFICATION-02",
+  "parent": "NOTIFICATION-BELL-AUTHORITY-DRIFT-01",
+  "verdict": "NOTIFICATION_BELL_VERIFIED_WITH_LEGACY_DATA_CONDITION",
+  "IMPLEMENTATION_SHA": "a5d71332663952870f69555f3725df4f24f68eef",
+  "STAGING_RUNTIME_SHA": "c2cc9b3c1bd1f752043a58eb1395498e2c5e76f1",
+  "staging_frontend_bundle": "main.7389bb0f.js",
+  "staging_frontend_deployment": "dpl_7Bs7GLA87iB46zbA3RQTiHsuEgjK",
+  "docs_only_descendant": true,
+  "production_api_sha": "13eca9092882aa434207ca0abc72915aaf516a04",
+  "production_touched": false,
+  "main_merged": false,
+  "fixture": {
+    "name": "Elena Rodriguez",
+    "email_domain": "yopmail.com",
+    "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
+    "portal_user_id": "70b7d6cf-7a7c-47e5-8592-69adc1930561",
+    "role": "ROLE_CLIENT_ADMIN",
+    "crn": "PLE-CVP-2026-000038",
+    "access": "audited_admin_impersonation"
+  },
+  "scenarios": {
+    "A_one_unread": "PASS",
+    "B_open_read": "PASS",
+    "C_dismiss": "PASS",
+    "D_multi": "PASS",
+    "E_mark_all": "PASS",
+    "F_reopen_poll": "PASS",
+    "G_multi_tab": "PASS",
+    "H_list_failure": "PASS",
+    "I_full_centre": "PASS",
+    "CTA": "PASS"
+  },
+  "privacy": "Safe",
+  "pilot": {
+    "name": "Emmanuel Afolabi",
+    "crn": "PLE-CVP-2026-000004",
+    "read_only_status": "NOT_OPENED",
+    "record_class": "UNKNOWN_UNTIL_PRODUCTION_READ",
+    "legacy_reconciliation_required": true
+  },
+  "tests": {
+    "backend_inbox_authority": {"passed": 9, "failed": 0, "skipped": 0, "new_failures": 0, "pre_existing_failures": 0},
+    "frontend_bell_and_centre": {"passed": 8, "failed": 0, "skipped": 0, "new_failures": 0, "pre_existing_failures": 0}
+  }
+}
