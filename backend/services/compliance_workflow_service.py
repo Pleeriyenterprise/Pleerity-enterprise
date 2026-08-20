@@ -118,7 +118,13 @@ def derive_canonical_job_status(wo: Dict[str, Any]) -> str:
     if kind == WORK_ORDER_KIND_MAINTENANCE and st == maintenance_service.STATUS_AWAITING_PARTS:
         return "AWAITING_PARTS"
     if kind == WORK_ORDER_KIND_MAINTENANCE and st == maintenance_service.STATUS_SCHEDULED:
-        return "SCHEDULED"
+        # Persisted SCHEDULED is used after contractor accept even with no visit.
+        # Canonical SCHEDULED / "Visit scheduled" only when a confirmed visit exists.
+        sched = (wo.get("schedule_status") or "").strip().lower()
+        has_confirmed_visit = sched == SCHEDULE_STATUS_CONFIRMED and bool((wo.get("scheduled_at") or "").strip())
+        if has_confirmed_visit:
+            return "SCHEDULED"
+        return "ASSIGNED"
 
     oe = (wo.get("operational_exception") or "").strip().upper()
     if oe == OE_NO_ACCESS:
@@ -1243,6 +1249,9 @@ def serialize_client_job(wo: Dict[str, Any]) -> Dict[str, Any]:
         "updated_at": wo.get("updated_at"),
         "completed_at": wo.get("completed_at"),
         "jurisdiction": wo.get("jurisdiction"),
+        "pricing_mode": wo.get("pricing_mode"),
+        "price_status": wo.get("price_status"),
+        "contractor_name": (str(wo.get("contractor_name") or "").strip() or None),
         "next_actions": next_job_actions(wo),
         "timeline_events": client_job_timeline_events(wo),
         "decision_log": normalize_decision_log_for_client(wo.get("decision_log")),
@@ -1275,6 +1284,36 @@ def serialize_client_job(wo: Dict[str, Any]) -> Dict[str, Any]:
 
     attach_progress_contract(base, audience="landlord")
     return base
+
+
+async def attach_contractor_display_name(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Fill contractor_name from the contractors collection when serialize only has an id."""
+    out = dict(payload)
+    if (out.get("contractor_name") or "").strip():
+        return out
+    cid = (out.get("contractor_id") or "").strip()
+    if not cid:
+        out["contractor_name"] = None
+        return out
+    from database import database
+
+    db = database.get_db()
+    row = await db.contractors.find_one(
+        {"contractor_id": cid},
+        {"_id": 0, "company_name": 1, "name": 1},
+    )
+    name = ""
+    if row:
+        name = (str(row.get("company_name") or "").strip() or str(row.get("name") or "").strip())
+    out["contractor_name"] = name or None
+    return out
+
+
+async def serialize_landlord_job(wo: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Landlord job payload with contractor_name resolved independently of assignable lists."""
+    if not wo:
+        return {}
+    return await attach_contractor_display_name(serialize_client_job(wo))
 
 
 def serialize_compliance_job(wo: Dict[str, Any]) -> Dict[str, Any]:

@@ -845,14 +845,22 @@ function SectionBlock({
   propertyById,
   defaultCollapsed = false,
   urgentShowMoreLimit = null,
+  count,
+  countHint,
 }) {
   const [expanded, setExpanded] = useState(!defaultCollapsed);
   const [showAllUrgent, setShowAllUrgent] = useState(false);
 
+  const displayCount = count != null ? count : tasks.length;
+
   if (!tasks?.length) {
     return (
       <div className="mb-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">{title}</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">
+          {title}
+          {count != null ? <span className="text-sm font-normal text-gray-500"> ({displayCount})</span> : null}
+        </h2>
+        {countHint ? <p className="text-xs text-gray-500 mb-2">{countHint}</p> : null}
         <p className="text-sm text-gray-500">{emptyHint}</p>
       </div>
     );
@@ -865,10 +873,13 @@ function SectionBlock({
 
   const header = (
     <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-      <h2 className="text-lg font-semibold text-gray-900">
-        {title}{' '}
-        <span className="text-sm font-normal text-gray-500">({tasks.length})</span>
-      </h2>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">
+          {title}{' '}
+          <span className="text-sm font-normal text-gray-500">({displayCount})</span>
+        </h2>
+        {countHint ? <p className="text-xs text-gray-500 mt-0.5">{countHint}</p> : null}
+      </div>
       {defaultCollapsed ? (
         <button
           type="button"
@@ -1786,6 +1797,12 @@ export default function ClientTasksPage() {
           <SectionBlock
             title="Needs action now"
             tasks={needsActionNow}
+            count={todayPresentation.counters.needsAction}
+            countHint={
+              primaryExecutionTask
+                ? 'Includes the featured next step above — that item is one of this total.'
+                : undefined
+            }
             onRiskAction={onRiskAction}
             riskLoading={riskLoading}
             showRiskInline={showRiskInline}

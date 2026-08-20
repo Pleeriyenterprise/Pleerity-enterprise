@@ -37,6 +37,7 @@ function ClientRentOperationsPageInner() {
   const [summary, setSummary] = useState(null);
   const [ledgers, setLedgers] = useState([]);
   const [ledgerTotal, setLedgerTotal] = useState(0);
+  const [ledgerLoadError, setLedgerLoadError] = useState('');
   const [expenses, setExpenses] = useState([]);
   const [expenseSummary, setExpenseSummary] = useState(null);
   const [properties, setProperties] = useState([]);
@@ -74,10 +75,13 @@ function ClientRentOperationsPageInner() {
       .then((res) => {
         setLedgers(res.data?.ledgers || []);
         setLedgerTotal(Number(res.data?.total) || 0);
+        setLedgerLoadError('');
       })
-      .catch(() => {
+      .catch((err) => {
         setLedgers([]);
         setLedgerTotal(0);
+        setLedgerLoadError(err?.response?.data?.detail || 'Could not load rent periods.');
+        throw err;
       });
   }, [filterProperty, filterStatus, tab, activeKpi]);
 
@@ -229,7 +233,8 @@ function ClientRentOperationsPageInner() {
       (summary.due_today_count || 0) > 0 ||
       (summary.tenancies_with_arrears_count || 0) > 0);
 
-  const showEmptySetup = !loading && tab !== 'expenses' && ledgers.length === 0 && !hasRentTracking;
+  const showEmptySetup =
+    !loading && tab !== 'expenses' && ledgers.length === 0 && !hasRentTracking && !ledgerLoadError;
 
   return (
     <div className={portalPageRoot} data-testid="rent-operations-page">
@@ -314,6 +319,17 @@ function ClientRentOperationsPageInner() {
           <div className="flex justify-center py-12" data-testid="rent-loading">
             <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
           </div>
+        ) : ledgerLoadError && tab !== 'expenses' ? (
+          <Card data-testid="rent-ledger-load-error">
+            <CardContent className="py-10 text-center">
+              <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-2" />
+              <p className="text-gray-800 font-medium">Rent periods could not be loaded</p>
+              <p className="text-sm text-gray-600 mt-1">{ledgerLoadError}</p>
+              <Button className="mt-4" size="sm" variant="outline" onClick={() => refresh()}>
+                Try again
+              </Button>
+            </CardContent>
+          </Card>
         ) : tab === 'expenses' ? (
           <PropertyExpensesPanel
             expenses={expenses}

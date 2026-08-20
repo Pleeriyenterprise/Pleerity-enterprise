@@ -187,6 +187,10 @@ async def record_payment(
                     "property_id": property_id,
                     "amount_minor": alloc,
                     "payment_date": payment_date,
+                    "period_key": fresh.get("period_key"),
+                    "outstanding_balance_minor": max(
+                        0, int(fresh.get("outstanding_balance_minor") or 0) - int(alloc or 0)
+                    ),
                 },
             )
             allocations.append(

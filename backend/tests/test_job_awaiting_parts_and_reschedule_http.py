@@ -68,7 +68,7 @@ def test_awaiting_parts_ok_patches_update(client_jobs):
 
     with patch.object(acw, "load_client_work_order", side_effect=load_wo), patch.object(
         acw.maintenance_service, "update_work_order", upd
-    ), patch.object(acw, "serialize_client_job", return_value={"work_order_id": WO_M}):
+    ), patch.object(acw, "serialize_landlord_job", new=AsyncMock(return_value={"work_order_id": WO_M})):
         res = client_jobs.post(f"/api/jobs/{WO_M}/awaiting-parts", json={})
     assert res.status_code == 200
     assert upd.await_count == 1
@@ -89,7 +89,7 @@ def test_mark_reschedule_required_calls_update(client_jobs):
 
     with patch.object(acw, "load_client_work_order", side_effect=load_wo), patch.object(
         acw.maintenance_service, "update_work_order", upd
-    ), patch.object(acw, "serialize_client_job", return_value={"work_order_id": WO_C}):
+    ), patch.object(acw, "serialize_landlord_job", new=AsyncMock(return_value={"work_order_id": WO_C})):
         res = client_jobs.post(f"/api/jobs/{WO_C}/mark-reschedule-required", json={})
     assert res.status_code == 200
     assert upd.await_count == 1

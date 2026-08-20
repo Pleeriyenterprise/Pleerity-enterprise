@@ -154,3 +154,64 @@ def test_assigned_status_without_contractor_id_not_marked_assigned():
     assert steps["assigned"]["state"] == "current"
     assert steps["assigned"]["label"] == "Awaiting contractor assignment"
     assert steps["assigned"]["state"] != "complete"
+
+
+def test_quote_first_assigned_no_visit_is_not_visit_booked():
+    wo = _base_wo(
+        work_order_kind="MAINTENANCE",
+        status="ASSIGNED",
+        schedule_status="",
+        scheduled_at="",
+        price_status="AWAITING_QUOTE",
+        pricing_mode="MAINTENANCE_PREQUOTE",
+        workflow_mode="QUOTE_FIRST",
+        compliance_proof_status="",
+    )
+    pc = build_progress_contract_v1(wo, audience="landlord")
+    current = next(s for s in pc["progress_steps"] if s["state"] == "current")
+    assert current["key"] == "quote_submitted"
+    assert "Visit booked" not in current["label"]
+    assert "Visit booked" not in (pc.get("headline") or "")
+
+
+def test_inspection_first_assigned_no_visit_schedule_inspection():
+    wo = _base_wo(
+        work_order_kind="MAINTENANCE",
+        workflow_mode="INSPECTION_FIRST",
+        pricing_mode="MAINTENANCE_INSPECTION_REQUIRED",
+        price_status="AWAITING_QUOTE",
+        status="ASSIGNED",
+        schedule_status="",
+        scheduled_at="",
+        compliance_proof_status="",
+    )
+    pc = build_progress_contract_v1(wo, audience="landlord")
+    current = next(s for s in pc["progress_steps"] if s["state"] == "current")
+    assert current["key"] == "inspection_visit_booked"
+    assert current["label"] == "Schedule inspection"
+    assert "Visit booked" not in current["label"]
+    assert "Visit booked" not in (pc.get("headline") or "")
+
+
+def test_confirmed_visit_keeps_visit_booked_complete_label():
+    wo = _base_wo(price_status="APPROVED", compliance_proof_status="")
+    pc = build_progress_contract_v1(wo, audience="landlord")
+    steps = {s["key"]: s for s in pc["progress_steps"] if s["state"] != "skipped"}
+    assert steps["visit_booked"]["state"] == "complete"
+    assert steps["visit_booked"]["label"] == "Visit booked"
+
+
+def test_proposed_reschedule_is_not_visit_booked():
+    wo = _base_wo(
+        price_status="APPROVED",
+        schedule_status="proposed",
+        scheduled_at="2026-07-01T10:00:00Z",
+        compliance_proof_status="",
+        status="SCHEDULED",
+        work_order_kind="MAINTENANCE",
+    )
+    pc = build_progress_contract_v1(wo, audience="landlord")
+    visit = next(s for s in pc["progress_steps"] if s["key"] == "visit_booked")
+    assert visit["state"] != "complete"
+    assert "Visit booked" not in visit["label"]
+    assert "Visit booked" not in (pc.get("headline") or "")

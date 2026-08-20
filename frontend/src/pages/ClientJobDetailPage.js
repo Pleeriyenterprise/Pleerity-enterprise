@@ -556,6 +556,17 @@ function ClientJobDetailInner() {
       clear_operational_exception: () =>
         clientAPI.complianceJobSetOperationalException(jobId, '').then((r) => r.data),
       approve_quote: () => clientAPI.complianceJobApproveQuote(jobId).then((r) => r.data),
+      accept_completion: () => clientAPI.complianceJobAcceptCompletion(jobId).then((r) => r.data),
+      request_proof_clarification: () => {
+        const note = window.prompt('What should the contractor clarify or replace on the proof?') ?? '';
+        return clientAPI
+          .complianceJobRequestProofClarification(jobId, { note: note.trim() || undefined })
+          .then((r) => r.data);
+      },
+      reject_completion: () => {
+        const note = window.prompt('Why are you rejecting this completion?') ?? '';
+        return clientAPI.complianceJobRejectCompletion(jobId, { note: note.trim() || undefined }).then((r) => r.data);
+      },
       link_document: () => clientAPI.complianceJobLinkDocument(jobId, { document_id: linkDocId.trim() }).then((r) => r.data),
       attach_completion_proof: () =>
         clientAPI.complianceJobAttachCompletionProof(jobId, { document_id: linkDocId.trim() }).then((r) => r.data),
@@ -754,6 +765,18 @@ function ClientJobDetailInner() {
     () => networkCoverageLevel(assignableFilterDiagnostics),
     [assignableFilterDiagnostics]
   );
+
+  const assignedContractorDisplay = useMemo(() => {
+    const named = String(job?.contractor_name || '').trim();
+    if (named) return named;
+    const cid = String(job?.contractor_id || '').trim();
+    if (!cid) return '';
+    const match = (assignableContractors || []).find(
+      (c) => String(c.contractor_id || c.id || '') === cid,
+    );
+    if (!match) return '';
+    return String(match.company_name || match.name || '').trim();
+  }, [job?.contractor_name, job?.contractor_id, assignableContractors]);
 
   const earlyNetworkSupport = useMemo(
     () =>
@@ -1023,9 +1046,17 @@ function ClientJobDetailInner() {
           cards or Today.
         </p>
         {job.contractor_id ? (
-          <p className="text-sm">
-            Assigned contractor ID: <span className="font-mono">{job.contractor_id}</span>
-          </p>
+          <div className="text-sm space-y-1">
+            <p>
+              Assigned contractor:{' '}
+              <span className="font-medium text-midnight-blue">
+                {assignedContractorDisplay || 'Name unavailable'}
+              </span>
+            </p>
+            <p className="text-xs text-gray-500">
+              Reference ID: <span className="font-mono">{job.contractor_id}</span>
+            </p>
+          </div>
         ) : (
           <p className="text-sm text-amber-800">No contractor assigned yet.</p>
         )}
@@ -1264,6 +1295,44 @@ function ClientJobDetailInner() {
               {actionBusy === 'close_job' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Close job'}
             </Button>
           ) : null}
+          {na.some((a) => a.id === 'accept_completion') ? (
+            <Button
+              type="button"
+              size="sm"
+              className="bg-teal-700 hover:bg-teal-800"
+              disabled={!!actionBusy}
+              onClick={() => handleLifecycleClick('accept_completion')}
+            >
+              {actionBusy === 'accept_completion' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Accept completion'}
+            </Button>
+          ) : null}
+          {na.some((a) => a.id === 'request_proof_clarification') ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!!actionBusy}
+              onClick={() => handleLifecycleClick('request_proof_clarification')}
+            >
+              {actionBusy === 'request_proof_clarification' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Request clarification'
+              )}
+            </Button>
+          ) : null}
+          {na.some((a) => a.id === 'reject_completion') ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="text-red-700 border-red-200 hover:bg-red-50"
+              disabled={!!actionBusy}
+              onClick={() => handleLifecycleClick('reject_completion')}
+            >
+              {actionBusy === 'reject_completion' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reject completion'}
+            </Button>
+          ) : null}
           {na.some((a) => a.id === 'resume_after_parts') ? (
             <Button
               type="button"
@@ -1474,6 +1543,13 @@ function ClientJobDetailInner() {
             When your contractor submits an invoice for this job, it appears under Approvals for review (approve, reject, or
             request more information). Your team reference on the invoice is the Pleerity invoice number where one has been issued.
           </p>
+          <div className="mt-2 rounded-lg border border-sky-200 bg-sky-50/80 p-3 text-xs text-sky-900">
+            <p className="font-medium mb-1">Payment responsibility</p>
+            <p>
+              You pay the contractor directly for the agreed or final amount. Pleerity records completion and payment status
+              where supported; it does not process contractor payouts or send funds to the contractor.
+            </p>
+          </div>
           <Button size="sm" variant="secondary" className="mt-2" asChild>
             <Link to={resolveClientPortalPath('/operations/approvals', '/operations/approvals')}>Open Approvals</Link>
           </Button>

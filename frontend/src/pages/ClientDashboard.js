@@ -196,8 +196,14 @@ function getPropertyDisplayLabel(p) {
 const DASHBOARD_FOCUS_PROPERTY_LIMIT = 6;
 
 /** Single-line summary of open compliance gaps (different lens than separate columns in Portfolio summary). */
-function buildDashboardComplianceGapsLine(p, openJobsMap, showOpenJobs) {
-  if (p?.score_cognition_line) {
+function buildDashboardComplianceGapsLine(p, openJobsMap, showOpenJobs, missingOverride) {
+  const overdue = Number(p.overdue_count ?? 0);
+  const exp = Number(p.expiring_30_count ?? p.expiring_soon_count ?? 0);
+  const missing =
+    missingOverride != null && !Number.isNaN(Number(missingOverride))
+      ? Number(missingOverride)
+      : Number(p.missing_count ?? 0);
+  if (p?.score_cognition_line && missingOverride == null) {
     if (showOpenJobs) {
       const jobs = Number(openJobsMap?.[p.property_id] ?? 0);
       if (jobs > 0 && !String(p.score_cognition_line).includes('open jobs')) {
@@ -209,9 +215,6 @@ function buildDashboardComplianceGapsLine(p, openJobsMap, showOpenJobs) {
   if (p?.compliance_score_pending || p?.score_status === 'pending_recalc' || p?.score_status === 'calculating') {
     return 'Score updating — recent compliance changes are being processed';
   }
-  const overdue = Number(p.overdue_count ?? 0);
-  const exp = Number(p.expiring_30_count ?? p.expiring_soon_count ?? 0);
-  const missing = Number(p.missing_count ?? 0);
   const parts = [];
   if (overdue > 0) parts.push(`${overdue} overdue`);
   if (exp > 0) parts.push(`${exp} expiring soon`);
@@ -1083,6 +1086,22 @@ const ClientDashboard = () => {
     return portfolioSummary?.kpis?.missing ?? 0;
   }, [complianceScore, portfolioSummary]);
 
+  const missingEvidenceByPropertyId = useMemo(() => {
+    const out = {};
+    for (const row of complianceScore?.property_breakdown || []) {
+      if (!row?.property_id) continue;
+      if (row.missing_evidence == null || Number.isNaN(Number(row.missing_evidence))) continue;
+      out[row.property_id] = Number(row.missing_evidence);
+    }
+    return out;
+  }, [complianceScore?.property_breakdown]);
+
+  const propertyMissingDocuments = (p) => {
+    const fromScore = missingEvidenceByPropertyId[p?.property_id];
+    if (fromScore != null) return fromScore;
+    return Number(p?.missing_count ?? 0);
+  };
+
   // Inline risk band explanation under grade (backend score authority only).
   const riskBandExplanation = useMemo(() => {
     const fromDisplay = displayScoreInfo?.band_explanation;
@@ -1175,12 +1194,12 @@ const ClientDashboard = () => {
         const oa = Number(a.overdue_count ?? 0);
         const ob = Number(b.overdue_count ?? 0);
         if (oa !== ob) return ob - oa;
-        const ma = Number(a.missing_count ?? 0);
-        const mb = Number(b.missing_count ?? 0);
+        const ma = propertyMissingDocuments(a);
+        const mb = propertyMissingDocuments(b);
         return mb - ma;
       })
       .slice(0, DASHBOARD_FOCUS_PROPERTY_LIMIT);
-  }, [portfolioSummary?.properties]);
+  }, [portfolioSummary?.properties, missingEvidenceByPropertyId]);
 
   const dashboardFreshness = useMemo(() => {
     if (commandCenter && typeof commandCenter === 'object' && commandCenter.freshness) return commandCenter.freshness;
@@ -3249,7 +3268,7 @@ const ClientDashboard = () => {
                       </td>
                       <td className="p-3">{p.overdue_count ?? 0}</td>
                       <td className="p-3">{p.expiring_30_count ?? p.expiring_soon_count ?? 0}</td>
-                      <td className="p-3">{p.missing_count ?? 0}</td>
+                      <td className="p-3">{propertyMissingDocuments(p)}</td>
                       {canUseOpsMaintenance && (
                         <td className="p-3" onClick={(e) => e.stopPropagation()}>
                           {openJobsByProperty[p.property_id] ?? 0}
@@ -3367,10 +3386,10 @@ const ClientDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 mb-1 flex items-center">
-                    Missing documents
+                      Missing documents
                     <DashboardKpiHint label="Missing documents">
-                      Missing-evidence count from compliance score (PENDING + MISSING on portal-visible projected rows). Not a
-                      client-side merge with overdue.
+                      Missing-evidence count from compliance score (PENDING + MISSING on portal-visible projected rows). The
+                      property table uses the same score authority per property — not a second catalog count.
                     </DashboardKpiHint>
                   </p>
                   <p className="text-3xl font-bold text-gray-700">
@@ -3428,7 +3447,12 @@ const ClientDashboard = () => {
                       {dashboardFocusProperties.map((p) => {
                         const score = p.property_score ?? p.score;
                         const st = p.score_status;
-                        const gaps = buildDashboardComplianceGapsLine(p, openJobsByProperty, canUseOpsMaintenance);
+                        const gaps = buildDashboardComplianceGapsLine(
+                          p,
+                          openJobsByProperty,
+                          canUseOpsMaintenance,
+                          missingEvidenceByPropertyId[p.property_id],
+                        );
                         return (
                           <button
                             key={p.property_id}
@@ -3469,7 +3493,12 @@ const ClientDashboard = () => {
                           {dashboardFocusProperties.map((p) => {
                             const score = p.property_score ?? p.score;
                             const st = p.score_status;
-                            const gaps = buildDashboardComplianceGapsLine(p, openJobsByProperty, canUseOpsMaintenance);
+                            const gaps = buildDashboardComplianceGapsLine(
+                          p,
+                          openJobsByProperty,
+                          canUseOpsMaintenance,
+                          missingEvidenceByPropertyId[p.property_id],
+                        );
                             return (
                               <tr
                                 key={p.property_id}

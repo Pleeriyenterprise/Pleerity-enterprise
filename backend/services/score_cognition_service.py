@@ -44,7 +44,7 @@ def build_score_risk_explanation(property_row: Dict[str, Any]) -> Optional[str]:
         return None
     overdue = _int_field(property_row, "overdue_count")
     exp = _int_field(property_row, "expiring_30_count", "expiring_soon_count")
-    missing = _int_field(property_row, "missing_count")
+    missing = _int_field(property_row, "missing_evidence", "missing_count")
     if overdue or exp or missing:
         return None
 
@@ -83,7 +83,7 @@ def build_property_score_cognition_line(
 
     overdue = _int_field(property_row, "overdue_count")
     exp = _int_field(property_row, "expiring_30_count", "expiring_soon_count")
-    missing = _int_field(property_row, "missing_count")
+    missing = _int_field(property_row, "missing_evidence", "missing_count")
     parts: List[str] = []
     if overdue > 0:
         parts.append(f"{overdue} overdue")

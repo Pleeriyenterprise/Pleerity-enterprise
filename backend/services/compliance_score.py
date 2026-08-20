@@ -616,10 +616,12 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             if p.get("property_id")
         }
         by_property = {}
+        from services.requirement_satisfaction_service import row_counts_as_missing_evidence
+
         for r in portal_reqs:
             pid = r.get("property_id")
             if pid not in by_property:
-                by_property[pid] = {"valid": 0, "expiring": 0, "overdue": 0}
+                by_property[pid] = {"valid": 0, "expiring": 0, "overdue": 0, "missing_evidence": 0}
             s = r.get("status")
             if s in ("COMPLIANT", "VALID"):
                 by_property[pid]["valid"] += 1
@@ -627,6 +629,9 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 by_property[pid]["expiring"] += 1
             elif s in ("OVERDUE", "EXPIRED"):
                 by_property[pid]["overdue"] += 1
+            elif s in ("PENDING", "MISSING"):
+                if row_counts_as_missing_evidence(r):
+                    by_property[pid]["missing_evidence"] += 1
         property_breakdown = []
         for p in properties:
             pid = p["property_id"]
@@ -648,6 +653,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "valid": bp.get("valid", 0),
                 "expiring": bp.get("expiring", 0),
                 "overdue": bp.get("overdue", 0),
+                "missing_evidence": bp.get("missing_evidence", 0),
                 "compliance_basis": jr.compliance_basis if jr else None,
                 "effective_jurisdiction_label": jr.effective_label if jr else None,
                 "jurisdiction_required": jf["jurisdiction_required"],

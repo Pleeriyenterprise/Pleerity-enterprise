@@ -304,6 +304,35 @@ def _assigned_step_label(key: str, audience: Audience, wo: Dict[str, Any], *, co
     return "Assignment needed"
 
 
+def _incomplete_visit_step_label(key: str, audience: Audience) -> str:
+    """Never present 'Visit booked' unless a confirmed visit exists (complete flag)."""
+    if key == "inspection_visit_booked":
+        if audience == "landlord":
+            return "Schedule inspection"
+        if audience == "contractor":
+            return "Propose inspection visit"
+        return "Inspection not scheduled"
+    if audience == "landlord":
+        return "Schedule visit"
+    if audience == "contractor":
+        return "Propose visit"
+    return "Visit not scheduled"
+
+
+def _progress_step_label(
+    key: str,
+    audience: Audience,
+    wo: Dict[str, Any],
+    *,
+    complete: bool,
+) -> str:
+    if key == "assigned":
+        return _assigned_step_label(key, audience, wo, complete=complete)
+    if key in ("visit_booked", "inspection_visit_booked") and not complete:
+        return _incomplete_visit_step_label(key, audience)
+    return _STEP_LABELS.get(key, {}).get(audience, key.replace("_", " ").title())
+
+
 def _inspection_completed(wo: Dict[str, Any]) -> bool:
     if wo.get("inspection_completed_at"):
         return True
@@ -447,10 +476,15 @@ def _materialize_steps(
             state = "blocked" if rs.get("blocked") else "current"
         else:
             state = "pending"
+        complete = bool(rs.get("complete"))
         label = (
-            _assigned_step_label(key, audience, wo or {}, complete=bool(rs.get("complete")))
+            _progress_step_label(key, audience, wo or {}, complete=complete)
             if wo is not None
-            else _STEP_LABELS.get(key, {}).get(audience, key.replace("_", " ").title())
+            else (
+                _incomplete_visit_step_label(key, audience)
+                if key in ("visit_booked", "inspection_visit_booked") and not complete
+                else _STEP_LABELS.get(key, {}).get(audience, key.replace("_", " ").title())
+            )
         )
         out.append(
             {
@@ -565,7 +599,7 @@ def _headline_for_audience(wo: Dict[str, Any], *, audience: Audience, current_st
         return "Job cancelled"
     if current_stage_label:
         if audience == "landlord":
-            if canonical == "BOOKED" and not _work_started(wo):
+            if canonical in ("BOOKED", "SCHEDULED") and _visit_confirmed(wo) and not _work_started(wo):
                 return "Visit booked — awaiting completion"
             if canonical == "IN_PROGRESS":
                 return "Work in progress"

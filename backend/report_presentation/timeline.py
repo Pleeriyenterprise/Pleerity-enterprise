@@ -240,9 +240,25 @@ def _business_event_and_summary(ev: Dict[str, Any]) -> Tuple[str, str]:
         )
 
     if action == "RENT_PAYMENT_RECORDED":
+        amount_minor = md.get("amount_minor")
+        period = str(md.get("period_key") or md.get("rent_period") or "").strip()
+        outstanding = md.get("outstanding_balance_minor")
+        amount_txt = ""
+        try:
+            if amount_minor is not None and str(amount_minor).strip() != "":
+                amount_txt = f" of £{int(amount_minor) / 100:.2f}"
+        except (TypeError, ValueError):
+            amount_txt = ""
+        period_txt = f" for period {period}" if period else ""
+        outstanding_txt = ""
+        try:
+            if outstanding is not None and str(outstanding).strip() != "":
+                outstanding_txt = f" Remaining outstanding: £{int(outstanding) / 100:.2f}."
+        except (TypeError, ValueError):
+            outstanding_txt = ""
         return (
             "Rent payment recorded",
-            f"A rent payment was recorded{at_property}.",
+            f"A rent payment{amount_txt} was recorded{period_txt}{at_property}.{outstanding_txt}",
         )
 
     if action in ("RENT_LEDGER_CREATED", "RENT_LEDGER_UPDATED"):
