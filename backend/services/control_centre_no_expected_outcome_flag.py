@@ -58,6 +58,11 @@ STRUCTURED_OUTCOME_METRIC_KEYS = frozenset(
         "recovered",
         "properties_considered",
         "properties_enqueued",
+        "eligible",
+        "deduplicated",
+        "terminal_skipped",
+        "unknown_safe_skip",
+        "scanned",
     }
 )
 

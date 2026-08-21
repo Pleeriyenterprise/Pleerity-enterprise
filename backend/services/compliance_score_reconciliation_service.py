@@ -13,7 +13,9 @@ from database import database
 from services.compliance_recalc_queue import (
     ACTOR_SYSTEM,
     TRIGGER_RECONCILIATION_BATCH,
-    enqueue_compliance_recalc,
+)
+from services.compliance_recalc_sla_eligibility import (
+    enqueue_automatic_compliance_recalc_if_eligible,
 )
 
 logger = logging.getLogger(__name__)
@@ -55,6 +57,7 @@ async def enqueue_reconciliation_for_properties(
     enqueued = 0
     skipped = 0
     ids: List[str] = []
+    eligibility_cache: Dict[str, Any] = {}
     async for row in cursor:
         pid = str(row.get("property_id") or "").strip()
         cid = str(row.get("client_id") or "").strip()
@@ -62,15 +65,17 @@ async def enqueue_reconciliation_for_properties(
             skipped += 1
             continue
         corr = f"{TRIGGER_RECONCILIATION_BATCH}:{pid}"
-        ok = await enqueue_compliance_recalc(
+        attempt = await enqueue_automatic_compliance_recalc_if_eligible(
+            db,
             property_id=pid,
             client_id=cid,
             trigger_reason=TRIGGER_RECONCILIATION_BATCH,
             actor_type=ACTOR_SYSTEM,
             actor_id=None,
             correlation_id=corr,
+            cache=eligibility_cache,
         )
-        if ok:
+        if attempt.enqueued:
             enqueued += 1
             ids.append(pid)
         else:

@@ -166,6 +166,10 @@ async def test_expiry_rollover_no_properties_conditional_no_output_not_flagged()
 @pytest.mark.asyncio
 async def test_expiry_rollover_enqueued_work_not_flagged():
     from job_runner import run_expiry_rollover_recalc
+    from services.compliance_recalc_sla_eligibility import (
+        ComplianceRecalcSlaClass,
+        ComplianceRecalcSlaEligibility,
+    )
 
     items = [{"property_id": "p1"}]
 
@@ -186,6 +190,12 @@ async def test_expiry_rollover_enqueued_work_not_flagged():
     db = MagicMock()
     db.requirements.find = MagicMock(return_value=_OneRowCursor())
     db.properties.find_one = AsyncMock(return_value={"client_id": "c1"})
+    actionable = ComplianceRecalcSlaEligibility(
+        sla_class=ComplianceRecalcSlaClass.ACTIONABLE,
+        lifecycle_state="ACTIVE",
+        decision="CONTINUE",
+        reason="test",
+    )
 
     with patch("database.database.get_db", return_value=db):
         with patch(
@@ -193,7 +203,12 @@ async def test_expiry_rollover_enqueued_work_not_flagged():
             new_callable=AsyncMock,
             return_value=True,
         ):
-            result = await run_expiry_rollover_recalc()
+            with patch(
+                "services.compliance_recalc_sla_eligibility.resolve_compliance_recalc_sla_eligibility",
+                new_callable=AsyncMock,
+                return_value=actionable,
+            ):
+                result = await run_expiry_rollover_recalc()
     assert result.get("count") == 1
     om = result["outcome_metrics"]
     assert om["properties_considered"] == 1

@@ -805,9 +805,11 @@ async def run_expiry_rollover_recalc():
         from database import database
         from datetime import timedelta
         from services.compliance_recalc_queue import (
-            enqueue_compliance_recalc,
             TRIGGER_EXPIRY_JOB,
             ACTOR_SYSTEM,
+        )
+        from services.compliance_recalc_sla_eligibility import (
+            enqueue_automatic_compliance_recalc_if_eligible,
         )
 
         db = database.get_db()
@@ -827,32 +829,66 @@ async def run_expiry_rollover_recalc():
             property_ids.add(doc["property_id"])
 
         count = 0
+        eligibility_cache: Dict[str, Any] = {}
+        stats = {
+            "lifecycle_suppressed": 0,
+            "unknown_safe_skip": 0,
+            "terminal_skipped": 0,
+            "deduplicated": 0,
+            "eligible": 0,
+            "errors": 0,
+        }
         for property_id in property_ids:
             prop = await db.properties.find_one({"property_id": property_id}, {"client_id": 1})
             if not prop:
                 continue
             correlation_id = f"EXPIRY_JOB:{property_id}:{date_str}"
-            enqueued = await enqueue_compliance_recalc(
-                property_id=property_id,
-                client_id=prop["client_id"],
-                trigger_reason=TRIGGER_EXPIRY_JOB,
-                actor_type=ACTOR_SYSTEM,
-                actor_id=None,
-                correlation_id=correlation_id,
-            )
-            if enqueued:
+            try:
+                attempt = await enqueue_automatic_compliance_recalc_if_eligible(
+                    db,
+                    property_id=property_id,
+                    client_id=prop["client_id"],
+                    trigger_reason=TRIGGER_EXPIRY_JOB,
+                    actor_type=ACTOR_SYSTEM,
+                    actor_id=None,
+                    correlation_id=correlation_id,
+                    cache=eligibility_cache,
+                )
+            except Exception:
+                stats["errors"] += 1
+                logger.exception(
+                    "expiry_rollover_recalc: enqueue failed property_id=%s", property_id
+                )
+                continue
+            if attempt.outcome == "enqueued":
                 count += 1
+                stats["eligible"] += 1
+            elif attempt.outcome == "deduplicated":
+                stats["eligible"] += 1
+                stats["deduplicated"] += 1
+            else:
+                stats[attempt.outcome] = stats.get(attempt.outcome, 0) + 1
 
         logger.info(f"Expiry rollover enqueued: {count} properties")
         n_considered = len(property_ids)
         om: Dict[str, Any] = {
             "properties_considered": n_considered,
             "properties_enqueued": count,
+            "scanned": n_considered,
+            "eligible": stats["eligible"],
+            "enqueued": count,
+            "deduplicated": stats["deduplicated"],
+            "lifecycle_suppressed": stats["lifecycle_suppressed"],
+            "unknown_safe_skip": stats["unknown_safe_skip"],
+            "terminal_skipped": stats["terminal_skipped"],
+            "errors": stats["errors"],
             "attempted_count": 1,
             "success_count": 1,
             "failed_count": 0,
             "outcome_kind": "NO_WORK_ELIGIBLE" if n_considered == 0 and count == 0 else "WORK_PERFORMED",
         }
+        if n_considered > 0 and count == 0 and stats["eligible"] == 0:
+            om["outcome_kind"] = "LIFECYCLE_SUPPRESSED"
         if n_considered == 0 and count == 0:
             from services.job_run_service import OUTCOME_CONDITIONAL_NO_OUTPUT
 
@@ -1657,6 +1693,9 @@ async def run_compliance_recalc_enqueue_property(property_id: Optional[str] = No
         TRIGGER_SCHEDULED_PROPERTY_BATCH,
         enqueue_compliance_recalc,
     )
+    from services.compliance_recalc_sla_eligibility import (
+        enqueue_automatic_compliance_recalc_if_eligible,
+    )
     from services.job_run_service import OUTCOME_FAILED
 
     pid = str(property_id).strip() if property_id else ""
@@ -1698,6 +1737,15 @@ async def run_compliance_recalc_enqueue_property(property_id: Optional[str] = No
     date_str = now.strftime("%Y-%m-%d")
     enqueued = 0
     scanned = 0
+    eligibility_cache: Dict[str, Any] = {}
+    stats = {
+        "eligible": 0,
+        "deduplicated": 0,
+        "lifecycle_suppressed": 0,
+        "unknown_safe_skip": 0,
+        "terminal_skipped": 0,
+        "errors": 0,
+    }
     try:
         total_props = await db.properties.count_documents({})
         props_batch = await _fetch_properties_batch_round_robin(db, limit)
@@ -1708,31 +1756,58 @@ async def run_compliance_recalc_enqueue_property(property_id: Optional[str] = No
             if not pr or not cid:
                 continue
             corr = f"{TRIGGER_SCHEDULED_PROPERTY_BATCH}:{pr}:{date_str}"
-            ok = await enqueue_compliance_recalc(
-                property_id=str(pr),
-                client_id=str(cid),
-                trigger_reason=TRIGGER_SCHEDULED_PROPERTY_BATCH,
-                actor_type=ACTOR_SYSTEM,
-                actor_id=None,
-                correlation_id=corr,
-            )
-            if ok:
+            try:
+                attempt = await enqueue_automatic_compliance_recalc_if_eligible(
+                    db,
+                    property_id=str(pr),
+                    client_id=str(cid),
+                    trigger_reason=TRIGGER_SCHEDULED_PROPERTY_BATCH,
+                    actor_type=ACTOR_SYSTEM,
+                    actor_id=None,
+                    correlation_id=corr,
+                    cache=eligibility_cache,
+                )
+            except Exception:
+                stats["errors"] += 1
+                logger.exception(
+                    "compliance_recalc_enqueue_property: enqueue failed property_id=%s", pr
+                )
+                continue
+            if attempt.outcome == "enqueued":
                 enqueued += 1
+                stats["eligible"] += 1
+            elif attempt.outcome == "deduplicated":
+                stats["eligible"] += 1
+                stats["deduplicated"] += 1
+            else:
+                stats[attempt.outcome] = stats.get(attempt.outcome, 0) + 1
         msg = (
             f"Scheduled compliance recalc enqueue: {enqueued} newly enqueued "
             f"({scanned} properties in batch, limit={limit}, portfolio={total_props}, round-robin)"
         )
         logger.info("compliance_recalc_enqueue_property: %s", msg)
+        kind = "WORK_PERFORMED"
+        if scanned == 0:
+            kind = "NO_WORK_ELIGIBLE"
+        elif enqueued == 0 and stats["eligible"] == 0 and scanned > 0:
+            kind = "LIFECYCLE_SUPPRESSED"
         return {
             "message": msg,
             "count": enqueued,
             "outcome_metrics": {
                 "enqueued": enqueued,
                 "scanned": scanned,
+                "eligible": stats["eligible"],
+                "deduplicated": stats["deduplicated"],
+                "lifecycle_suppressed": stats["lifecycle_suppressed"],
+                "unknown_safe_skip": stats["unknown_safe_skip"],
+                "terminal_skipped": stats["terminal_skipped"],
+                "errors": stats["errors"],
                 "limit": limit,
                 "batch_date": date_str,
                 "total_properties": total_props,
                 "round_robin": True,
+                "outcome_kind": kind,
             },
         }
     except Exception as e:

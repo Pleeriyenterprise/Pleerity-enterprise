@@ -530,20 +530,29 @@ class JobScheduler:
                 
                 # Enqueue compliance recalc for properties whose requirement status changed
                 if properties_status_changed:
-                    from services.compliance_recalc_queue import enqueue_compliance_recalc
                     from services.compliance_recalc_queue import TRIGGER_EXPIRY_JOB, ACTOR_SYSTEM
+                    from services.compliance_recalc_sla_eligibility import (
+                        enqueue_automatic_compliance_recalc_if_eligible,
+                    )
                     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
                     for property_id in properties_status_changed:
                         if not property_id:
                             continue
-                        await enqueue_compliance_recalc(
-                            property_id=property_id,
-                            client_id=client["client_id"],
-                            trigger_reason=TRIGGER_EXPIRY_JOB,
-                            actor_type=ACTOR_SYSTEM,
-                            actor_id=None,
-                            correlation_id=f"REMINDER_JOB:{property_id}:{date_str}",
-                        )
+                        try:
+                            await enqueue_automatic_compliance_recalc_if_eligible(
+                                self.db,
+                                property_id=property_id,
+                                client_id=client["client_id"],
+                                trigger_reason=TRIGGER_EXPIRY_JOB,
+                                actor_type=ACTOR_SYSTEM,
+                                actor_id=None,
+                                correlation_id=f"REMINDER_JOB:{property_id}:{date_str}",
+                            )
+                        except Exception:
+                            logger.exception(
+                                "daily_reminders: expiry recalc enqueue failed property_id=%s",
+                                property_id,
+                            )
                 
                 # One independently governed email per eligible requirement.
                 # Failure of one send does not abort remaining eligible items.

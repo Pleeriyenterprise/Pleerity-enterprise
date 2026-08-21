@@ -6,6 +6,7 @@ Does not invent a second lifecycle state machine. Queue SLA evaluation must use 
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional
@@ -15,6 +16,8 @@ from services.account_background_runtime_authority import (
     BackgroundRuntimeDecision,
     evaluate_background_runtime,
 )
+
+logger = logging.getLogger(__name__)
 
 COMPLIANCE_RECALC_QUEUE_JOB_TYPE = "compliance_recalc_queue"
 
@@ -105,3 +108,71 @@ async def resolve_compliance_recalc_sla_eligibility(
     if cache is not None:
         cache[key] = eligibility
     return eligibility
+
+
+def automatic_enqueue_skip_bucket(eligibility: ComplianceRecalcSlaEligibility) -> Optional[str]:
+    """Metric key when automatic enqueue must not mutate queue/pending. None if eligible."""
+    if eligibility.operationally_actionable:
+        return None
+    if eligibility.sla_class == ComplianceRecalcSlaClass.TERMINATED:
+        return "terminal_skipped"
+    if eligibility.sla_class == ComplianceRecalcSlaClass.UNKNOWN_SAFE_SKIP:
+        return "unknown_safe_skip"
+    return "lifecycle_suppressed"
+
+
+@dataclass(frozen=True)
+class AutomaticEnqueueAttempt:
+    """Result of a lifecycle-gated automatic enqueue. ``enqueued`` is True only on a new/regenerated row."""
+
+    enqueued: bool
+    outcome: str
+    eligibility: ComplianceRecalcSlaEligibility
+
+
+async def enqueue_automatic_compliance_recalc_if_eligible(
+    db,
+    *,
+    property_id: str,
+    client_id: str,
+    trigger_reason: str,
+    actor_type: str,
+    actor_id: Optional[str] = None,
+    correlation_id: Optional[str] = None,
+    cache: Optional[Dict[str, ComplianceRecalcSlaEligibility]] = None,
+) -> AutomaticEnqueueAttempt:
+    """
+    Automatic/scheduled enqueue gate: authority first, then queue/pending mutation.
+
+    Does not invent a second lifecycle machine. Customer/admin callers must keep using
+    ``enqueue_compliance_recalc`` directly.
+    """
+    eligibility = await resolve_compliance_recalc_sla_eligibility(db, client_id, cache=cache)
+    skip = automatic_enqueue_skip_bucket(eligibility)
+    if skip:
+        logger.info(
+            "compliance_recalc automatic enqueue skipped property_id=%s client_id=%s "
+            "sla_class=%s lifecycle=%s trigger=%s",
+            property_id,
+            client_id,
+            eligibility.sla_class.value,
+            eligibility.lifecycle_state,
+            trigger_reason,
+        )
+        return AutomaticEnqueueAttempt(enqueued=False, outcome=skip, eligibility=eligibility)
+
+    from services.compliance_recalc_queue import enqueue_compliance_recalc
+
+    result = await enqueue_compliance_recalc(
+        property_id=property_id,
+        client_id=client_id,
+        trigger_reason=trigger_reason,
+        actor_type=actor_type,
+        actor_id=actor_id,
+        correlation_id=correlation_id,
+    )
+    return AutomaticEnqueueAttempt(
+        enqueued=bool(result),
+        outcome="enqueued" if result else "deduplicated",
+        eligibility=eligibility,
+    )
