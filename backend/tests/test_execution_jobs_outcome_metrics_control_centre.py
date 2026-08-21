@@ -218,3 +218,31 @@ def test_structured_zero_attempt_still_flags_expiry_not_broad_suppression():
         },
     }
     assert _flag("expiry_rollover_recalc", detail) is True
+
+
+def test_compliance_recalc_sla_monitor_metrics_are_structured_and_not_false_positive():
+    from services.compliance_sla_monitor import build_compliance_recalc_sla_monitor_run_result
+
+    result = build_compliance_recalc_sla_monitor_run_result(
+        {
+            "evaluated": 10,
+            "actionable": 1,
+            "lifecycle_suppressed": 8,
+            "terminal": 1,
+            "unknown_safe_skip": 0,
+            "breaches": 1,
+            "resolved": 2,
+        }
+    )
+    om = result["outcome_metrics"]
+    assert om["outcome_kind"] == "SLA_CHECK_COMPLETED"
+    assert om["evaluated"] == 10
+    assert om["lifecycle_suppressed"] == 8
+    assert om["breaches"] == 1
+    assert om["resolved"] == 2
+    detail = {
+        "last_run_status": "success",
+        "last_outcome_status": result["outcome_status"],
+        "outcome_metrics": om,
+    }
+    assert _flag("compliance_recalc_sla_monitor", detail) is False

@@ -495,6 +495,9 @@ async def run_compliance_recalc_worker():
         jobs = await cursor.to_list(10)
         batch_size = len(jobs)
         claim_skipped = 0
+        lifecycle_skipped = 0
+        lifecycle_paused = 0
+        lifecycle_terminated = 0
         processed = 0
         failed_retry = 0
         dead_count = 0
@@ -518,6 +521,7 @@ async def run_compliance_recalc_worker():
                 continue
             if client_id:
                 from services.account_background_runtime_authority import (
+                    BackgroundJobDecision,
                     apply_queue_runtime_suppression,
                     evaluate_background_runtime,
                     log_background_decision,
@@ -535,10 +539,16 @@ async def run_compliance_recalc_worker():
                         status_pending=STATUS_PENDING,
                         status_dead=STATUS_DEAD,
                     )
-                    if queue_runtime_action(bg) == "terminate":
-                        dead_count += 1
+                    action = queue_runtime_action(bg)
+                    if action == "terminate":
+                        lifecycle_terminated += 1
+                    elif bg.decision in (
+                        BackgroundJobDecision.PAUSE,
+                        BackgroundJobDecision.RETENTION_ONLY,
+                    ):
+                        lifecycle_paused += 1
                     else:
-                        claim_skipped += 1
+                        lifecycle_skipped += 1
                     continue
             queue_item_id = str(jid)
             queue_collection = "compliance_recalc_queue"
@@ -772,6 +782,9 @@ async def run_compliance_recalc_worker():
             {
                 "batch_size": batch_size,
                 "claim_skipped": claim_skipped,
+                "lifecycle_skipped": lifecycle_skipped,
+                "lifecycle_paused": lifecycle_paused,
+                "lifecycle_terminated": lifecycle_terminated,
                 "processed": processed,
                 "failed_retry": failed_retry,
                 "dead": dead_count,

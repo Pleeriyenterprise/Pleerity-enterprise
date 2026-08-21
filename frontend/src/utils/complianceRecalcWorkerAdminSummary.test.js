@@ -73,6 +73,33 @@ describe('formatComplianceRecalcWorkerOutcomeSummary', () => {
     expect(JSON.stringify(b.technicalPayload)).toContain('CONTENTION_ONLY');
   });
 
+  it('shows lifecycle-suppressed wording, not contention', () => {
+    const b = formatComplianceRecalcWorkerOutcomeSummary({
+      status: 'success',
+      outcome_status: 'success',
+      outcome_metrics: {
+        queue_empty: false,
+        attempted_count: 3,
+        queue_items_seen_batch: 3,
+        queue_items_claim_skipped: 0,
+        queue_items_lifecycle_skipped: 2,
+        queue_items_lifecycle_paused: 1,
+        queue_items_processed: 0,
+        queue_items_failed: 0,
+        queue_items_dead: 0,
+        success_count: 0,
+        failed_count: 0,
+        outcome_kind: 'LIFECYCLE_SUPPRESSED',
+      },
+    });
+    const joined = b.headlineLines.join(' ');
+    expect(joined).toMatch(/account lifecycle does not permit/i);
+    expect(joined).toMatch(/not claim contention/i);
+    expect(joined).not.toMatch(/another worker already claimed/i);
+    expect(joined.toUpperCase()).not.toContain('LIFECYCLE_SUPPRESSED');
+    expect(JSON.stringify(b.technicalPayload)).toContain('LIFECYCLE_SUPPRESSED');
+  });
+
   it('shows successful work', () => {
     const b = formatComplianceRecalcWorkerOutcomeSummary({
       status: 'success',

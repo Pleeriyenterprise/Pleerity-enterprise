@@ -9,6 +9,12 @@ from typing import Any, Dict, List, Optional
 
 from database import database
 from models import AuditAction
+from services.compliance_recalc_sla_eligibility import (
+    ComplianceRecalcSlaClass,
+    ComplianceRecalcSlaEligibility,
+    resolve_compliance_recalc_sla_eligibility,
+)
+from services.job_run_service import OUTCOME_SUCCESS
 from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
@@ -257,6 +263,55 @@ async def _flush_groupable_queue_property_emails(
                 )
 
 
+def _eligibility_bucket(eligibility: ComplianceRecalcSlaEligibility) -> str:
+    if eligibility.sla_class == ComplianceRecalcSlaClass.ACTIONABLE:
+        return "actionable"
+    if eligibility.sla_class == ComplianceRecalcSlaClass.TERMINATED:
+        return "terminal"
+    if eligibility.sla_class == ComplianceRecalcSlaClass.UNKNOWN_SAFE_SKIP:
+        return "unknown_safe_skip"
+    return "lifecycle_suppressed"
+
+
+def _record_evaluated_row(stats: Dict[str, int], eligibility: ComplianceRecalcSlaEligibility) -> None:
+    stats["evaluated"] += 1
+    stats[_eligibility_bucket(eligibility)] += 1
+
+
+def build_compliance_recalc_sla_monitor_run_result(stats: Dict[str, int]) -> Dict[str, Any]:
+    """
+    Canonical job-run return shape. ``outcome_metrics`` is what ``run_instrumented`` persists.
+    Top-level ``breaches`` / ``resolved`` remain for existing callers and tests.
+    """
+    breaches = int(stats.get("breaches") or 0)
+    resolved = int(stats.get("resolved") or 0)
+    evaluated = int(stats.get("evaluated") or 0)
+    return {
+        "message": (
+            f"Compliance recalc SLA monitor run: {evaluated} evaluated, "
+            f"{breaches} breaches, {resolved} resolved"
+        ),
+        "breaches": breaches,
+        "resolved": resolved,
+        "count": evaluated,
+        "outcome_status": OUTCOME_SUCCESS,
+        "outcome_metrics": {
+            "outcome_kind": "SLA_CHECK_COMPLETED",
+            "checks_run": 1,
+            "attempted_count": evaluated,
+            "success_count": 1,
+            "failed_count": 0,
+            "evaluated": evaluated,
+            "actionable": int(stats.get("actionable") or 0),
+            "lifecycle_suppressed": int(stats.get("lifecycle_suppressed") or 0),
+            "terminal": int(stats.get("terminal") or 0),
+            "unknown_safe_skip": int(stats.get("unknown_safe_skip") or 0),
+            "breaches": breaches,
+            "resolved": resolved,
+        },
+    }
+
+
 async def _resolve_alert(db, property_id: str, alert_type: str, client_id: str, now: datetime) -> None:
     """Mark alert active=false and write RESOLVED audit."""
     r = await db.compliance_sla_alerts.update_one(
@@ -276,14 +331,14 @@ async def _resolve_alert(db, property_id: str, alert_type: str, client_id: str, 
 async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
     """
     Scan queue and properties for SLA breaches; upsert alerts with cooldown; resolve when clear.
-    Returns summary counts.
+
+    Eligibility is per property/client using the same background-runtime authority as the
+    recalc worker. Intentionally suppressed or terminal work is not treated as an ACTIVE delay.
     """
     from services.compliance_recalc_queue import (
         STATUS_PENDING,
-        STATUS_RUNNING,
         STATUS_FAILED,
         STATUS_DEAD,
-        STATUS_DONE,
     )
     from services.compliance_recalc_running_reclaim import mongo_running_liveness_stale_filter
 
@@ -293,8 +348,22 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
     cutoff_running = (now - timedelta(seconds=SLA_RUNNING_SECONDS)).isoformat()
     running_stale_filter = mongo_running_liveness_stale_filter(cutoff_running)
 
-    stats = {"breaches": 0, "resolved": 0}
+    stats = {
+        "breaches": 0,
+        "resolved": 0,
+        "evaluated": 0,
+        "actionable": 0,
+        "lifecycle_suppressed": 0,
+        "terminal": 0,
+        "unknown_safe_skip": 0,
+    }
+    eligibility_cache: Dict[str, ComplianceRecalcSlaEligibility] = {}
     groupable_email_buffer: List[Dict[str, Any]] = []
+
+    async def _eligibility_for(client_id: str) -> ComplianceRecalcSlaEligibility:
+        return await resolve_compliance_recalc_sla_eligibility(
+            db, client_id, cache=eligibility_cache
+        )
 
     # A) PENDING stuck: next_run_at or created_at <= cutoff_pending
     cursor = db.compliance_recalc_queue.find(
@@ -303,6 +372,10 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
     async for job in cursor:
         property_id = job.get("property_id")
         client_id = job.get("client_id", "")
+        eligibility = await _eligibility_for(client_id)
+        _record_evaluated_row(stats, eligibility)
+        if not eligibility.operationally_actionable:
+            continue
         created = _parse_iso(job.get("created_at"))
         age_sec = (now - created).total_seconds() if created else 0
         details = {
@@ -313,6 +386,8 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
             "next_run_at": job.get("next_run_at"),
             "age_seconds": round(age_sec),
             "last_error": job.get("last_error"),
+            "sla_class": eligibility.sla_class.value,
+            "lifecycle_state": eligibility.lifecycle_state,
         }
         await _upsert_alert_and_maybe_send(
             db, property_id, client_id, ALERT_PENDING_STUCK, SEVERITY_WARN, details, now,
@@ -325,6 +400,10 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
     async for job in cursor:
         property_id = job.get("property_id")
         client_id = job.get("client_id", "")
+        eligibility = await _eligibility_for(client_id)
+        _record_evaluated_row(stats, eligibility)
+        if not eligibility.operationally_actionable:
+            continue
         updated = _parse_iso(job.get("updated_at"))
         hb = _parse_iso(job.get("heartbeat_at"))
         liveness_candidates = [d for d in (updated, hb) if d is not None]
@@ -338,6 +417,8 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
             "heartbeat_at": job.get("heartbeat_at"),
             "age_seconds": round(age_sec),
             "last_error": job.get("last_error"),
+            "sla_class": eligibility.sla_class.value,
+            "lifecycle_state": eligibility.lifecycle_state,
         }
         await _upsert_alert_and_maybe_send(
             db, property_id, client_id, ALERT_RUNNING_STUCK, SEVERITY_CRIT, details, now,
@@ -362,12 +443,18 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
             severity = SEVERITY_WARN
         else:
             continue
+        eligibility = await _eligibility_for(client_id)
+        _record_evaluated_row(stats, eligibility)
+        if not eligibility.operationally_actionable:
+            continue
         details = {
             "job_id": str(job.get("_id")),
             "status": status,
             "attempts": attempts,
             "updated_at": job.get("updated_at"),
             "last_error": job.get("last_error"),
+            "sla_class": eligibility.sla_class.value,
+            "lifecycle_state": eligibility.lifecycle_state,
         }
         await _upsert_alert_and_maybe_send(
             db, property_id, client_id, alert_type, severity, details, now,
@@ -387,11 +474,16 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
         last_calc = prop.get("compliance_last_calculated_at")
         if last_calc and last_calc > cutoff_prop:
             continue
-        # Pending and (never calculated or last calculated too long ago)
+        eligibility = await _eligibility_for(client_id)
+        _record_evaluated_row(stats, eligibility)
+        if not eligibility.operationally_actionable:
+            continue
         details = {
             "compliance_score_pending": True,
             "compliance_last_calculated_at": last_calc,
             "sla_pending_seconds": SLA_PENDING_SECONDS,
+            "sla_class": eligibility.sla_class.value,
+            "lifecycle_state": eligibility.lifecycle_state,
         }
         await _upsert_alert_and_maybe_send(
             db, property_id, client_id, ALERT_PROPERTY_PENDING_TOO_LONG, SEVERITY_WARN, details, now,
@@ -401,13 +493,17 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
 
     await _flush_groupable_queue_property_emails(groupable_email_buffer, now=now)
 
-    # Resolutions: mark active=false where condition no longer holds
-    # PENDING_STUCK: job no longer PENDING (DONE/FAILED/DEAD) or next_run_at fresh
+    # Resolutions: mark active=false where condition no longer holds, or lifecycle is no longer actionable.
     alerts_active = await db.compliance_sla_alerts.find({"active": True}).to_list(1000)
     for alert in alerts_active:
         property_id = alert.get("property_id")
         alert_type = alert.get("alert_type")
         client_id = alert.get("client_id", "")
+        eligibility = await _eligibility_for(client_id)
+        if not eligibility.operationally_actionable:
+            await _resolve_alert(db, property_id, alert_type, client_id, now)
+            stats["resolved"] += 1
+            continue
         if alert_type == ALERT_PENDING_STUCK:
             job = await db.compliance_recalc_queue.find_one(
                 {"property_id": property_id, "status": STATUS_PENDING, "next_run_at": {"$lte": cutoff_pending}}
@@ -423,7 +519,6 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
                 await _resolve_alert(db, property_id, alert_type, client_id, now)
                 stats["resolved"] += 1
         elif alert_type in (ALERT_FAILING_REPEATEDLY, ALERT_DEAD_JOB):
-            # Resolve if no FAILED (attempts>=WARN) or DEAD job for this property
             job = await db.compliance_recalc_queue.find_one({
                 "property_id": property_id,
                 "$or": [
@@ -446,4 +541,16 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
                 await _resolve_alert(db, property_id, alert_type, client_id, now)
                 stats["resolved"] += 1
 
-    return {"message": "Compliance recalc SLA monitor run", "breaches": stats["breaches"], "resolved": stats["resolved"]}
+    logger.info(
+        "compliance_recalc_sla_monitor evaluated=%s actionable=%s lifecycle_suppressed=%s "
+        "terminal=%s unknown_safe_skip=%s breaches=%s resolved=%s",
+        stats["evaluated"],
+        stats["actionable"],
+        stats["lifecycle_suppressed"],
+        stats["terminal"],
+        stats["unknown_safe_skip"],
+        stats["breaches"],
+        stats["resolved"],
+    )
+
+    return build_compliance_recalc_sla_monitor_run_result(stats)
