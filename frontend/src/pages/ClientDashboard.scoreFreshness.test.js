@@ -47,20 +47,24 @@ jest.mock('../contexts/AuthContext', () => ({
   }),
 }));
 
-jest.mock('../utils/operationalCapabilityAccess', () => ({
-  useDashboardCapabilities: () => ({
-    canViewDashboard: true,
-    canViewScore: true,
-    canViewCommandCentre: true,
-    canViewToday: true,
-    canUseOpsMaintenance: false,
-    canUseOpsPredictive: false,
-    canUseOpsContractors: false,
-    canUseOpsApprovals: false,
-  }),
-  getCapabilityDeniedMessage: (_e, fallback) => fallback,
-  isCapabilityDeniedApiError: () => false,
-}));
+jest.mock('../utils/operationalCapabilityAccess', () => {
+  const actual = jest.requireActual('../utils/operationalCapabilityAccess');
+  return {
+    ...actual,
+    useDashboardCapabilities: () => ({
+      canViewDashboard: true,
+      canViewScore: true,
+      canViewCommandCentre: true,
+      canViewToday: true,
+      canUseOpsMaintenance: false,
+      canUseOpsPredictive: false,
+      canUseOpsContractors: false,
+      canUseOpsApprovals: false,
+    }),
+    getCapabilityDeniedMessage: (_e, fallback) => fallback,
+    isCapabilityDeniedApiError: () => false,
+  };
+});
 
 jest.mock('../context/GuidedEvidenceModalContext', () => ({
   useGuidedEvidenceModal: () => ({ openGuidedEvidence: jest.fn() }),
@@ -262,5 +266,76 @@ describe('ClientDashboard score freshness (slice 1)', () => {
       'One or more scored properties',
     );
     expect(screen.getByTestId('dashboard-score-freshness')).toHaveClass('border-amber-200');
+  });
+
+  it('shows parked stale presentation, not calculating', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/client/compliance-score') {
+        return Promise.resolve({
+          data: {
+            score: 72,
+            grade: 'C',
+            color: 'amber',
+            message: 'Paused',
+            score_status: 'stale',
+            score_status_message: 'Monitoring is paused. This score will refresh when monitoring resumes.',
+            properties_count: 2,
+            stats: {},
+            portfolio_last_calculated_at: '2026-03-01T10:00:00.000Z',
+          },
+        });
+      }
+      if (url.startsWith('/client/compliance-score/trend')) return Promise.resolve({ data: {} });
+      if (url.startsWith('/client/score/timeline')) return Promise.resolve({ data: {} });
+      if (url.startsWith('/client/score/changes')) return Promise.resolve({ data: {} });
+      if (url === '/profile/notifications') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: {} });
+    });
+
+    render(
+      <MemoryRouter>
+        <ClientDashboard />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('dashboard-score-freshness-explanation')).toHaveTextContent(
+      'Monitoring is paused',
+    );
+    expect(screen.queryByText(CALCULATING_SCORE_FALLBACK_MESSAGE)).not.toBeInTheDocument();
+  });
+
+  it('shows reconciliation/unavailable presentation when parked without a score', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/client/compliance-score') {
+        return Promise.resolve({
+          data: {
+            score: null,
+            grade: null,
+            color: 'gray',
+            message: '—',
+            score_status: 'reconciliation_required',
+            score_status_message: null,
+            properties_count: 2,
+            stats: {},
+          },
+        });
+      }
+      if (url.startsWith('/client/compliance-score/trend')) return Promise.resolve({ data: {} });
+      if (url.startsWith('/client/score/timeline')) return Promise.resolve({ data: {} });
+      if (url.startsWith('/client/score/changes')) return Promise.resolve({ data: {} });
+      if (url === '/profile/notifications') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: {} });
+    });
+
+    render(
+      <MemoryRouter>
+        <ClientDashboard />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('dashboard-score-freshness-explanation')).toHaveTextContent(
+      'Compliance scores are not yet available',
+    );
+    expect(screen.queryByText(CALCULATING_SCORE_FALLBACK_MESSAGE)).not.toBeInTheDocument();
   });
 });

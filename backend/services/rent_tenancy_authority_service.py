@@ -17,10 +17,20 @@ TENANCY_STATUS_ENDING_SOON = "ending_soon"
 TENANCY_STATUS_MOVED_OUT = "moved_out"
 TENANCY_STATUS_ARCHIVED = "archived"
 DEFAULT_RENT_TYPE = "residential_rent"
+_VACANT_OCCUPANCY = frozenset({"", "vacant", "unknown", "none", "unoccupied"})
 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def occupancy_allows_rent_tenancy(prop: Dict[str, Any] | None) -> bool:
+    """True when the property occupancy record is a sufficient tenancy signal for rent ops."""
+    row = prop or {}
+    if bool(row.get("tenancy_active")):
+        return True
+    occupancy = str(row.get("occupancy") or "").strip().lower()
+    return occupancy not in _VACANT_OCCUPANCY
 
 
 def _tenant_display_from_assignments(assignments: List[Dict[str, Any]], tenants_by_id: Dict[str, Dict]) -> str:
@@ -32,7 +42,7 @@ def _tenant_display_from_assignments(assignments: List[Dict[str, Any]], tenants_
         label = (t.get("full_name") or t.get("name") or t.get("auth_email") or "").strip()
         if label:
             names.append(label)
-    return ", ".join(names) if names else "Tenant"
+    return ", ".join(names)
 
 
 async def _load_property(db, client_id: str, property_id: str) -> Dict[str, Any]:
@@ -77,9 +87,9 @@ async def resolve_or_create_active_tenancy(
     rent_tracking_enabled: bool = False,
     actor_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Return active tenancy for property or create one from tenant assignments."""
+    """Return active tenancy for property or create one from occupancy / tenant assignments."""
     db = database.get_db()
-    await _load_property(db, client_id, property_id)
+    prop = await _load_property(db, client_id, property_id)
 
     existing = await db[COLLECTION_TENANCIES].find_one(
         {
@@ -114,8 +124,19 @@ async def resolve_or_create_active_tenancy(
         if not display:
             display = _tenant_display_from_assignments(assignments, tenant_map)
 
+    occupancy_backed = False
     if not resolved_tenant_ids:
-        raise ValueError("NO_OCCUPANCY_FOR_TENANCY")
+        display_provided = bool((tenant_display_name or "").strip())
+        if occupancy_allows_rent_tenancy(prop) or display_provided:
+            occupancy_backed = True
+            if not display:
+                display = (
+                    (tenant_display_name or "").strip()
+                    or str(prop.get("nickname") or prop.get("name") or "").strip()
+                    or "Occupancy tenancy"
+                )
+        else:
+            raise ValueError("NO_OCCUPANCY_FOR_TENANCY")
 
     if not display:
         display = _tenant_display_from_assignments(
@@ -125,6 +146,9 @@ async def resolve_or_create_active_tenancy(
                 {"_id": 0, "password_hash": 0},
             ).to_list(20)},
         )
+
+    if not display:
+        display = "Occupancy tenancy" if occupancy_backed else "Tenant"
 
     parent_row = await db[COLLECTION_TENANCIES].find_one(
         {
@@ -154,6 +178,7 @@ async def resolve_or_create_active_tenancy(
         "created_at": now,
         "updated_at": now,
         "created_by": actor_id,
+        "occupancy_backed": occupancy_backed,
     }
     await db[COLLECTION_TENANCIES].insert_one(doc)
     doc.pop("_id", None)

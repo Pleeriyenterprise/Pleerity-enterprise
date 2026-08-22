@@ -93,6 +93,57 @@ RECOMMENDED_TYPE_TO_TRADES = {
     "general": ["general", "handyman"],
 }
 
+# Canonical maintenance category ↔ eligible contractor trades (single mapping layer).
+UNSPECIALIZED_WORK_ORDER_CATEGORIES = frozenset({"general", "handyman", "maintenance", "repair"})
+CATEGORY_TO_ELIGIBLE_TRADES = {
+    "plumbing": frozenset({"plumbing", "plumber"}),
+    "electrical": frozenset({"electrical", "electrician"}),
+    "heating": frozenset({"heating", "gas", "gas_safe", "boiler", "heating_engineer"}),
+}
+RECOMMENDED_CONTRACTOR_TYPE_TO_CATEGORY = {
+    "plumber": "plumbing",
+    "electrician": "electrical",
+    "gas_safe": "heating",
+}
+_DESCRIPTION_CATEGORY_HINTS = (
+    (("leak", "sink", "pipe", "plumb", "toilet", "tap", "drain", "washer"), "plumbing"),
+    (("electri", "socket", "wiring", "fuse", "light fitting"), "electrical"),
+    (("boiler", "heating", "radiator", "gas safe"), "heating"),
+)
+
+
+def infer_maintenance_category(
+    description: Optional[str] = None,
+    recommended_contractor_type: Optional[str] = None,
+) -> Optional[str]:
+    """Map triage recommendation or issue text onto a stored work-order category."""
+    rec = (recommended_contractor_type or "").strip().lower()
+    mapped = RECOMMENDED_CONTRACTOR_TYPE_TO_CATEGORY.get(rec)
+    if mapped:
+        return mapped
+    text = (description or "").strip().lower()
+    if not text:
+        return None
+    for needles, cat in _DESCRIPTION_CATEGORY_HINTS:
+        if any(n in text for n in needles):
+            return cat
+    return None
+
+
+def contractor_trade_mismatch_message(contractor: Dict[str, Any], category: Optional[str]) -> str:
+    cat = (category or "").strip() or "unspecified"
+    trades = [str(t).strip() for t in (contractor.get("trade_types") or []) if str(t).strip()]
+    name = str(contractor.get("company_name") or contractor.get("name") or "This contractor").strip()
+    trade_txt = ", ".join(trades) if trades else "none recorded"
+    eligible = CATEGORY_TO_ELIGIBLE_TRADES.get(cat.lower())
+    required = ", ".join(sorted(eligible)) if eligible else cat
+    return (
+        f"Assignment failed: this job is categorised as '{cat}' (required trade: {required}). "
+        f"{name} is recorded with trade(s): {trade_txt}. "
+        "Assign a contractor whose trade matches this job, update the contractor's trade types, "
+        "or change the job category."
+    )
+
 
 def normalize_contractor_service_regions_list(raw: Optional[List[str]]) -> Optional[List[str]]:
     """Canonical UK portfolio labels only; None = caller should treat as unrestricted."""
@@ -279,11 +330,16 @@ def enrich_contractor_onboarding_view(contractor: Dict[str, Any]) -> Dict[str, A
 
 def contractor_trade_matches_category(contractor: Dict[str, Any], category: Optional[str]) -> bool:
     cat = (category or "").strip().lower()
+    trades = [str(t).strip().lower() for t in (contractor.get("trade_types") or []) if str(t).strip()]
     if not cat:
         return True
-    trades = [str(t).strip().lower() for t in (contractor.get("trade_types") or []) if str(t).strip()]
     if not trades:
         return False
+    if cat in UNSPECIALIZED_WORK_ORDER_CATEGORIES:
+        return True
+    eligible = CATEGORY_TO_ELIGIBLE_TRADES.get(cat)
+    if eligible and any(t in eligible for t in trades):
+        return True
     for t in trades:
         if t in cat or cat in t:
             return True
@@ -374,6 +430,34 @@ def contractor_location_matches_property(
         ):
             return True
     return False
+
+
+def email_duplicate_assignment_message(
+    clash: Dict[str, Any],
+    *,
+    client_id: str,
+    property_postcode: Optional[str] = None,
+    property_jurisdiction: Optional[str] = None,
+) -> str:
+    """Explain why an existing contractor cannot be duplicated for this job."""
+    name = (clash.get("company_name") or clash.get("name") or "This contractor").strip()
+    same_org = (clash.get("client_id") == client_id) or (clash.get("linked_client_id") == client_id)
+    covers = contractor_location_matches_property(
+        clash,
+        property_postcode,
+        property_jurisdiction=property_jurisdiction,
+    )
+    if same_org and not covers and (property_postcode or "").strip():
+        return (
+            f"{name} already exists but does not currently cover this postcode. "
+            "Update their coverage in the contractor directory instead of creating a duplicate."
+        )
+    if same_org:
+        return (
+            f"{name} already exists for this email. Use the existing contractor, "
+            "or update their coverage if they are not shown for this job."
+        )
+    return "A contractor with this email already exists"
 
 
 _UK_POSTCODE_FRAGMENT_RE = re.compile(
@@ -1111,6 +1195,29 @@ async def create_contractor_for_client_job_portal(
     email_stripped = (email or "").strip()
     phone_stripped = (phone or "").strip()
     if email_stripped:
+        clash = await get_contractor_by_email_normalized(email_stripped)
+        if clash:
+            prop_pc = None
+            job_j = None
+            if work_order:
+                db = database.get_db()
+                pid = (work_order.get("property_id") or "").strip()
+                if pid:
+                    prop = await db.properties.find_one(
+                        {"property_id": pid, "client_id": client_id},
+                        {"_id": 0, "postcode": 1},
+                    )
+                    prop_pc = (prop or {}).get("postcode")
+                job_j = await resolve_effective_work_order_jurisdiction(db, work_order, client_id)
+            raise ValueError(
+                email_duplicate_assignment_message(
+                    clash,
+                    client_id=client_id,
+                    property_postcode=prop_pc,
+                    property_jurisdiction=job_j,
+                )
+            )
+    if email_stripped:
         if pending_client:
             display = (contact_name or "").strip() or (company_name or "").strip() or email_stripped.split("@")[0]
             return await create_contractor_client_supplied_personal(
@@ -1694,7 +1801,7 @@ async def validate_contractor_for_work_order_assignment(
         kind = (wo.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
         if kind == WORK_ORDER_KIND_MAINTENANCE:
             if not contractor_trade_matches_category(contractor_s, wo.get("category")):
-                raise ValueError("Contractor trade types do not match this maintenance work order category")
+                raise ValueError(contractor_trade_mismatch_message(contractor_s, wo.get("category")))
         await _assert_contractor_jurisdiction_for_assignment(db, contractor_s, wo, client_id)
         return
     ok, reason = contractor_is_assignable(contractor_s)
@@ -1740,7 +1847,7 @@ async def validate_contractor_for_work_order_assignment(
     kind = (wo.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
     if kind == WORK_ORDER_KIND_MAINTENANCE:
         if not contractor_trade_matches_category(contractor_s, wo.get("category")):
-            raise ValueError("Contractor trade types do not match this maintenance work order category")
+            raise ValueError(contractor_trade_mismatch_message(contractor_s, wo.get("category")))
     await _assert_contractor_jurisdiction_for_assignment(db, contractor_s, wo, client_id)
 
 
@@ -1861,6 +1968,7 @@ async def list_assignable_contractors_for_work_order(
         job_jurisdiction=job_jurisdiction,
         property_postcode=prop_pc,
         eligible=total,
+        exclusion_samples=exclusion_samples,
     )
     return {
         "contractors": page,

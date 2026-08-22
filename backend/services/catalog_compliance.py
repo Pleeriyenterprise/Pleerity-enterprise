@@ -378,6 +378,16 @@ async def get_property_compliance_detail(
     elif high_overdue >= 1:
         if risk_level != "Critical Risk" and risk_level != "High Risk":
             risk_level = "High Risk"
+    from services.requirement_client_runtime_surface import (
+        client_portal_surface_visible_row,
+        compute_client_portal_requirement_stats,
+    )
+
+    portal_projected = [project_requirement_row_client_runtime(dict(r)) for r in enriched]
+    portal_visible = [r for r in portal_projected if client_portal_surface_visible_row(r)]
+    kpis["missing_evidence"] = int(
+        compute_client_portal_requirement_stats(portal_visible).get("missing_evidence") or 0
+    )
     return {
         "property_id": property_id,
         "property_name": prop.get("nickname") or prop.get("address_line_1") or property_id,

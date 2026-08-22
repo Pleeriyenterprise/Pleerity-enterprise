@@ -67,6 +67,15 @@ async def build_property_occupancy_operational_summary(
             "tenancy_active": prop.get("tenancy_active"),
             "occupancy": prop.get("occupancy"),
             "move_state": "active" if prop.get("tenancy_active") else "unknown_or_vacant",
+            "rent_tenancy_ready": False,
+        },
+        "rent_tenancy": {
+            "ready": False,
+            "tenancy_id": None,
+            "tenant_display_name": None,
+            "status": None,
+            "rent_tracking_enabled": False,
+            "started_at": None,
         },
         "rent_status": None,
         "open_maintenance": {"open_issues_count": 0, "tenant_reported_open": 0, "active_work_orders": 0, "items": []},
@@ -84,6 +93,41 @@ async def build_property_occupancy_operational_summary(
             "calendar": "/calendar",
         },
     }
+
+    rent_tenancy_row = await db.property_tenancies.find_one(
+        {
+            "client_id": client_id,
+            "property_id": property_id,
+            "status": {"$in": ["active", "ending_soon"]},
+        },
+        {
+            "_id": 0,
+            "tenancy_id": 1,
+            "tenant_display_name": 1,
+            "status": 1,
+            "rent_tracking_enabled": 1,
+            "started_at": 1,
+        },
+    )
+    if rent_tenancy_row:
+        summary["rent_tenancy"] = {
+            "ready": True,
+            "tenancy_id": rent_tenancy_row.get("tenancy_id"),
+            "tenant_display_name": rent_tenancy_row.get("tenant_display_name"),
+            "status": rent_tenancy_row.get("status"),
+            "rent_tracking_enabled": bool(rent_tenancy_row.get("rent_tracking_enabled")),
+            "started_at": _iso(rent_tenancy_row.get("started_at")),
+        }
+        summary["tenancy_lifecycle"]["rent_tenancy_ready"] = True
+    elif prop.get("tenancy_active"):
+        summary["operational_alerts"].append(
+            {
+                "kind": "rent_tenancy_not_set_up",
+                "count": 1,
+                "severity": "medium",
+                "route": f"/operations/rent?property_id={property_id}",
+            }
+        )
 
     if include_tenant_portal:
         tenants = await db.portal_users.find(

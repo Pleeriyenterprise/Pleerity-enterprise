@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { History, FileText, Mail, Shield, Activity, Download, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
@@ -157,6 +157,11 @@ export default function ClientAuditLogPage() {
           Audit & Change History
         </h2>
         <p className="text-gray-600 mt-1">Score change history and activity log for your account.</p>
+        <p className="text-sm mt-2">
+          <Link to="/reports/property-evidence" className="text-electric-teal hover:underline">
+            Open Property Activity &amp; Evidence Report
+          </Link>
+        </p>
       </div>
 
       {/* Tabs */}
@@ -296,7 +301,7 @@ export default function ClientAuditLogPage() {
                             <p className="font-medium text-midnight-blue mt-1">
                               {row.trigger_label || row.trigger_type || '—'}
                             </p>
-                            <p className="text-xs font-mono text-gray-600 mt-1 break-all">{row.property_id || '—'}</p>
+                            <p className="text-xs text-gray-600 mt-1 break-all">{row.property_name || row.property_id || '—'}</p>
                             <p className="text-sm text-gray-700 mt-2">
                               {row.before_score != null ? row.before_score : '—'} → {row.after_score ?? '—'}
                               <span className={`ml-2 ${row.delta != null && row.delta < 0 ? 'text-red-600' : row.delta > 0 ? 'text-green-600' : ''}`}>
@@ -348,7 +353,7 @@ export default function ClientAuditLogPage() {
                                 {row.trigger_label || row.trigger_type || '—'}
                               </span>
                             </td>
-                            <td className="px-3 py-2 font-mono text-xs">{row.property_id || '—'}</td>
+                            <td className="px-3 py-2 text-xs">{row.property_name || row.property_id || '—'}</td>
                             <td className="px-3 py-2">
                               {row.before_score != null ? row.before_score : '—'} → {row.after_score ?? '—'}
                               {row.before_grade != null || row.after_grade != null ? (
@@ -418,13 +423,22 @@ export default function ClientAuditLogPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-midnight-blue">
-                        {operationalLabelForToken(event.action, { emptyLabel: '—' })}
+                        {event.headline || operationalLabelForToken(event.action, { emptyLabel: '—' })}
                       </p>
+                      {event.summary ? (
+                        <p className="text-sm text-gray-700 mt-1">{event.summary}</p>
+                      ) : null}
                       <p className="text-sm text-gray-500">{formatDate(event.timestamp)}</p>
+                      {event.property_name ? (
+                        <p className="text-xs text-gray-600 mt-1">{event.property_name}</p>
+                      ) : null}
                       {event.metadata && Object.keys(event.metadata).length > 0 && (
-                        <div className="mt-2 text-xs text-gray-400 bg-white p-2 rounded max-h-24 overflow-auto">
-                          {JSON.stringify(event.metadata)}
-                        </div>
+                        <details className="mt-2 text-xs text-gray-400">
+                          <summary className="cursor-pointer">Technical detail</summary>
+                          <div className="mt-1 bg-white p-2 rounded max-h-24 overflow-auto">
+                            {JSON.stringify(event.metadata)}
+                          </div>
+                        </details>
                       )}
                     </div>
                   </div>

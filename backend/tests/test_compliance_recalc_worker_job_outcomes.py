@@ -86,6 +86,54 @@ def test_control_centre_does_not_skip_when_reclaim_metrics_present_even_if_queue
     assert should_skip_control_centre_no_outcome_flag_recalc("compliance_recalc_worker", detail) is False
 
 
+def test_lifecycle_skip_is_not_contention():
+    out = build_compliance_recalc_worker_run_result(
+        {
+            "batch_size": 3,
+            "claim_skipped": 0,
+            "lifecycle_skipped": 2,
+            "lifecycle_paused": 1,
+            "processed": 0,
+            "failed_retry": 0,
+            "dead": 0,
+        }
+    )
+    assert out["outcome_status"] == OUTCOME_SUCCESS
+    assert out["outcome_metrics"]["outcome_kind"] == "LIFECYCLE_SUPPRESSED"
+    assert out["outcome_metrics"]["queue_items_lifecycle_skipped"] == 2
+    assert out["outcome_metrics"]["queue_items_lifecycle_paused"] == 1
+    assert out["outcome_metrics"]["queue_items_claim_skipped"] == 0
+    assert "another worker" not in out["message"].lower()
+    assert "lifecycle-suppressed" in out["message"]
+
+
+def test_lifecycle_pause_and_terminate_not_counted_as_dead_failure():
+    out = build_compliance_recalc_worker_run_result(
+        {
+            "batch_size": 2,
+            "claim_skipped": 0,
+            "lifecycle_paused": 1,
+            "lifecycle_terminated": 1,
+            "processed": 0,
+            "failed_retry": 0,
+            "dead": 0,
+        }
+    )
+    assert out["outcome_status"] == OUTCOME_SUCCESS
+    assert out["outcome_metrics"]["outcome_kind"] == "LIFECYCLE_SUPPRESSED"
+    assert out["outcome_metrics"]["failed_count"] == 0
+    assert out["outcome_metrics"]["queue_items_lifecycle_terminated"] == 1
+
+
+def test_true_contention_remains_distinguishable_from_lifecycle():
+    out = build_compliance_recalc_worker_run_result(
+        {"batch_size": 3, "claim_skipped": 3, "processed": 0, "failed_retry": 0, "dead": 0}
+    )
+    assert out["outcome_metrics"]["outcome_kind"] == "CONTENTION_ONLY"
+    assert "another worker may be processing" in out["message"]
+    assert out["outcome_metrics"]["queue_items_lifecycle_skipped"] == 0
+
+
 def test_no_misleading_success_when_partial_failures():
     out = build_compliance_recalc_worker_run_result(
         {"batch_size": 1, "claim_skipped": 0, "processed": 0, "failed_retry": 1, "dead": 0}

@@ -37,7 +37,8 @@ def test_booked_visit_not_in_progress_contractor():
     pc = build_progress_contract_v1(wo, audience="contractor")
     assert pc["current_stage"] == "quote_approved"
     labels = [s["label"] for s in pc["progress_steps"] if s["state"] == "current"]
-    assert labels == ["Quote approved"]
+    assert labels == ["Quote submitted"]
+    assert pc["headline"] == "Quote submitted"
     assert pc["canonical_status"] == "BOOKED"
 
 
@@ -154,3 +155,113 @@ def test_assigned_status_without_contractor_id_not_marked_assigned():
     assert steps["assigned"]["state"] == "current"
     assert steps["assigned"]["label"] == "Awaiting contractor assignment"
     assert steps["assigned"]["state"] != "complete"
+
+
+def test_quote_first_assigned_no_visit_is_not_visit_booked():
+    wo = _base_wo(
+        work_order_kind="MAINTENANCE",
+        status="ASSIGNED",
+        schedule_status="",
+        scheduled_at="",
+        price_status="AWAITING_QUOTE",
+        pricing_mode="MAINTENANCE_PREQUOTE",
+        workflow_mode="QUOTE_FIRST",
+        compliance_proof_status="",
+    )
+    pc = build_progress_contract_v1(wo, audience="landlord")
+    current = next(s for s in pc["progress_steps"] if s["state"] == "current")
+    assert current["key"] == "quote_submitted"
+    assert "Visit booked" not in current["label"]
+    assert "Visit booked" not in (pc.get("headline") or "")
+
+
+def test_inspection_first_assigned_no_visit_schedule_inspection():
+    wo = _base_wo(
+        work_order_kind="MAINTENANCE",
+        workflow_mode="INSPECTION_FIRST",
+        pricing_mode="MAINTENANCE_INSPECTION_REQUIRED",
+        price_status="AWAITING_QUOTE",
+        status="ASSIGNED",
+        schedule_status="",
+        scheduled_at="",
+        compliance_proof_status="",
+    )
+    pc = build_progress_contract_v1(wo, audience="landlord")
+    current = next(s for s in pc["progress_steps"] if s["state"] == "current")
+    assert current["key"] == "inspection_visit_booked"
+    assert current["label"] == "Schedule inspection"
+    assert "Visit booked" not in current["label"]
+    assert "Visit booked" not in (pc.get("headline") or "")
+
+
+def test_confirmed_visit_keeps_visit_booked_complete_label():
+    wo = _base_wo(price_status="APPROVED", compliance_proof_status="")
+    pc = build_progress_contract_v1(wo, audience="landlord")
+    steps = {s["key"]: s for s in pc["progress_steps"] if s["state"] != "skipped"}
+    assert steps["visit_booked"]["state"] == "complete"
+    assert steps["visit_booked"]["label"] == "Visit booked"
+
+
+def test_proposed_reschedule_is_not_visit_booked():
+    wo = _base_wo(
+        price_status="APPROVED",
+        schedule_status="proposed",
+        scheduled_at="2026-07-01T10:00:00Z",
+        compliance_proof_status="",
+        status="SCHEDULED",
+        work_order_kind="MAINTENANCE",
+    )
+    pc = build_progress_contract_v1(wo, audience="landlord")
+    visit = next(s for s in pc["progress_steps"] if s["key"] == "visit_booked")
+    assert visit["state"] != "complete"
+    assert "Visit booked" not in visit["label"]
+    assert "Visit booked" not in (pc.get("headline") or "")
+
+
+def test_quoted_headline_is_not_quote_approved():
+    wo = _base_wo(compliance_proof_status="", schedule_status="", scheduled_at="")
+    pc = build_progress_contract_v1(wo, audience="landlord")
+    assert pc["headline"] == "Quote submitted"
+    current = next(s for s in pc["progress_steps"] if s["state"] == "current")
+    assert current["key"] == "quote_approved"
+    assert current["label"] == "Quote submitted"
+    assert "Quote approved" not in current["label"]
+
+
+def test_revision_requested_headline_is_changes_requested():
+    wo = _base_wo(
+        price_status="REVISION_REQUESTED",
+        compliance_proof_status="",
+        schedule_status="",
+        scheduled_at="",
+    )
+    pc = build_progress_contract_v1(wo, audience="landlord")
+    assert pc["headline"] == "Changes requested"
+    assert pc["waiting_on"] == "contractor"
+    current = next(s for s in pc["progress_steps"] if s["state"] == "current")
+    assert current["label"] == "Changes requested"
+
+
+def test_revised_quote_headline_and_approval_of_latest():
+    wo = _base_wo(
+        price_status="QUOTED",
+        quoted_price=205.0,
+        compliance_proof_status="",
+        schedule_status="",
+        scheduled_at="",
+        quote_negotiation_history=[
+            {"version": 1, "event": "submitted", "amount": 185.0},
+            {"version": 1, "event": "revision_requested"},
+            {"version": 2, "event": "resubmitted", "amount": 205.0},
+        ],
+    )
+    pc = build_progress_contract_v1(wo, audience="landlord")
+    assert pc["headline"] == "Revised quote submitted"
+    assert pc["next_primary_action"]["id"] == "approve_quote"
+
+    approved = {**wo, "price_status": "APPROVED"}
+    pc2 = build_progress_contract_v1(approved, audience="landlord")
+    assert pc2["headline"] == "Quote approved"
+    steps = {s["key"]: s for s in pc2["progress_steps"] if s["state"] != "skipped"}
+    assert steps["quote_approved"]["state"] == "complete"
+    assert steps["quote_approved"]["label"] == "Quote approved"

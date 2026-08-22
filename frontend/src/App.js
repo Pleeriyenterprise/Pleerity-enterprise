@@ -82,6 +82,7 @@ import DocumentsPage from './pages/DocumentsPage';
 import BulkUploadPage from './pages/BulkUploadPage';
 import ReportsPage from './pages/ReportsPage';
 import ReportsAuditPackPage from './pages/ReportsAuditPackPage';
+import ReportsPropertyEvidencePage from './pages/ReportsPropertyEvidencePage';
 import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
 import ClientNotificationInboxPage from './pages/ClientNotificationInboxPage';
 import CalendarPage from './pages/CalendarPage';
@@ -373,6 +374,7 @@ function App() {
                   </AccountCapabilityProtectedRoute>
                 }
               />
+              <Route path="property-evidence" element={<ReportsPropertyEvidencePage />} />
             </Route>
             <Route path="/compliance-score" element={<ClientPortal><ComplianceScorePage /></ClientPortal>} />
             <Route path="/assistant" element={<ClientPortal><AssistantPage /></ClientPortal>} />

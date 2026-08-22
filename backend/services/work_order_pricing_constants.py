@@ -48,7 +48,7 @@ QUOTE_REVISION_REASON_CODES = frozenset(
 QUOTE_NEGOTIATION_STATUS_LABELS = {
     PRICE_STATUS_AWAITING_QUOTE: "Quote requested",
     PRICE_STATUS_QUOTED: "Quote submitted",
-    PRICE_STATUS_APPROVED: "Work authorised",
+    PRICE_STATUS_APPROVED: "Quote approved",
     PRICE_STATUS_REJECTED: "Changes requested",
     PRICE_STATUS_REVISION_REQUESTED: "Changes requested",
     PRICE_STATUS_REJECTED_FINAL: "Quote declined (final)",

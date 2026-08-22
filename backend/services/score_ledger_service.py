@@ -14,6 +14,22 @@ logger = logging.getLogger(__name__)
 
 COLLECTION = "score_ledger_events"
 
+
+async def _attach_property_names(db, client_id: str, items: List[Dict[str, Any]]) -> None:
+    pids = {str(i.get("property_id")) for i in items if i.get("property_id")}
+    if not pids:
+        return
+    from presentation.property_display_name import get_property_display_name
+
+    props = await db.properties.find(
+        {"client_id": client_id, "property_id": {"$in": list(pids)}},
+        {"_id": 0, "property_id": 1, "nickname": 1, "name": 1, "address_line_1": 1, "city": 1, "postcode": 1},
+    ).to_list(len(pids))
+    names = {p["property_id"]: get_property_display_name(p) for p in props}
+    for row in items:
+        pid = row.get("property_id")
+        row["property_name"] = names.get(pid) if pid else None
+
 # Map internal trigger_reason (from queue) to task-style trigger_type + human label
 TRIGGER_MAP = {
     "DOC_UPLOADED": ("DOCUMENT_UPLOADED", "Document uploaded"),
@@ -229,6 +245,7 @@ async def list_ledger(
         items = items[:limit]
     next_cursor = items[-1]["created_at"] if items and has_more else None
     total = await db[COLLECTION].count_documents({"client_id": client_id} if not (property_id or trigger_type or from_date or to_date) else query)
+    await _attach_property_names(db, client_id, items)
     return {"items": items, "next_cursor": next_cursor, "has_more": has_more, "total": total}
 
 
@@ -257,4 +274,6 @@ async def list_ledger_export(
             query["created_at"]["$lte"] = end
     limit = min(max(1, limit), 10000)
     cursor = db[COLLECTION].find(query, {"_id": 0}).sort("created_at", -1).limit(limit)
-    return await cursor.to_list(limit)
+    items = await cursor.to_list(limit)
+    await _attach_property_names(db, client_id, items)
+    return items

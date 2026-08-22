@@ -719,6 +719,20 @@ const ReportsPage = () => {
             </CardContent>
           </Card>
         )}
+        <Card className="mb-6 border border-slate-200" data-testid="reports-property-evidence-cta">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Property Activity &amp; Evidence Report</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-gray-700 max-w-2xl">
+              Chronological, human-readable record of occupancy, compliance, maintenance, rent, and contractor
+              activity for one property. Organises CVP records — not a legal certification.
+            </p>
+            <Button asChild variant="outline" className="shrink-0 w-full sm:w-auto">
+              <Link to="/reports/property-evidence">Open property evidence report</Link>
+            </Button>
+          </CardContent>
+        </Card>
         {canViewRentOperationsSummary && rentOpsSummary && (
           <>
             <h2 className="text-lg font-semibold text-midnight-blue mb-3" data-testid="reports-section-operational-rent">

@@ -1,6 +1,7 @@
 import {
   alignProgressTrackerWithContractorFacts,
   clientJobProgressFromJob,
+  deriveCanonicalJobStatus,
   progressTrackerFromContract,
 } from './jobWorkflowUi';
 
@@ -51,5 +52,51 @@ describe('jobWorkflowUi progress alignment', () => {
       },
     };
     expect(alignProgressTrackerWithContractorFacts(job, base)).toBe(base);
+  });
+
+  it('does not present Visit booked without a confirmed scheduled visit', () => {
+    const job = {
+      contractor_id: 'c-1',
+      schedule_status: '',
+      scheduled_at: '',
+      progress_contract: {
+        progress_steps: [
+          { key: 'assigned', label: 'Contractor assigned', state: 'complete' },
+          { key: 'visit_booked', label: 'Visit booked', state: 'current' },
+        ],
+      },
+    };
+    const tracker = progressTrackerFromContract(job);
+    expect(tracker.steps[1]).toBe('Schedule visit');
+    expect(tracker.visitDriftCorrected).toBe(true);
+  });
+
+  it('keeps Visit booked when schedule is confirmed', () => {
+    const job = {
+      contractor_id: 'c-1',
+      schedule_status: 'confirmed',
+      scheduled_at: '2026-07-01T10:00:00Z',
+      progress_contract: {
+        progress_steps: [
+          { key: 'assigned', label: 'Contractor assigned', state: 'complete' },
+          { key: 'visit_booked', label: 'Visit booked', state: 'complete' },
+        ],
+      },
+    };
+    const tracker = progressTrackerFromContract(job);
+    expect(tracker.steps[1]).toBe('Visit booked');
+    expect(tracker.visitDriftCorrected).toBeUndefined();
+  });
+
+  it('maps accepted-without-visit SCHEDULED status to ASSIGNED', () => {
+    expect(
+      deriveCanonicalJobStatus({
+        work_order_kind: 'MAINTENANCE',
+        status: 'SCHEDULED',
+        contractor_id: 'c-1',
+        schedule_status: '',
+        scheduled_at: '',
+      }),
+    ).toBe('ASSIGNED');
   });
 });

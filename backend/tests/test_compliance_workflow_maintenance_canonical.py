@@ -192,3 +192,46 @@ def test_compliance_completed_with_proof_allows_verify():
     ids = _ids(next_job_actions(wo))
     assert "verify" in ids
     assert "link_document" not in ids
+
+
+def test_maintenance_scheduled_without_visit_canonical_is_assigned():
+    wo = _base_maintenance(
+        status=ms.STATUS_SCHEDULED,
+        schedule_status="",
+        scheduled_at="",
+        pricing_mode="MAINTENANCE_PREQUOTE",
+        price_status="AWAITING_QUOTE",
+    )
+    assert derive_canonical_job_status(wo) == "ASSIGNED"
+    ser = serialize_client_job(wo)
+    assert ser["job_status"] == "ASSIGNED"
+    assert ser["pricing_mode"] == "MAINTENANCE_PREQUOTE"
+    assert ser["price_status"] == "AWAITING_QUOTE"
+    headline = (ser.get("progress_contract") or {}).get("headline") or ""
+    assert "Visit booked" not in headline
+    current = next(s for s in ser["progress_contract"]["progress_steps"] if s.get("state") == "current")
+    assert current["key"] == "quote_submitted"
+
+
+def test_maintenance_confirmed_visit_canonical_is_scheduled():
+    wo = _base_maintenance(
+        status=ms.STATUS_SCHEDULED,
+        schedule_status="confirmed",
+        scheduled_at="2026-03-01T10:00:00+00:00",
+        price_status="APPROVED",
+        pricing_mode="MAINTENANCE_PREQUOTE",
+    )
+    assert derive_canonical_job_status(wo) == "SCHEDULED"
+
+
+def test_serialize_client_job_copies_contractor_name():
+    wo = _base_maintenance(
+        status=ms.STATUS_ASSIGNED,
+        contractor_id="ctr-hartley",
+        contractor_name="Hartley Plumbing Ltd",
+        schedule_status="",
+        scheduled_at="",
+    )
+    ser = serialize_client_job(wo)
+    assert ser["contractor_name"] == "Hartley Plumbing Ltd"
+    assert ser["contractor_id"] == "ctr-hartley"

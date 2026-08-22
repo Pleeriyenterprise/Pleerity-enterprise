@@ -473,6 +473,22 @@ async def run_compliance_recalc_worker():
         reclaim_stats = await reclaim_stale_running_compliance_recalc_jobs(db, now=now)
         reclaimed_to_pending = int(reclaim_stats.get("reclaimed_to_pending") or 0)
         reclaimed_to_dead = int(reclaim_stats.get("reclaimed_to_dead") or 0)
+        parked_restore_stats = {
+            "clients_scanned": 0,
+            "clients_restored": 0,
+            "rows_restored": 0,
+            "restoration_enqueued": 0,
+            "skipped_ineligible": 0,
+            "errors": 0,
+        }
+        try:
+            from services.compliance_recalc_lifecycle_transition import (
+                restore_parked_debt_for_eligible_clients,
+            )
+
+            parked_restore_stats = await restore_parked_debt_for_eligible_clients(db)
+        except Exception as restore_exc:
+            logger.warning("parked-debt safety-net skipped: %s", restore_exc)
 
         async def _heartbeat_while_running(job_id: Any) -> None:
             try:
@@ -495,9 +511,14 @@ async def run_compliance_recalc_worker():
         jobs = await cursor.to_list(10)
         batch_size = len(jobs)
         claim_skipped = 0
+        lifecycle_skipped = 0
+        lifecycle_paused = 0
+        lifecycle_terminated = 0
         processed = 0
         failed_retry = 0
         dead_count = 0
+        drained_running_success = 0
+        drained_running_failure = 0
         for job in jobs:
             jid = job["_id"]
             property_id = job["property_id"]
@@ -518,27 +539,28 @@ async def run_compliance_recalc_worker():
                 continue
             if client_id:
                 from services.account_background_runtime_authority import (
-                    apply_queue_runtime_suppression,
+                    BackgroundJobDecision,
                     evaluate_background_runtime,
                     log_background_decision,
                     queue_runtime_action,
                 )
+                from services.compliance_recalc_lifecycle_transition import park_claimed_ineligible_job
 
                 bg = await evaluate_background_runtime(db, client_id, "compliance_recalc_queue")
                 if not bg.allowed:
                     log_background_decision(bg)
-                    await apply_queue_runtime_suppression(
-                        db,
-                        collection_name="compliance_recalc_queue",
-                        item_id=jid,
-                        decision=bg,
-                        status_pending=STATUS_PENDING,
-                        status_dead=STATUS_DEAD,
-                    )
-                    if queue_runtime_action(bg) == "terminate":
-                        dead_count += 1
+                    claimed_job = {**job, "status": STATUS_RUNNING, "_id": jid}
+                    await park_claimed_ineligible_job(db, claimed_job, bg)
+                    action = queue_runtime_action(bg)
+                    if action == "terminate":
+                        lifecycle_terminated += 1
+                    elif bg.decision in (
+                        BackgroundJobDecision.PAUSE,
+                        BackgroundJobDecision.RETENTION_ONLY,
+                    ):
+                        lifecycle_paused += 1
                     else:
-                        claim_skipped += 1
+                        lifecycle_skipped += 1
                     continue
             queue_item_id = str(jid)
             queue_collection = "compliance_recalc_queue"
@@ -657,6 +679,17 @@ async def run_compliance_recalc_worker():
                     },
                 )
                 processed += 1
+                if client_id:
+                    try:
+                        from services.account_background_runtime_authority import (
+                            evaluate_background_runtime as _eval_bg_after,
+                        )
+
+                        bg_after = await _eval_bg_after(db, client_id, "compliance_recalc_queue")
+                        if not bg_after.allowed:
+                            drained_running_success += 1
+                    except Exception:
+                        pass
                 try:
                     from services.operational_evidence.producers import emit_queue_item_completed
 
@@ -709,6 +742,20 @@ async def run_compliance_recalc_worker():
                     {"_id": jid},
                     {"$set": fail_fields, "$unset": {"heartbeat_at": ""}},
                 )
+                if client_id:
+                    try:
+                        from services.account_background_runtime_authority import (
+                            evaluate_background_runtime as _eval_bg_fail,
+                        )
+                        from services.compliance_recalc_lifecycle_transition import park_queue_row
+
+                        bg_fail = await _eval_bg_fail(db, client_id, "compliance_recalc_queue")
+                        if not bg_fail.allowed:
+                            failed_job = {**job, "status": new_status, "_id": jid, "last_error": err_str}
+                            await park_queue_row(db, failed_job, bg_fail, allow_running=True)
+                            drained_running_failure += 1
+                    except Exception:
+                        pass
                 audit_meta: Dict[str, Any] = {
                     "attempts": next_attempts,
                     "retry_count": next_attempts,
@@ -772,11 +819,19 @@ async def run_compliance_recalc_worker():
             {
                 "batch_size": batch_size,
                 "claim_skipped": claim_skipped,
+                "lifecycle_skipped": lifecycle_skipped,
+                "lifecycle_paused": lifecycle_paused,
+                "lifecycle_terminated": lifecycle_terminated,
                 "processed": processed,
                 "failed_retry": failed_retry,
                 "dead": dead_count,
                 "stale_running_reclaimed_to_pending": reclaimed_to_pending,
                 "stale_running_reclaimed_to_dead": reclaimed_to_dead,
+                "drained_running_success": drained_running_success,
+                "drained_running_failure": drained_running_failure,
+                "queue_items_parked": lifecycle_skipped + lifecycle_paused,
+                "parked_debt_clients_scanned": int(parked_restore_stats.get("clients_scanned") or 0),
+                "parked_debt_rows_restored": int(parked_restore_stats.get("rows_restored") or 0),
             }
         )
     except Exception as e:
@@ -792,9 +847,11 @@ async def run_expiry_rollover_recalc():
         from database import database
         from datetime import timedelta
         from services.compliance_recalc_queue import (
-            enqueue_compliance_recalc,
             TRIGGER_EXPIRY_JOB,
             ACTOR_SYSTEM,
+        )
+        from services.compliance_recalc_sla_eligibility import (
+            enqueue_automatic_compliance_recalc_if_eligible,
         )
 
         db = database.get_db()
@@ -814,32 +871,66 @@ async def run_expiry_rollover_recalc():
             property_ids.add(doc["property_id"])
 
         count = 0
+        eligibility_cache: Dict[str, Any] = {}
+        stats = {
+            "lifecycle_suppressed": 0,
+            "unknown_safe_skip": 0,
+            "terminal_skipped": 0,
+            "deduplicated": 0,
+            "eligible": 0,
+            "errors": 0,
+        }
         for property_id in property_ids:
             prop = await db.properties.find_one({"property_id": property_id}, {"client_id": 1})
             if not prop:
                 continue
             correlation_id = f"EXPIRY_JOB:{property_id}:{date_str}"
-            enqueued = await enqueue_compliance_recalc(
-                property_id=property_id,
-                client_id=prop["client_id"],
-                trigger_reason=TRIGGER_EXPIRY_JOB,
-                actor_type=ACTOR_SYSTEM,
-                actor_id=None,
-                correlation_id=correlation_id,
-            )
-            if enqueued:
+            try:
+                attempt = await enqueue_automatic_compliance_recalc_if_eligible(
+                    db,
+                    property_id=property_id,
+                    client_id=prop["client_id"],
+                    trigger_reason=TRIGGER_EXPIRY_JOB,
+                    actor_type=ACTOR_SYSTEM,
+                    actor_id=None,
+                    correlation_id=correlation_id,
+                    cache=eligibility_cache,
+                )
+            except Exception:
+                stats["errors"] += 1
+                logger.exception(
+                    "expiry_rollover_recalc: enqueue failed property_id=%s", property_id
+                )
+                continue
+            if attempt.outcome == "enqueued":
                 count += 1
+                stats["eligible"] += 1
+            elif attempt.outcome == "deduplicated":
+                stats["eligible"] += 1
+                stats["deduplicated"] += 1
+            else:
+                stats[attempt.outcome] = stats.get(attempt.outcome, 0) + 1
 
         logger.info(f"Expiry rollover enqueued: {count} properties")
         n_considered = len(property_ids)
         om: Dict[str, Any] = {
             "properties_considered": n_considered,
             "properties_enqueued": count,
+            "scanned": n_considered,
+            "eligible": stats["eligible"],
+            "enqueued": count,
+            "deduplicated": stats["deduplicated"],
+            "lifecycle_suppressed": stats["lifecycle_suppressed"],
+            "unknown_safe_skip": stats["unknown_safe_skip"],
+            "terminal_skipped": stats["terminal_skipped"],
+            "errors": stats["errors"],
             "attempted_count": 1,
             "success_count": 1,
             "failed_count": 0,
             "outcome_kind": "NO_WORK_ELIGIBLE" if n_considered == 0 and count == 0 else "WORK_PERFORMED",
         }
+        if n_considered > 0 and count == 0 and stats["eligible"] == 0:
+            om["outcome_kind"] = "LIFECYCLE_SUPPRESSED"
         if n_considered == 0 and count == 0:
             from services.job_run_service import OUTCOME_CONDITIONAL_NO_OUTPUT
 
@@ -1638,11 +1729,13 @@ async def run_compliance_recalc_enqueue_property(property_id: Optional[str] = No
 
     from database import database
     from services.compliance_recalc_queue import (
-        ACTOR_ADMIN,
         ACTOR_SYSTEM,
         TRIGGER_ADMIN_MANUAL_JOB,
         TRIGGER_SCHEDULED_PROPERTY_BATCH,
         enqueue_compliance_recalc,
+    )
+    from services.compliance_recalc_sla_eligibility import (
+        enqueue_automatic_compliance_recalc_if_eligible,
     )
     from services.job_run_service import OUTCOME_FAILED
 
@@ -1660,13 +1753,17 @@ async def run_compliance_recalc_enqueue_property(property_id: Optional[str] = No
             }
         cid = prop["client_id"]
         corr = f"{TRIGGER_ADMIN_MANUAL_JOB}:{pid}:{uuid.uuid4().hex[:12]}"
-        enq = await enqueue_compliance_recalc(
+        from services.compliance_recalc_lifecycle_transition import (
+            enqueue_compliance_recalc_admin_override,
+        )
+
+        enq = await enqueue_compliance_recalc_admin_override(
             property_id=pid,
             client_id=cid,
             trigger_reason=TRIGGER_ADMIN_MANUAL_JOB,
-            actor_type=ACTOR_ADMIN,
             actor_id=None,
             correlation_id=corr,
+            override_reason="job_runner_single_property",
         )
         return {
             "message": "Compliance recalc enqueued" if enq else "Recalc already queued (duplicate correlation window)",
@@ -1685,6 +1782,15 @@ async def run_compliance_recalc_enqueue_property(property_id: Optional[str] = No
     date_str = now.strftime("%Y-%m-%d")
     enqueued = 0
     scanned = 0
+    eligibility_cache: Dict[str, Any] = {}
+    stats = {
+        "eligible": 0,
+        "deduplicated": 0,
+        "lifecycle_suppressed": 0,
+        "unknown_safe_skip": 0,
+        "terminal_skipped": 0,
+        "errors": 0,
+    }
     try:
         total_props = await db.properties.count_documents({})
         props_batch = await _fetch_properties_batch_round_robin(db, limit)
@@ -1695,31 +1801,58 @@ async def run_compliance_recalc_enqueue_property(property_id: Optional[str] = No
             if not pr or not cid:
                 continue
             corr = f"{TRIGGER_SCHEDULED_PROPERTY_BATCH}:{pr}:{date_str}"
-            ok = await enqueue_compliance_recalc(
-                property_id=str(pr),
-                client_id=str(cid),
-                trigger_reason=TRIGGER_SCHEDULED_PROPERTY_BATCH,
-                actor_type=ACTOR_SYSTEM,
-                actor_id=None,
-                correlation_id=corr,
-            )
-            if ok:
+            try:
+                attempt = await enqueue_automatic_compliance_recalc_if_eligible(
+                    db,
+                    property_id=str(pr),
+                    client_id=str(cid),
+                    trigger_reason=TRIGGER_SCHEDULED_PROPERTY_BATCH,
+                    actor_type=ACTOR_SYSTEM,
+                    actor_id=None,
+                    correlation_id=corr,
+                    cache=eligibility_cache,
+                )
+            except Exception:
+                stats["errors"] += 1
+                logger.exception(
+                    "compliance_recalc_enqueue_property: enqueue failed property_id=%s", pr
+                )
+                continue
+            if attempt.outcome == "enqueued":
                 enqueued += 1
+                stats["eligible"] += 1
+            elif attempt.outcome == "deduplicated":
+                stats["eligible"] += 1
+                stats["deduplicated"] += 1
+            else:
+                stats[attempt.outcome] = stats.get(attempt.outcome, 0) + 1
         msg = (
             f"Scheduled compliance recalc enqueue: {enqueued} newly enqueued "
             f"({scanned} properties in batch, limit={limit}, portfolio={total_props}, round-robin)"
         )
         logger.info("compliance_recalc_enqueue_property: %s", msg)
+        kind = "WORK_PERFORMED"
+        if scanned == 0:
+            kind = "NO_WORK_ELIGIBLE"
+        elif enqueued == 0 and stats["eligible"] == 0 and scanned > 0:
+            kind = "LIFECYCLE_SUPPRESSED"
         return {
             "message": msg,
             "count": enqueued,
             "outcome_metrics": {
                 "enqueued": enqueued,
                 "scanned": scanned,
+                "eligible": stats["eligible"],
+                "deduplicated": stats["deduplicated"],
+                "lifecycle_suppressed": stats["lifecycle_suppressed"],
+                "unknown_safe_skip": stats["unknown_safe_skip"],
+                "terminal_skipped": stats["terminal_skipped"],
+                "errors": stats["errors"],
                 "limit": limit,
                 "batch_date": date_str,
                 "total_properties": total_props,
                 "round_robin": True,
+                "outcome_kind": kind,
             },
         }
     except Exception as e:

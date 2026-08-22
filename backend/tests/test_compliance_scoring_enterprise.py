@@ -312,9 +312,25 @@ class TestExpiryRolloverJob:
         db.requirements.find = MagicMock(return_value=AsyncIterCursor())
         db.properties.find_one = AsyncMock(side_effect=[{"client_id": "c1"}, {"client_id": "c2"}])
 
+        from services.compliance_recalc_sla_eligibility import (
+            ComplianceRecalcSlaClass,
+            ComplianceRecalcSlaEligibility,
+        )
+
+        actionable = ComplianceRecalcSlaEligibility(
+            sla_class=ComplianceRecalcSlaClass.ACTIONABLE,
+            lifecycle_state="ACTIVE",
+            decision="CONTINUE",
+            reason="test",
+        )
         with patch("database.database.get_db", return_value=db):
             with patch("services.compliance_recalc_queue.enqueue_compliance_recalc", new_callable=AsyncMock, return_value=True) as enqueue:
-                result = await run_expiry_rollover_recalc()
+                with patch(
+                    "services.compliance_recalc_sla_eligibility.resolve_compliance_recalc_sla_eligibility",
+                    new_callable=AsyncMock,
+                    return_value=actionable,
+                ):
+                    result = await run_expiry_rollover_recalc()
         assert enqueue.await_count == 2
         assert result.get("count") == 2
         assert "enqueued" in result.get("message", "")

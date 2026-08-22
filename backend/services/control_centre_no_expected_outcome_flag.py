@@ -38,8 +38,20 @@ STRUCTURED_OUTCOME_METRIC_KEYS = frozenset(
         "queue_items_seen_batch",
         "queue_items_processed",
         "queue_items_claim_skipped",
+        "queue_items_lifecycle_skipped",
+        "queue_items_lifecycle_paused",
+        "queue_items_lifecycle_terminated",
+        "queue_items_parked",
+        "queue_items_restored",
+        "drained_running_success",
+        "drained_running_failure",
         "queue_items_failed",
         "queue_items_dead",
+        "evaluated",
+        "lifecycle_suppressed",
+        "breaches",
+        "resolved",
+        "terminal",
         # Execution / monitor jobs (narrow instrumentation)
         "checks_run",
         "heartbeat_written",
@@ -50,6 +62,11 @@ STRUCTURED_OUTCOME_METRIC_KEYS = frozenset(
         "recovered",
         "properties_considered",
         "properties_enqueued",
+        "eligible",
+        "deduplicated",
+        "terminal_skipped",
+        "unknown_safe_skip",
+        "scanned",
     }
 )
 

@@ -75,4 +75,6 @@ def classify_duplicate_suppression_reason(
         return "duplicate_pending"
     if st == "DEAD":
         return "duplicate_pending"
+    if st == "PARKED":
+        return "duplicate_parked"
     return "duplicate_pending"

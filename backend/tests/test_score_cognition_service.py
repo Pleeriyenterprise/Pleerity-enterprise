@@ -31,6 +31,18 @@ def test_blocker_kpis_take_precedence():
     assert build_property_score_cognition_line(row) == "1 missing documents"
 
 
+def test_missing_evidence_preferred_over_catalog_missing_count():
+    row = {
+        "property_score": 55,
+        "overdue_count": 0,
+        "missing_count": 5,
+        "missing_evidence": 3,
+        "expiring_30_count": 0,
+        "compliance_top_deficits": [],
+    }
+    assert build_property_score_cognition_line(row) == "3 missing documents"
+
+
 def test_pending_score_shows_updating():
     row = {"compliance_score_pending": True, "property_score": 55}
     assert build_property_score_cognition_line(row) == "Score updating — recent compliance changes are being processed"

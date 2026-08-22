@@ -145,7 +145,10 @@ async def sync_audit_enqueue_after_catalog_not_applicable(
     transition_origin: str,
 ) -> None:
     """Evidence authority sync, audit log, async recalc enqueue (same pattern as workflow API)."""
-    from services.compliance_recalc_queue import ACTOR_CLIENT, TRIGGER_PROPERTY_UPDATED, enqueue_compliance_recalc
+    from services.compliance_recalc_queue import ACTOR_CLIENT, TRIGGER_PROPERTY_UPDATED
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
+    )
     from services.requirement_evidence_authority import sync_requirement_evidence_authority
     from services.requirement_transition_observability import (
         attach_downstream_trigger_observation,

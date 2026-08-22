@@ -39,14 +39,18 @@ TRIGGER_SCHEDULED_PROPERTY_BATCH = "SCHEDULED_PROPERTY_BATCH"
 TRIGGER_CLIENT_JURISDICTION_UPDATED = "CLIENT_JURISDICTION_UPDATED"
 # Idempotent batch: enqueue reconciliation for properties that need persisted scores aligned.
 TRIGGER_RECONCILIATION_BATCH = "RECONCILIATION_BATCH"
+# Lifecycle restoration: explicit enqueue when debt exists but no usable PARKED row.
+TRIGGER_LIFECYCLE_RESTORED = "TRIGGER_LIFECYCLE_RESTORED"
 
 STATUS_PENDING = "PENDING"
 STATUS_RUNNING = "RUNNING"
+STATUS_PARKED = "PARKED"
 STATUS_DONE = "DONE"
 STATUS_FAILED = "FAILED"
 STATUS_DEAD = "DEAD"
 
 # Duplicate enqueue: still mark property pending while worker has not finished.
+# PARKED is handled separately: eligible callers restore to PENDING; ineligible callers keep PARKED.
 _DUPLICATE_PENDING_MARK_STATUSES = frozenset({STATUS_PENDING, STATUS_RUNNING, STATUS_FAILED})
 
 ACTOR_CLIENT = "CLIENT"
@@ -84,10 +88,15 @@ async def enqueue_compliance_recalc(
     correlation_id: Optional[str] = None,
 ) -> EnqueueComplianceRecalcResult:
     """
-    Enqueue a compliance recalc for a property. Idempotent by (property_id, correlation_id).
-    Sets compliance_score_pending=true on the property.
+    Enqueue executable (PENDING) compliance recalc. Idempotent by (property_id, correlation_id).
+    Sets compliance_score_pending=true and recalc_state=active_pending.
 
-    Returns EnqueueComplianceRecalcResult: ``bool(result)`` is True iff a new job row was inserted.
+    Lifecycle-ineligible customer/system paths must use enqueue_or_park_compliance_recalc
+    (PARKED). Automatic scheduled paths use enqueue_automatic_compliance_recalc_if_eligible.
+    Admin override uses enqueue_compliance_recalc_admin_override.
+
+    Returns EnqueueComplianceRecalcResult: ``bool(result)`` is True iff a new job row was inserted
+    or a DONE/PARKED row was regenerated/restored to PENDING.
     """
     correlation_id = ensure_correlation_id(
         trigger_reason=trigger_reason,
@@ -190,7 +199,32 @@ async def enqueue_compliance_recalc(
                     ),
                 )
                 existing_status = (existing or {}).get("status")
-                if existing_status == STATUS_DONE:
+                if existing_status == STATUS_PARKED:
+                    await db.compliance_recalc_queue.update_one(
+                        {"property_id": property_id, "correlation_id": correlation_id, "status": STATUS_PARKED},
+                        {
+                            "$set": {
+                                "status": STATUS_PENDING,
+                                "next_run_at": now_iso,
+                                "updated_at": now_iso,
+                                "restored_at": now_iso,
+                                "trigger_reason": trigger_reason,
+                                "actor_type": actor_type,
+                                "actor_id": actor_id,
+                            }
+                        },
+                    )
+                    from services.compliance_recalc_state import (
+                        RECALC_STATE_ACTIVE_PENDING,
+                        property_recalc_set_fields,
+                    )
+
+                    await db.properties.update_one(
+                        {"property_id": property_id},
+                        {"$set": property_recalc_set_fields(RECALC_STATE_ACTIVE_PENDING)},
+                    )
+                    branch = (True, "restored_from_parked_duplicate")
+                elif existing_status == STATUS_DONE:
                     await db.compliance_recalc_queue.update_one(
                         {"property_id": property_id, "correlation_id": correlation_id},
                         {
@@ -210,23 +244,38 @@ async def enqueue_compliance_recalc(
                             "$inc": {"done_duplicate_regeneration_count": 1},
                         },
                     )
+                    from services.compliance_recalc_state import (
+                        RECALC_STATE_ACTIVE_PENDING,
+                        property_recalc_set_fields,
+                    )
+
                     await db.properties.update_one(
                         {"property_id": property_id},
-                        {"$set": {"compliance_score_pending": True}},
+                        {"$set": property_recalc_set_fields(RECALC_STATE_ACTIVE_PENDING)},
                     )
                     branch = (True, "regenerated_from_done_duplicate")
                 elif existing_status in _DUPLICATE_PENDING_MARK_STATUSES:
+                    from services.compliance_recalc_state import (
+                        RECALC_STATE_ACTIVE_PENDING,
+                        property_recalc_set_fields,
+                    )
+
                     await db.properties.update_one(
                         {"property_id": property_id},
-                        {"$set": {"compliance_score_pending": True}},
+                        {"$set": property_recalc_set_fields(RECALC_STATE_ACTIVE_PENDING)},
                     )
                     branch = (False, reason)
                 else:
                     branch = (False, reason)
             else:
+                from services.compliance_recalc_state import (
+                    RECALC_STATE_ACTIVE_PENDING,
+                    property_recalc_set_fields,
+                )
+
                 await db.properties.update_one(
                     {"property_id": property_id},
-                    {"$set": {"compliance_score_pending": True}},
+                    {"$set": property_recalc_set_fields(RECALC_STATE_ACTIVE_PENDING)},
                 )
                 logger.info(
                     "Enqueued compliance recalc property_id=%s correlation_id=%s trigger_reason=%s",

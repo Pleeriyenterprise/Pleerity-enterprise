@@ -2057,6 +2057,13 @@ class StripeWebhookService:
                 subscription_id,
             )
             return {"handled": True, "client_id": client_id, "subscription_id": subscription_id, "ignored_cancelled": True}
+        previous_contract = None
+        try:
+            from services.account_lifecycle_runtime_contract import snapshot_runtime_contract
+
+            previous_contract = await snapshot_runtime_contract(db, client_id)
+        except Exception as snap_exc:
+            logger.debug("invoice.paid previous contract snapshot skipped: %s", snap_exc)
         had_dunning = bool(billing.get("payment_failed_at") or billing.get("grace_period_ends_at"))
 
         try:
@@ -2489,6 +2496,14 @@ class StripeWebhookService:
             )
         except Exception as ops_exc:
             logger.warning("subscription operational bridge invoice.paid: %s", ops_exc)
+        try:
+            from services.account_lifecycle_runtime_contract import publish_runtime_contract_after_mutation
+
+            await publish_runtime_contract_after_mutation(
+                db, client_id, previous_contract, trigger="stripe_invoice_paid"
+            )
+        except Exception as emit_exc:
+            logger.warning("invoice.paid lifecycle event emit skipped client_id=%s: %s", client_id, emit_exc)
         return {
             "handled": True,
             "client_id": client_id,

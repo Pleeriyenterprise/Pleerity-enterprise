@@ -42,6 +42,20 @@ def test_idle_success_detection():
     assert is_idle_success_result(
         {
             "count": 0,
+            "outcome_status": "success",
+            "outcome_metrics": {
+                "outcome_kind": "LIFECYCLE_SUPPRESSED",
+                "attempted_count": 10,
+                "queue_items_seen_batch": 10,
+                "queue_items_lifecycle_skipped": 7,
+                "queue_items_lifecycle_paused": 3,
+                "success_count": 0,
+            },
+        }
+    )
+    assert is_idle_success_result(
+        {
+            "count": 0,
             "outcome_status": "conditional_no_output",
             "outcome_metrics": {"outcome_kind": "NO_WORK_ELIGIBLE", "queue_empty": True, "attempted_count": 0},
         }

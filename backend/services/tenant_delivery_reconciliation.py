@@ -18,7 +18,9 @@ from services.compliance_recalc_queue import (
     ACTOR_CLIENT,
     ACTOR_SYSTEM,
     TRIGGER_PROPERTY_UPDATED,
-    enqueue_compliance_recalc,
+)
+from services.compliance_recalc_lifecycle_transition import (
+    enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
 )
 from utils.compliance_fanout_log import compliance_fanout_extra
 

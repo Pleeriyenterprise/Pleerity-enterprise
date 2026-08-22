@@ -22,7 +22,11 @@ from services.work_order_pricing_constants import (
     PRICE_STATUS_REJECTED,
     PRICE_STATUS_REVISION_REQUESTED,
 )
-from services.work_order_pricing_service import pricing_workflow_applies, quote_is_approved_for_api
+from services.work_order_pricing_service import (
+    derive_quote_presentation_state,
+    pricing_workflow_applies,
+    quote_is_approved_for_api,
+)
 from services.work_order_workflow_constants import (
     WORKFLOW_MODE_INSPECTION_FIRST,
     WORKFLOW_MODE_QUOTE_FIRST,
@@ -304,6 +308,50 @@ def _assigned_step_label(key: str, audience: Audience, wo: Dict[str, Any], *, co
     return "Assignment needed"
 
 
+def _incomplete_quote_step_label(key: str, wo: Dict[str, Any]) -> str:
+    """Never present 'Quote approved' unless landlord approval exists."""
+    pres = derive_quote_presentation_state(wo)
+    label = pres.get("label")
+    if key == "quote_submitted":
+        return label or "Quote requested"
+    if key == "quote_approved":
+        if pres.get("is_approved"):
+            return "Quote approved"
+        return label or "Quote submitted"
+    return label or key.replace("_", " ").title()
+
+
+def _incomplete_visit_step_label(key: str, audience: Audience) -> str:
+    """Never present 'Visit booked' unless a confirmed visit exists (complete flag)."""
+    if key == "inspection_visit_booked":
+        if audience == "landlord":
+            return "Schedule inspection"
+        if audience == "contractor":
+            return "Propose inspection visit"
+        return "Inspection not scheduled"
+    if audience == "landlord":
+        return "Schedule visit"
+    if audience == "contractor":
+        return "Propose visit"
+    return "Visit not scheduled"
+
+
+def _progress_step_label(
+    key: str,
+    audience: Audience,
+    wo: Dict[str, Any],
+    *,
+    complete: bool,
+) -> str:
+    if key == "assigned":
+        return _assigned_step_label(key, audience, wo, complete=complete)
+    if key in ("quote_submitted", "quote_approved") and not complete:
+        return _incomplete_quote_step_label(key, wo)
+    if key in ("visit_booked", "inspection_visit_booked") and not complete:
+        return _incomplete_visit_step_label(key, audience)
+    return _STEP_LABELS.get(key, {}).get(audience, key.replace("_", " ").title())
+
+
 def _inspection_completed(wo: Dict[str, Any]) -> bool:
     if wo.get("inspection_completed_at"):
         return True
@@ -447,10 +495,15 @@ def _materialize_steps(
             state = "blocked" if rs.get("blocked") else "current"
         else:
             state = "pending"
+        complete = bool(rs.get("complete"))
         label = (
-            _assigned_step_label(key, audience, wo or {}, complete=bool(rs.get("complete")))
+            _progress_step_label(key, audience, wo or {}, complete=complete)
             if wo is not None
-            else _STEP_LABELS.get(key, {}).get(audience, key.replace("_", " ").title())
+            else (
+                _incomplete_visit_step_label(key, audience)
+                if key in ("visit_booked", "inspection_visit_booked") and not complete
+                else _STEP_LABELS.get(key, {}).get(audience, key.replace("_", " ").title())
+            )
         )
         out.append(
             {
@@ -537,10 +590,14 @@ def _waiting_on(
         return None
     if not _quote_approved(wo) and pricing_workflow_applies(wo):
         ps = _norm_price_status(wo)
-        if ps == PRICE_STATUS_AWAITING_QUOTE:
-            return "contractor"
-        if ps in (PRICE_STATUS_QUOTED, PRICE_STATUS_REVISION_REQUESTED, PRICE_STATUS_REJECTED):
+        if ps == PRICE_STATUS_QUOTED:
             return "landlord"
+        if ps in (
+            PRICE_STATUS_AWAITING_QUOTE,
+            PRICE_STATUS_REVISION_REQUESTED,
+            PRICE_STATUS_REJECTED,
+        ):
+            return "contractor"
     ss = _norm_schedule_status(wo)
     if ss == "proposed" and wo.get("scheduled_at"):
         sb = (wo.get("scheduled_by") or "").strip().lower()
@@ -563,9 +620,15 @@ def _headline_for_audience(wo: Dict[str, Any], *, audience: Audience, current_st
     st = _norm_status(wo)
     if st == maintenance_service.STATUS_CANCELLED:
         return "Job cancelled"
+    if pricing_workflow_applies(wo):
+        pres = derive_quote_presentation_state(wo)
+        if pres.get("label") and not pres.get("is_approved"):
+            return str(pres["label"])
+        if pres.get("is_approved") and not _work_started(wo) and not _visit_confirmed(wo):
+            return str(pres["label"])
     if current_stage_label:
         if audience == "landlord":
-            if canonical == "BOOKED" and not _work_started(wo):
+            if canonical in ("BOOKED", "SCHEDULED") and _visit_confirmed(wo) and not _work_started(wo):
                 return "Visit booked — awaiting completion"
             if canonical == "IN_PROGRESS":
                 return "Work in progress"

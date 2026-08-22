@@ -166,6 +166,10 @@ async def test_expiry_rollover_no_properties_conditional_no_output_not_flagged()
 @pytest.mark.asyncio
 async def test_expiry_rollover_enqueued_work_not_flagged():
     from job_runner import run_expiry_rollover_recalc
+    from services.compliance_recalc_sla_eligibility import (
+        ComplianceRecalcSlaClass,
+        ComplianceRecalcSlaEligibility,
+    )
 
     items = [{"property_id": "p1"}]
 
@@ -186,6 +190,12 @@ async def test_expiry_rollover_enqueued_work_not_flagged():
     db = MagicMock()
     db.requirements.find = MagicMock(return_value=_OneRowCursor())
     db.properties.find_one = AsyncMock(return_value={"client_id": "c1"})
+    actionable = ComplianceRecalcSlaEligibility(
+        sla_class=ComplianceRecalcSlaClass.ACTIONABLE,
+        lifecycle_state="ACTIVE",
+        decision="CONTINUE",
+        reason="test",
+    )
 
     with patch("database.database.get_db", return_value=db):
         with patch(
@@ -193,7 +203,12 @@ async def test_expiry_rollover_enqueued_work_not_flagged():
             new_callable=AsyncMock,
             return_value=True,
         ):
-            result = await run_expiry_rollover_recalc()
+            with patch(
+                "services.compliance_recalc_sla_eligibility.resolve_compliance_recalc_sla_eligibility",
+                new_callable=AsyncMock,
+                return_value=actionable,
+            ):
+                result = await run_expiry_rollover_recalc()
     assert result.get("count") == 1
     om = result["outcome_metrics"]
     assert om["properties_considered"] == 1
@@ -218,3 +233,31 @@ def test_structured_zero_attempt_still_flags_expiry_not_broad_suppression():
         },
     }
     assert _flag("expiry_rollover_recalc", detail) is True
+
+
+def test_compliance_recalc_sla_monitor_metrics_are_structured_and_not_false_positive():
+    from services.compliance_sla_monitor import build_compliance_recalc_sla_monitor_run_result
+
+    result = build_compliance_recalc_sla_monitor_run_result(
+        {
+            "evaluated": 10,
+            "actionable": 1,
+            "lifecycle_suppressed": 8,
+            "terminal": 1,
+            "unknown_safe_skip": 0,
+            "breaches": 1,
+            "resolved": 2,
+        }
+    )
+    om = result["outcome_metrics"]
+    assert om["outcome_kind"] == "SLA_CHECK_COMPLETED"
+    assert om["evaluated"] == 10
+    assert om["lifecycle_suppressed"] == 8
+    assert om["breaches"] == 1
+    assert om["resolved"] == 2
+    detail = {
+        "last_run_status": "success",
+        "last_outcome_status": result["outcome_status"],
+        "outcome_metrics": om,
+    }
+    assert _flag("compliance_recalc_sla_monitor", detail) is False

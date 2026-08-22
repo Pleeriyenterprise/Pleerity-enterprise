@@ -29,6 +29,26 @@ def test_trade_match():
     c = {"trade_types": ["Plumbing"]}
     assert cs.contractor_trade_matches_category(c, "plumbing_repair") is True
     assert cs.contractor_trade_matches_category(c, "electrical") is False
+    assert cs.contractor_trade_matches_category(c, "general") is True
+    assert cs.contractor_trade_matches_category({"trade_types": ["plumber"]}, "plumbing") is True
+    assert cs.contractor_trade_matches_category({"trade_types": []}, "general") is False
+    assert cs.contractor_trade_matches_category({"trade_types": ["plumbing", "electrical"]}, "heating") is False
+
+
+def test_infer_maintenance_category_from_leak_description():
+    assert cs.infer_maintenance_category("Leak under bathroom sink") == "plumbing"
+    assert cs.infer_maintenance_category("socket sparking", "electrician") == "electrical"
+
+
+def test_trade_mismatch_message_names_required_and_actual():
+    msg = cs.contractor_trade_mismatch_message(
+        {"company_name": "Hartley Plumbing Ltd", "trade_types": ["plumbing"]},
+        "electrical",
+    )
+    assert "electrical" in msg.lower()
+    assert "plumbing" in msg.lower()
+    assert "Hartley Plumbing Ltd" in msg
+    assert "Assignment failed" in msg
 
 
 def test_postcode_outward_match():

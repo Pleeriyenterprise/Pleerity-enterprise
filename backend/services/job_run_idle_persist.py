@@ -42,7 +42,7 @@ def is_idle_success_result(result: Optional[Dict[str, Any]]) -> bool:
     om = result.get("outcome_metrics") or {}
     # Explicit no-work / contention-only kinds: no useful work performed this tick.
     kind = str(om.get("outcome_kind") or "")
-    if kind in ("NO_WORK_ELIGIBLE", "CONTENTION_ONLY"):
+    if kind in ("NO_WORK_ELIGIBLE", "CONTENTION_ONLY", "LIFECYCLE_SUPPRESSED"):
         return True
     if om.get("queue_empty") is True and int(om.get("success_count") or 0) == 0:
         return True

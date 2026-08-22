@@ -79,6 +79,7 @@ import {
   buildNeedsAttentionSubset,
   isRequirementActionRequired,
   isRequirementMissingDocument,
+  requirementCountsAsMissingEvidence,
   listRequirementsMissingDocumentsSorted,
   sortRequirementsCriticalityThenTitle,
   sortRequirementsAttentionOrder,
@@ -1457,7 +1458,7 @@ export default function PropertyDetailPage() {
   const getComplianceSummary = () => {
     const kpis = complianceDetail?.kpis || {};
     const total = requirements.length;
-    const missingFromRequirements = requirements.filter(isRequirementMissingDocument).length;
+    const missingFromRequirements = requirements.filter(requirementCountsAsMissingEvidence).length;
     const apiCounts = propertyDetailComplianceKpiCountsFromApi(complianceDetail?.kpis);
     return {
       totalApplicable: total,
@@ -1467,7 +1468,12 @@ export default function PropertyDetailPage() {
       valid: apiCounts.validForScoring,
       expiringSoon: kpis.expiring_30 ?? requirements.filter((r) => (r.status || '').toUpperCase() === 'EXPIRING_SOON').length,
       overdue: kpis.overdue ?? requirements.filter((r) => ['OVERDUE', 'EXPIRED'].includes((r.status || '').toUpperCase())).length,
-      missingDocuments: requirements.length ? missingFromRequirements : (kpis.missing ?? 0),
+      missingDocuments:
+        apiCounts.missingEvidence != null
+          ? apiCounts.missingEvidence
+          : kpis.missing != null && kpis.missing !== ''
+            ? Number(kpis.missing)
+            : missingFromRequirements,
     };
   };
 
@@ -1487,7 +1493,7 @@ export default function PropertyDetailPage() {
     if (complianceStatusFilter) {
       const s = complianceStatusFilter.toUpperCase();
       if (s === 'VALID') list = list.filter((r) => ['COMPLIANT', 'VALID'].includes((r.status || '').toUpperCase()));
-      else if (s === 'MISSING') list = list.filter(isRequirementMissingDocument);
+      else if (s === 'MISSING') list = list.filter(requirementCountsAsMissingEvidence);
       else list = list.filter((r) => (r.status || '').toUpperCase() === s);
     }
     if (complianceSearchQuery.trim()) {
@@ -2060,7 +2066,7 @@ export default function PropertyDetailPage() {
                         <strong className="tabular-nums">{sum.validForScoring ?? '—'}</strong>{' '}
                         {kpiLabels.validForScoring.label.toLowerCase()}
                       </span>
-                      <span>
+                      <span title="Missing documents from the compliance catalog KPI. The filtered list below can include additional items awaiting documents.">
                         <strong className="tabular-nums">{sum.missingDocuments}</strong> missing documents
                       </span>
                       <span>

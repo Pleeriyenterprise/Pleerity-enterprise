@@ -67,6 +67,10 @@ export function formatComplianceRecalcWorkerOutcomeSummary(lastRun) {
   const batch = _num(om.queue_items_seen_batch, _num(om.attempted_count, 0));
   const processed = _num(om.queue_items_processed, _num(om.success_count, 0));
   const claimSkipped = _num(om.queue_items_claim_skipped, 0);
+  const lifecycleSkipped = _num(om.queue_items_lifecycle_skipped, 0);
+  const lifecyclePaused = _num(om.queue_items_lifecycle_paused, 0);
+  const lifecycleTerminated = _num(om.queue_items_lifecycle_terminated, 0);
+  const lifecycleTotal = lifecycleSkipped + lifecyclePaused + lifecycleTerminated;
   const failedRetry = _num(om.queue_items_failed, 0);
   const dead = _num(om.queue_items_dead, 0);
   const queueEmpty = om.queue_empty === true || batch === 0;
@@ -116,6 +120,23 @@ export function formatComplianceRecalcWorkerOutcomeSummary(lastRun) {
   if (queueEmpty && outcomeStatus === 'conditional_no_output') {
     lines.push('No compliance recalculation work was waiting.');
     return { headlineLines: lines, showTechnicalDetail: hasMetrics, technicalPayload };
+  }
+
+  const lifecycleSuppressedOnly =
+    (String(om.outcome_kind || '') === 'LIFECYCLE_SUPPRESSED' || lifecycleTotal > 0) &&
+    batch > 0 &&
+    processed === 0 &&
+    failedRetry === 0 &&
+    dead === 0 &&
+    outcomeStatus === 'success' &&
+    claimSkipped !== batch;
+
+  if (lifecycleSuppressedOnly) {
+    lines.push(
+      'Queued recalculation items were not processed because account lifecycle does not permit background scoring.',
+    );
+    lines.push('This is not claim contention with another worker.');
+    return { headlineLines: lines, showTechnicalDetail: true, technicalPayload };
   }
 
   const contentionOnly =

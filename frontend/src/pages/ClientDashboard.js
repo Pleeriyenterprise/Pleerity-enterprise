@@ -81,6 +81,7 @@ import {
   alignTodayPayloadTaskSections,
   requirementMapFromList,
 } from '../utils/portalRequirementAttention';
+import { buildTodayPresentationModel } from '../utils/todayPresentationAuthority';
 import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
 import { shouldShowDocumentsSetupStep } from '../utils/presentationAuthority';
 import { portfolioHasV2BucketBreakdown } from '../utils/complianceScoreBuckets';
@@ -195,8 +196,14 @@ function getPropertyDisplayLabel(p) {
 const DASHBOARD_FOCUS_PROPERTY_LIMIT = 6;
 
 /** Single-line summary of open compliance gaps (different lens than separate columns in Portfolio summary). */
-function buildDashboardComplianceGapsLine(p, openJobsMap, showOpenJobs) {
-  if (p?.score_cognition_line) {
+function buildDashboardComplianceGapsLine(p, openJobsMap, showOpenJobs, missingOverride) {
+  const overdue = Number(p.overdue_count ?? 0);
+  const exp = Number(p.expiring_30_count ?? p.expiring_soon_count ?? 0);
+  const missing =
+    missingOverride != null && !Number.isNaN(Number(missingOverride))
+      ? Number(missingOverride)
+      : Number(p.missing_count ?? 0);
+  if (p?.score_cognition_line && missingOverride == null) {
     if (showOpenJobs) {
       const jobs = Number(openJobsMap?.[p.property_id] ?? 0);
       if (jobs > 0 && !String(p.score_cognition_line).includes('open jobs')) {
@@ -205,12 +212,9 @@ function buildDashboardComplianceGapsLine(p, openJobsMap, showOpenJobs) {
     }
     return p.score_cognition_line;
   }
-  if (p?.compliance_score_pending || p?.score_status === 'pending_recalc' || p?.score_status === 'calculating') {
+  if (p?.score_status === 'calculating' || p?.score_status === 'pending_recalc') {
     return 'Score updating — recent compliance changes are being processed';
   }
-  const overdue = Number(p.overdue_count ?? 0);
-  const exp = Number(p.expiring_30_count ?? p.expiring_soon_count ?? 0);
-  const missing = Number(p.missing_count ?? 0);
   const parts = [];
   if (overdue > 0) parts.push(`${overdue} overdue`);
   if (exp > 0) parts.push(`${exp} expiring soon`);
@@ -517,11 +521,18 @@ const ClientDashboard = () => {
     [todayInboxPayload, dashboardInboxRequirementById],
   );
 
-  const todayInboxSum = useMemo(() => {
+  const dashboardTodayPresentation = useMemo(() => {
     if (todayInboxPayload === undefined || todayInboxPayload === null) return null;
-    const s = dashboardAlignedInboxSections;
-    return s.urgent.length + s.upcoming.length + s.in_progress.length;
-  }, [todayInboxPayload, dashboardAlignedInboxSections]);
+    return buildTodayPresentationModel({
+      payload: todayInboxPayload,
+      sections: dashboardAlignedInboxSections,
+      applyFilter: (rows) => rows || [],
+      requirementsById: dashboardInboxRequirementById,
+      propertyById: {},
+    });
+  }, [todayInboxPayload, dashboardAlignedInboxSections, dashboardInboxRequirementById]);
+
+  const todayInboxSum = dashboardTodayPresentation == null ? null : dashboardTodayPresentation.counters.needsAction;
 
   // Command center bundle: digest summary + activity + urgent rows + risks + compliance (one round-trip)
   useEffect(() => {
@@ -1075,6 +1086,22 @@ const ClientDashboard = () => {
     return portfolioSummary?.kpis?.missing ?? 0;
   }, [complianceScore, portfolioSummary]);
 
+  const missingEvidenceByPropertyId = useMemo(() => {
+    const out = {};
+    for (const row of complianceScore?.property_breakdown || []) {
+      if (!row?.property_id) continue;
+      if (row.missing_evidence == null || Number.isNaN(Number(row.missing_evidence))) continue;
+      out[row.property_id] = Number(row.missing_evidence);
+    }
+    return out;
+  }, [complianceScore?.property_breakdown]);
+
+  const propertyMissingDocuments = (p) => {
+    const fromScore = missingEvidenceByPropertyId[p?.property_id];
+    if (fromScore != null) return fromScore;
+    return Number(p?.missing_count ?? 0);
+  };
+
   // Inline risk band explanation under grade (backend score authority only).
   const riskBandExplanation = useMemo(() => {
     const fromDisplay = displayScoreInfo?.band_explanation;
@@ -1167,12 +1194,12 @@ const ClientDashboard = () => {
         const oa = Number(a.overdue_count ?? 0);
         const ob = Number(b.overdue_count ?? 0);
         if (oa !== ob) return ob - oa;
-        const ma = Number(a.missing_count ?? 0);
-        const mb = Number(b.missing_count ?? 0);
+        const ma = missingEvidenceByPropertyId[a.property_id] ?? Number(a.missing_count ?? 0);
+        const mb = missingEvidenceByPropertyId[b.property_id] ?? Number(b.missing_count ?? 0);
         return mb - ma;
       })
       .slice(0, DASHBOARD_FOCUS_PROPERTY_LIMIT);
-  }, [portfolioSummary?.properties]);
+  }, [portfolioSummary?.properties, missingEvidenceByPropertyId]);
 
   const dashboardFreshness = useMemo(() => {
     if (commandCenter && typeof commandCenter === 'object' && commandCenter.freshness) return commandCenter.freshness;
@@ -1761,11 +1788,11 @@ const ClientDashboard = () => {
             <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/today')}>
               <CardContent className="p-3 sm:p-4 min-w-0">
                 <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center">
-                  Today (inbox)
-                  <DashboardKpiHint label="Today inbox total">
-                    Sum of urgent, upcoming, and in-progress items from the same Today inbox as the Today page, after the same
-                    tracked-requirement filter. Snoozed and hidden are separate buckets below. If this fails to load, open Today for
-                    live counts.
+                  Needs action
+                  <DashboardKpiHint label="Needs action (Today)">
+                    Same Needs action count as the Today page: operational items that need landlord action now,
+                    after the same tracked-requirement filter. Priority-urgent is a subset and is labelled separately
+                    under Needs attention. Snoozed and hidden are excluded.
                   </DashboardKpiHint>
                 </p>
                 {tasksDigest === undefined || todayInboxPayload === undefined ? (
@@ -1784,7 +1811,12 @@ const ClientDashboard = () => {
                   <>
                     <p className="text-xl font-bold text-midnight-blue mt-1">{todayInboxSum ?? 0}</p>
                     {todayInboxSum === 0 && (
-                      <p className="text-xs text-gray-500 mt-1">Nothing in those buckets in this snapshot.</p>
+                      <p className="text-xs text-gray-500 mt-1">Nothing needs action in this snapshot.</p>
+                    )}
+                    {todayInboxSum > 0 && dashboardTodayPresentation?.priorityEngine?.urgentLaneCount != null && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {dashboardTodayPresentation.priorityEngine.urgentLaneCount} of these are priority urgent
+                      </p>
                     )}
                   </>
                 )}
@@ -1931,7 +1963,7 @@ const ClientDashboard = () => {
                 <p className="text-2xl font-bold text-amber-800 tabular-nums mt-2">{valueInsights.at_risk?.expiring_soon_requirements ?? 0}</p>
                 <p className="text-xs text-gray-600 mt-0.5">Expiring soon</p>
                 <p className="text-2xl font-bold text-midnight-blue tabular-nums mt-2">{valueInsights.at_risk?.command_centre_urgent_open ?? 0}</p>
-                <p className="text-xs text-gray-600 mt-0.5">Urgent inbox items</p>
+                <p className="text-xs text-gray-600 mt-0.5">Priority urgent</p>
               </div>
               <div className="rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
                 <p className="text-[11px] text-gray-500 uppercase tracking-wide">Next tier</p>
@@ -3230,13 +3262,13 @@ const ClientDashboard = () => {
                         {headlineScoreShowsOutOf100(p.property_score ?? p.score, p.score_status) ? '/100' : ''}
                       </td>
                       <td className="p-3 whitespace-nowrap">
-                        {p.score_status === 'calculating' || p.compliance_score_pending
+                        {p.score_status === 'calculating'
                           ? 'Updating…'
                           : formatRiskLabel(p.risk_level)}
                       </td>
                       <td className="p-3">{p.overdue_count ?? 0}</td>
                       <td className="p-3">{p.expiring_30_count ?? p.expiring_soon_count ?? 0}</td>
-                      <td className="p-3">{p.missing_count ?? 0}</td>
+                      <td className="p-3">{propertyMissingDocuments(p)}</td>
                       {canUseOpsMaintenance && (
                         <td className="p-3" onClick={(e) => e.stopPropagation()}>
                           {openJobsByProperty[p.property_id] ?? 0}
@@ -3354,10 +3386,10 @@ const ClientDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 mb-1 flex items-center">
-                    Missing documents
+                      Missing documents
                     <DashboardKpiHint label="Missing documents">
-                      Missing-evidence count from compliance score (PENDING + MISSING on portal-visible projected rows). Not a
-                      client-side merge with overdue.
+                      Missing-evidence count from compliance score (PENDING + MISSING on portal-visible projected rows). The
+                      property table uses the same score authority per property — not a second catalog count.
                     </DashboardKpiHint>
                   </p>
                   <p className="text-3xl font-bold text-gray-700">
@@ -3415,7 +3447,12 @@ const ClientDashboard = () => {
                       {dashboardFocusProperties.map((p) => {
                         const score = p.property_score ?? p.score;
                         const st = p.score_status;
-                        const gaps = buildDashboardComplianceGapsLine(p, openJobsByProperty, canUseOpsMaintenance);
+                        const gaps = buildDashboardComplianceGapsLine(
+                          p,
+                          openJobsByProperty,
+                          canUseOpsMaintenance,
+                          missingEvidenceByPropertyId[p.property_id],
+                        );
                         return (
                           <button
                             key={p.property_id}
@@ -3432,7 +3469,7 @@ const ClientDashboard = () => {
                                 {headlineScoreDisplayForDashboard(score, st)}
                                 {headlineScoreShowsOutOf100(score, st) ? '/100' : ''}
                               </span>
-                              {p.risk_level && st !== 'calculating' && !p.compliance_score_pending ? (
+                              {p.risk_level && st !== 'calculating' ? (
                                 <span className="text-gray-600"> · {formatRiskLabel(p.risk_level)}</span>
                               ) : null}
                             </p>
@@ -3456,7 +3493,12 @@ const ClientDashboard = () => {
                           {dashboardFocusProperties.map((p) => {
                             const score = p.property_score ?? p.score;
                             const st = p.score_status;
-                            const gaps = buildDashboardComplianceGapsLine(p, openJobsByProperty, canUseOpsMaintenance);
+                            const gaps = buildDashboardComplianceGapsLine(
+                          p,
+                          openJobsByProperty,
+                          canUseOpsMaintenance,
+                          missingEvidenceByPropertyId[p.property_id],
+                        );
                             return (
                               <tr
                                 key={p.property_id}
@@ -3473,7 +3515,7 @@ const ClientDashboard = () => {
                                     {headlineScoreShowsOutOf100(score, st) ? '/100' : ''}
                                   </div>
                                   <div className="text-xs text-gray-600">
-                                    {st === 'calculating' || p.compliance_score_pending
+                                    {st === 'calculating'
                                       ? 'Updating…'
                                       : p.risk_level
                                         ? formatRiskLabel(p.risk_level)

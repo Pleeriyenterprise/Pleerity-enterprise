@@ -70,7 +70,7 @@ def _raise_rent_value_error(code: str) -> None:
             status_code=400,
             detail=structured_error(
                 code,
-                "No tenant is linked to this property. Link a tenant under Occupancy or Tenants before creating tenancy authority.",
+                "This property has no occupancy tenancy and no linked tenant. Confirm occupancy on the property, or invite/link a tenant, then return to Rent Operations.",
             ),
         )
     if code == "TENANCY_PROPERTY_MISMATCH":

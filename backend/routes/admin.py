@@ -92,7 +92,9 @@ async def _enqueue_recalc_after_standalone_authority_sync(
     from services.compliance_recalc_queue import (
         ACTOR_ADMIN,
         TRIGGER_DOC_STATUS_CHANGED,
-        enqueue_compliance_recalc,
+    )
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
     )
     from services.authority_mutation_fanout import enqueue_compliance_recalc_with_fanout
 
@@ -3006,7 +3008,9 @@ async def admin_post_property_requirements_sync_from_registry(
     from services.compliance_recalc_queue import (
         ACTOR_ADMIN,
         TRIGGER_ADMIN_MANUAL_JOB,
-        enqueue_compliance_recalc,
+    )
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_compliance_recalc_admin_override,
     )
     from services.provisioning import provisioning_service
     from services.requirement_materialization_service import materialize_requirements_for_property
@@ -3017,13 +3021,13 @@ async def admin_post_property_requirements_sync_from_registry(
 
     await provisioning_service._update_property_compliance(property_id)
     corr = f"{TRIGGER_ADMIN_MANUAL_JOB}:REGISTRY_SYNC:{property_id}:{uuid.uuid4().hex[:12]}"
-    await enqueue_compliance_recalc(
+    await enqueue_compliance_recalc_admin_override(
         property_id=property_id,
         client_id=client_id,
         trigger_reason=TRIGGER_ADMIN_MANUAL_JOB,
-        actor_type=ACTOR_ADMIN,
         actor_id=str(user.get("portal_user_id") or user.get("user_id") or ""),
         correlation_id=corr,
+        override_reason="admin_registry_property_requirements_sync",
     )
 
     ip_address = request.client.host if request.client else None
@@ -3078,7 +3082,10 @@ async def admin_materialise_condition_standard_pilot_row(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Property has no client_id")
 
     from services.condition_standard_pilot_materialisation import materialise_condition_standard_pilot_row
-    from services.compliance_recalc_queue import ACTOR_ADMIN, TRIGGER_ADMIN_MANUAL_JOB, enqueue_compliance_recalc
+    from services.compliance_recalc_queue import ACTOR_ADMIN, TRIGGER_ADMIN_MANUAL_JOB
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_compliance_recalc_admin_override,
+    )
 
     actor_id = str(user.get("portal_user_id") or user.get("user_id") or "admin")
     result = await materialise_condition_standard_pilot_row(
@@ -3095,13 +3102,13 @@ async def admin_materialise_condition_standard_pilot_row(
         )
 
     corr = f"{TRIGGER_ADMIN_MANUAL_JOB}:CONDITION_STANDARD_PILOT:{property_id}:{uuid.uuid4().hex[:12]}"
-    await enqueue_compliance_recalc(
+    await enqueue_compliance_recalc_admin_override(
         property_id=property_id,
         client_id=client_id,
         trigger_reason=TRIGGER_ADMIN_MANUAL_JOB,
-        actor_type=ACTOR_ADMIN,
         actor_id=actor_id,
         correlation_id=corr,
+        override_reason="admin_condition_standard_pilot",
     )
 
     ip_address = request.client.host if request.client else None
@@ -6264,9 +6271,11 @@ async def admin_action_recalculate_compliance(request: Request, client_id: str):
         raise HTTPException(status_code=404, detail="Client not found")
 
     from services.compliance_recalc_queue import (
-        enqueue_compliance_recalc,
         TRIGGER_ADMIN_UPLOAD,
         ACTOR_ADMIN,
+    )
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_compliance_recalc_admin_override,
     )
 
     props = await db.properties.find({"client_id": client_id}, {"_id": 0, "property_id": 1}).to_list(1000)
@@ -6275,13 +6284,13 @@ async def admin_action_recalculate_compliance(request: Request, client_id: str):
         pid = prop.get("property_id")
         if not pid:
             continue
-        ok = await enqueue_compliance_recalc(
+        ok = await enqueue_compliance_recalc_admin_override(
             property_id=pid,
             client_id=client_id,
             trigger_reason=TRIGGER_ADMIN_UPLOAD,
-            actor_type=ACTOR_ADMIN,
             actor_id=admin.get("portal_user_id"),
             correlation_id=f"admin_client_recalc:{client_id}:{pid}:{int(datetime.now(timezone.utc).timestamp())}",
+            override_reason="admin_client_recalculate_compliance",
         )
         if ok:
             enqueued += 1

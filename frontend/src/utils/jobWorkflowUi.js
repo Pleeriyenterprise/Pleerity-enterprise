@@ -21,7 +21,13 @@ export function deriveCanonicalJobStatus(wo) {
   if (st === 'COMPLETED') return 'COMPLETED';
   if (kind === KIND_MAINTENANCE && st === 'DRAFT') return 'DRAFT';
   if (kind === KIND_MAINTENANCE && st === 'AWAITING_PARTS') return 'AWAITING_PARTS';
-  if (kind === KIND_MAINTENANCE && st === 'SCHEDULED') return 'SCHEDULED';
+  if (kind === KIND_MAINTENANCE && st === 'SCHEDULED') {
+    const visitSched = String(wo?.schedule_status || '')
+      .trim()
+      .toLowerCase();
+    const hasConfirmedVisit = visitSched === 'confirmed' && !!String(wo?.scheduled_at || '').trim();
+    return hasConfirmedVisit ? 'SCHEDULED' : 'ASSIGNED';
+  }
   const oe = String(wo?.operational_exception || '')
     .trim()
     .toUpperCase();
@@ -93,6 +99,43 @@ export function alignProgressTrackerWithContractorFacts(job, tracker) {
   };
 }
 
+const VISIT_BOOKED_STEP_KEYS = new Set(['visit_booked', 'inspection_visit_booked']);
+
+/**
+ * Never present "Visit booked" unless a confirmed visit with scheduled_at exists.
+ */
+export function alignProgressTrackerWithVisitFacts(job, tracker) {
+  if (!tracker?.progressContract) return tracker;
+  const sched = String(job?.schedule_status || '').toLowerCase();
+  const hasConfirmedVisit = sched === 'confirmed' && !!String(job?.scheduled_at || '').trim();
+  const raw = (tracker.progressContract.progress_steps || []).filter((s) => s && s.state !== 'skipped');
+  const visitIdx = raw.findIndex((s) => VISIT_BOOKED_STEP_KEYS.has(s?.key));
+  if (visitIdx < 0) return tracker;
+
+  const visitStep = raw[visitIdx];
+  const bookedWording = /visit booked/i.test(String(visitStep.label || ''));
+  const completeWithoutVisit = visitStep.state === 'complete' && !hasConfirmedVisit;
+  const currentBookedWithoutVisit = visitStep.state === 'current' && bookedWording && !hasConfirmedVisit;
+  if (!completeWithoutVisit && !currentBookedWithoutVisit) return tracker;
+
+  const steps = [...tracker.steps];
+  const completedFlags = [...tracker.completedFlags];
+  let currentIndex = tracker.currentIndex;
+  steps[visitIdx] = visitStep.key === 'inspection_visit_booked' ? 'Schedule inspection' : 'Schedule visit';
+  if (completeWithoutVisit) {
+    completedFlags[visitIdx] = false;
+    currentIndex = visitIdx;
+  }
+
+  return {
+    ...tracker,
+    steps,
+    currentIndex,
+    completedFlags,
+    visitDriftCorrected: true,
+  };
+}
+
 export function progressTrackerFromContract(job) {
   const pc = job?.progress_contract;
   const raw = pc?.progress_steps;
@@ -107,7 +150,7 @@ export function progressTrackerFromContract(job) {
   }
   const completedFlags = visible.map((s) => s.state === 'complete');
   const base = { steps, currentIndex, completedFlags, progressContract: pc };
-  return alignProgressTrackerWithContractorFacts(job, base);
+  return alignProgressTrackerWithVisitFacts(job, alignProgressTrackerWithContractorFacts(job, base));
 }
 
 /** Client oversight tracker — prefers server progress_contract_v1. */
@@ -233,7 +276,7 @@ export function adminSimplifiedProgressFromWorkOrder(wo) {
     return { steps, currentIndex: 3 };
   }
   const schedOk = String(wo?.schedule_status || '').toLowerCase() === 'confirmed' && !!String(wo?.scheduled_at || '').trim();
-  if (schedOk || js === 'BOOKED' || js === 'BOOKING_REQUESTED' || st === 'SCHEDULED') {
+  if (schedOk || js === 'BOOKED' || js === 'BOOKING_REQUESTED') {
     return { steps, currentIndex: 2 };
   }
   if (String(wo?.contractor_id || '').trim() || st === 'ASSIGNED' || js === 'ASSIGNED') {

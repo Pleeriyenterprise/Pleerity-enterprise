@@ -124,9 +124,32 @@ export default function PropertyOccupancyTenancyPanel({ propertyId }) {
         <p>
           Occupancy: <strong>{data.applicability?.occupancy || '—'}</strong>
           {' · '}
-          Tenancy active: <strong>{data.tenancy_lifecycle?.tenancy_active ? 'Yes' : 'No / unknown'}</strong>
+          Occupancy tenancy: <strong>{data.tenancy_lifecycle?.tenancy_active ? 'Yes' : 'No / unknown'}</strong>
         </p>
-        <p className="text-xs text-gray-500">Move state: {data.tenancy_lifecycle?.move_state || '—'}</p>
+        <p>
+          Rent tenancy:{' '}
+          <strong data-testid="occupancy-rent-tenancy-ready">
+            {data.tenancy_lifecycle?.rent_tenancy_ready
+              ? `Yes${data.rent_tenancy?.tenant_display_name ? ` — ${data.rent_tenancy.tenant_display_name}` : ''}`
+              : 'Not set up yet'}
+          </strong>
+        </p>
+        <p className="text-xs text-gray-500">
+          Occupancy tenancy is the property occupancy flag. Rent Operations uses the rent tenancy record.
+          Move state: {data.tenancy_lifecycle?.move_state || '—'}
+        </p>
+        {hasRent && !data.tenancy_lifecycle?.rent_tenancy_ready && data.tenancy_lifecycle?.tenancy_active ? (
+          <Button variant="outline" size="sm" asChild className="mt-2">
+            <Link to={links.rent_operations || `/operations/rent?property_id=${propertyId}`}>
+              Confirm rent tenancy <ExternalLink className="h-3 w-3 ml-1" />
+            </Link>
+          </Button>
+        ) : null}
+        <Button variant="outline" size="sm" asChild className="mt-2">
+          <Link to={`/reports/property-evidence?property_id=${propertyId}`}>
+            Property Activity &amp; Evidence Report <ExternalLink className="h-3 w-3 ml-1" />
+          </Link>
+        </Button>
       </Section>
 
       {hasTenantPortal ? (

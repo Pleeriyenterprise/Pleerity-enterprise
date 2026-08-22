@@ -121,7 +121,7 @@ _TERMINAL_FOR_CONTRACTOR_OE = frozenset(
 
 def _ensure_assigned_to_me(work_order: dict, contractor_id: str) -> None:
     if (work_order.get("contractor_id") or "").strip() != (contractor_id or "").strip():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Work order not found or not assigned to you")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorised to access this job")
 
 
 @router.get("/dashboard-summary")

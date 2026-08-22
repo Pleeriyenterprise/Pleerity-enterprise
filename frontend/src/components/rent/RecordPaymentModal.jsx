@@ -32,7 +32,6 @@ export function RecordPaymentModal({
   useEffect(() => {
     if (!open) return;
     setIdempotencyKey(makeIdempotencyKey());
-    setAmount('');
     setPaymentDate(new Date().toISOString().slice(0, 10));
     setMethod('');
     setReference('');
@@ -40,6 +39,12 @@ export function RecordPaymentModal({
     setFallbackProperty(ledger?.property_id || '');
     setFallbackTenancy(ledger?.tenancy_id || '');
     setFallbackLedger(ledger?.ledger_id || '');
+    const outstandingMinor = ledger?.outstanding_balance_minor;
+    if (outstandingMinor != null && Number(outstandingMinor) > 0) {
+      setAmount((Number(outstandingMinor) / 100).toFixed(2));
+    } else {
+      setAmount('');
+    }
   }, [open, ledger]);
 
   if (!open) return null;
@@ -144,7 +149,16 @@ export function RecordPaymentModal({
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="text-xs text-gray-500">Amount (£)</label>
-            <Input value={amount} onChange={(e) => setAmount(e.target.value)} required placeholder="1200.00" />
+            <Input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              required
+              placeholder="1200.00"
+              data-testid="record-payment-amount"
+            />
+            {hasLedgerContext && outstanding > 0 ? (
+              <p className="text-[11px] text-gray-500 mt-1">Prefills the outstanding balance. Reduce the amount for a partial payment.</p>
+            ) : null}
           </div>
           <div>
             <label className="text-xs text-gray-500">Payment date</label>

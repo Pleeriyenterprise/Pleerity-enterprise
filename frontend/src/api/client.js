@@ -663,6 +663,13 @@ export const clientAPI = {
   /** Client-scoped audit timeline (read-only). */
   getAuditTimeline: (limit = 50) =>
     apiClient.get('/portfolio/audit-timeline', { params: { limit } }),
+  getPropertyActivityEvidenceReport: (propertyId, params = {}) =>
+    apiClient.get(`/client/properties/${propertyId}/activity-evidence-report`, { params }),
+  downloadPropertyActivityEvidenceReportHtml: (propertyId, params = {}) =>
+    apiClient.get(`/client/properties/${propertyId}/activity-evidence-report`, {
+      params: { ...params, format: 'html' },
+      responseType: 'blob',
+    }),
   /** Score ledger: paginated list of score change events. */
   getLedger: (params = {}) =>
     apiClient.get('/client/ledger', { params: { limit: 50, ...params } }),
@@ -798,6 +805,11 @@ export const clientAPI = {
     apiClient.post(`/jobs/${encodeURIComponent(jobId)}/link-document`, body),
   complianceJobAttachCompletionProof: (jobId, body) =>
     apiClient.post(`/jobs/${encodeURIComponent(jobId)}/attach-completion-proof`, body),
+  complianceJobAcceptCompletion: (jobId) => apiClient.post(`/jobs/${encodeURIComponent(jobId)}/accept-completion`, {}),
+  complianceJobRequestProofClarification: (jobId, body = {}) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/request-proof-clarification`, body),
+  complianceJobRejectCompletion: (jobId, body = {}) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/reject-completion`, body),
   complianceJobClose: (jobId) => apiClient.post(`/jobs/${encodeURIComponent(jobId)}/close`, {}),
   complianceJobVerify: (jobId) => apiClient.post(`/jobs/${encodeURIComponent(jobId)}/verify`, {}),
   complianceJobCancel: (jobId) => apiClient.post(`/jobs/${encodeURIComponent(jobId)}/cancel`, {}),

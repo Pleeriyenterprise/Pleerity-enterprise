@@ -473,11 +473,26 @@ async def suspend_client_org(
         raise ValueError("client_archived_use_restore")
     if st == ClientLifecycleStatus.SUSPENDED.value:
         raise ValueError("already_suspended")
+    previous_contract = None
+    try:
+        from services.account_lifecycle_runtime_contract import snapshot_runtime_contract
+
+        previous_contract = await snapshot_runtime_contract(db, client_id)
+    except Exception:
+        previous_contract = None
     now = datetime.now(timezone.utc)
     await db.clients.update_one(
         {"client_id": client_id},
         {"$set": {"client_lifecycle_status": ClientLifecycleStatus.SUSPENDED.value, "updated_at": now}},
     )
+    try:
+        from services.account_lifecycle_runtime_contract import publish_runtime_contract_after_mutation
+
+        await publish_runtime_contract_after_mutation(
+            db, client_id, previous_contract, trigger="admin_suspend_client_org"
+        )
+    except Exception:
+        logger.warning("lifecycle event emit skipped after suspend client_id=%s", client_id, exc_info=True)
 
 
 async def resume_client_org(
@@ -493,6 +508,13 @@ async def resume_client_org(
     st = (doc.get("client_lifecycle_status") or "").strip().upper()
     if st != ClientLifecycleStatus.SUSPENDED.value:
         raise ValueError("not_suspended")
+    previous_contract = None
+    try:
+        from services.account_lifecycle_runtime_contract import snapshot_runtime_contract
+
+        previous_contract = await snapshot_runtime_contract(db, client_id)
+    except Exception:
+        previous_contract = None
     shadow = {**doc, "client_lifecycle_status": None}
     target = operational_client_lifecycle_to_persist(shadow)
     now = datetime.now(timezone.utc)
@@ -500,6 +522,14 @@ async def resume_client_org(
         {"client_id": client_id},
         {"$set": {"client_lifecycle_status": target, "updated_at": now}},
     )
+    try:
+        from services.account_lifecycle_runtime_contract import publish_runtime_contract_after_mutation
+
+        await publish_runtime_contract_after_mutation(
+            db, client_id, previous_contract, trigger="admin_resume_client_org"
+        )
+    except Exception:
+        logger.warning("lifecycle event emit skipped after resume client_id=%s", client_id, exc_info=True)
 
 
 def _lifecycle_http_detail(exc: ValueError) -> Tuple[int, Any]:

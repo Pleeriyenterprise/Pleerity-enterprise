@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, Depends, status, File, UploadFile, Query, Body, BackgroundTasks
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse, FileResponse, HTMLResponse
 from pydantic import BaseModel
 from database import database
 from middleware import client_route_guard
@@ -331,7 +331,7 @@ async def export_ledger_csv(
         out = io.StringIO()
         w = csv_module.writer(out)
         w.writerow([
-            "created_at", "property_id", "trigger_type", "trigger_label", "actor_type",
+            "created_at", "property_id", "property_name", "trigger_type", "trigger_label", "actor_type",
             "before_score", "after_score", "delta", "before_grade", "after_grade",
             "drivers_before_status", "drivers_before_timeline", "drivers_before_documents", "drivers_before_overdue_penalty",
             "drivers_after_status", "drivers_after_timeline", "drivers_after_documents", "drivers_after_overdue_penalty",
@@ -343,6 +343,7 @@ async def export_ledger_csv(
             w.writerow([
                 r.get("created_at", ""),
                 r.get("property_id", ""),
+                r.get("property_name", ""),
                 r.get("trigger_type", ""),
                 r.get("trigger_label", ""),
                 r.get("actor_type", ""),
@@ -1566,9 +1567,11 @@ async def update_jurisdiction_settings(request: Request, body: JurisdictionSetti
     )
     # Re-score every property so jurisdiction profile, weights, and downstream risk regen stay aligned.
     from services.compliance_recalc_queue import (
-        enqueue_compliance_recalc,
         TRIGGER_CLIENT_JURISDICTION_UPDATED,
         ACTOR_CLIENT,
+    )
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
     )
 
     prop_rows = await db.properties.find(
@@ -1608,7 +1611,9 @@ async def apply_default_jurisdiction_to_missing_properties(request: Request):
     from services.compliance_recalc_queue import (
         ACTOR_CLIENT,
         TRIGGER_PROPERTY_UPDATED,
-        enqueue_compliance_recalc,
+    )
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
     )
 
     client = await db.clients.find_one(
@@ -1746,6 +1751,38 @@ async def get_property_occupancy_operational_summary(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load occupancy operational summary",
         )
+
+
+@router.get("/properties/{property_id}/activity-evidence-report")
+async def get_property_activity_evidence_report(
+    request: Request,
+    property_id: str,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    format: str = Query("json"),
+    user: dict = client_require_capability("CAP_PROP_VIEW", "read"),
+):
+    """Landlord-facing Property Activity & Evidence Report (organisational, not legal certification)."""
+    from services.property_activity_evidence_service import (
+        build_property_activity_evidence_report,
+        render_property_activity_evidence_html,
+    )
+
+    try:
+        report = await build_property_activity_evidence_report(
+            user["client_id"],
+            property_id,
+            from_date=from_date,
+            to_date=to_date,
+        )
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail="Property not found")
+        raise HTTPException(status_code=400, detail=str(e))
+    fmt = (format or "json").strip().lower()
+    if fmt in ("html", "htm"):
+        return HTMLResponse(content=render_property_activity_evidence_html(report))
+    return report
 
 
 @router.get("/properties/{property_id}/requirements")

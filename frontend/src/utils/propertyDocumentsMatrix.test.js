@@ -1,4 +1,4 @@
-import { buildNeedsAttentionSubset, isRequirementActionRequired, isRequirementMissingDocument, requirementAttentionStatusRank } from './propertyDocumentsMatrix';
+import { buildNeedsAttentionSubset, isRequirementActionRequired, isRequirementMissingDocument, requirementCountsAsMissingEvidence, requirementAttentionStatusRank } from './propertyDocumentsMatrix';
 
 function req(id, status, extra = {}) {
   return {
@@ -139,6 +139,15 @@ describe('buildNeedsAttentionSubset', () => {
     const out = buildNeedsAttentionSubset(rows, (r) => r.due_date, 8);
     expect(out.items.map((r) => r.requirement_id)).toEqual(['open']);
     expect(rows.filter((r) => isRequirementActionRequired(r)).map((r) => r.requirement_id)).toEqual(['open']);
+  });
+
+  it('uses missing_required_document as missing-evidence authority', () => {
+    expect(requirementCountsAsMissingEvidence(req('open', 'MISSING', { missing_required_document: true }))).toBe(true);
+    expect(
+      requirementCountsAsMissingEvidence(
+        req('declared', 'PENDING', { missing_required_document: false, requirement_satisfied: true }),
+      ),
+    ).toBe(false);
   });
 });
 

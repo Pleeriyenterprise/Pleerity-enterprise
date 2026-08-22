@@ -113,7 +113,7 @@ const OPERATIONAL_LABEL_BY_KEY = {
   // Quote negotiation price_status tokens
   awaiting_quote: 'Quote requested',
   quoted: 'Quote submitted',
-  approved: 'Work authorised',
+  approved: 'Quote approved',
   rejected: 'Changes requested',
   revision_requested: 'Changes requested',
   rejected_final: 'Quote declined (final)',

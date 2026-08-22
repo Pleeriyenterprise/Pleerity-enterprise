@@ -23,18 +23,21 @@ describe('propertyDetailComplianceKpiPresentation', () => {
       propertyDetailComplianceKpiCountsFromApi({
         lifecycle_satisfied_count: 7,
         status_valid: 2,
+        missing_evidence: 3,
       }),
-    ).toEqual({ requirementsSatisfied: 7, validForScoring: 2 });
+    ).toEqual({ requirementsSatisfied: 7, validForScoring: 2, missingEvidence: 3 });
   });
 
   it('returns null when API fields absent', () => {
     expect(propertyDetailComplianceKpiCountsFromApi({})).toEqual({
       requirementsSatisfied: null,
       validForScoring: null,
+      missingEvidence: null,
     });
     expect(propertyDetailComplianceKpiCountsFromApi(null)).toEqual({
       requirementsSatisfied: null,
       validForScoring: null,
+      missingEvidence: null,
     });
   });
 

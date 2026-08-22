@@ -477,7 +477,9 @@ async def reconcile_obsolete_governed_db_rule_requirements(
                 from services.compliance_recalc_queue import (
                     ACTOR_SYSTEM,
                     TRIGGER_PROPERTY_UPDATED,
-                    enqueue_compliance_recalc,
+                )
+                from services.compliance_recalc_lifecycle_transition import (
+                    enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
                 )
 
                 await enqueue_compliance_recalc(
@@ -629,7 +631,9 @@ async def publish_version(
         from services.compliance_recalc_queue import (
             ACTOR_SYSTEM,
             TRIGGER_PROPERTY_UPDATED,
-            enqueue_compliance_recalc,
+        )
+        from services.compliance_recalc_lifecycle_transition import (
+            enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
         )
         from services.provisioning import provisioning_service
 
@@ -739,7 +743,9 @@ async def rollback_published(rule_type: str, actor: Dict[str, Any]) -> Dict[str,
     from services.compliance_recalc_queue import (
         ACTOR_SYSTEM,
         TRIGGER_PROPERTY_UPDATED,
-        enqueue_compliance_recalc,
+    )
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
     )
     from services.provisioning import provisioning_service
 

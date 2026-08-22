@@ -30,7 +30,7 @@ from services.compliance_workflow_service import (
     load_client_work_order,
     load_compliance_work_order_for_client,
     maintenance_has_completion_evidence,
-    serialize_client_job,
+    serialize_landlord_job,
     serialize_compliance_job,
     work_order_has_proof_document,
 )
@@ -159,8 +159,10 @@ async def _resolve_contractor_for_job_pricing(request: Request, job_id: str) -> 
     if not cid:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor access required")
     wo = await maintenance_service.get_work_order(job_id.strip())
-    if not wo or (wo.get("contractor_id") or "").strip() != cid:
+    if not wo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    if (wo.get("contractor_id") or "").strip() != cid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorised to access this job")
     return {"contractor_id": cid, "work_order_id": job_id.strip()}
 
 
@@ -364,7 +366,10 @@ async def mark_requirement_not_applicable_by_id(
         resource_id=rid,
         metadata={"event": "mark_not_applicable", "reason_code": preset, "reason": body.reason.strip()[:2000]},
     )
-    from services.compliance_recalc_queue import ACTOR_CLIENT, TRIGGER_PROPERTY_UPDATED, enqueue_compliance_recalc
+    from services.compliance_recalc_queue import ACTOR_CLIENT, TRIGGER_PROPERTY_UPDATED
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
+    )
 
     recalc_result = None
     recalc_exc: Optional[Exception] = None
@@ -464,7 +469,10 @@ async def reopen_requirement(request: Request, requirement_id: str, user: Dict[s
             "prior_applicability": req.get("applicability"),
         },
     )
-    from services.compliance_recalc_queue import ACTOR_CLIENT, TRIGGER_PROPERTY_UPDATED, enqueue_compliance_recalc
+    from services.compliance_recalc_queue import ACTOR_CLIENT, TRIGGER_PROPERTY_UPDATED
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
+    )
 
     recalc_result = None
     recalc_exc: Optional[Exception] = None
@@ -543,7 +551,7 @@ async def get_job_detail(request: Request, job_id: str, user: Dict[str, Any] = D
         raise HTTPException(status_code=404, detail="Job not found")
     from services.operational_cognition_service import attach_cognition_to_job_payload
 
-    payload = serialize_client_job(wo)
+    payload = await serialize_landlord_job(wo)
     return await attach_cognition_to_job_payload(payload)
 
 
@@ -581,7 +589,7 @@ async def post_job_decision_log(
     fresh = await load_client_work_order(work_order_id=wid, client_id=user["client_id"])
     if not fresh:
         raise HTTPException(status_code=404, detail="Job not found")
-    return serialize_client_job(fresh)
+    return await serialize_landlord_job(fresh)
 
 
 @router.get("/jobs/{job_id}/assignable-contractors")
@@ -706,7 +714,7 @@ async def job_assign_contractor(
     if not updated:
         raise HTTPException(status_code=404, detail="Job not found")
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else updated
+    return await serialize_landlord_job(fresh) if fresh else updated
 
 
 class CreatePersonalContractorAndAssignBody(BaseModel):
@@ -764,7 +772,7 @@ async def job_create_personal_contractor_and_assign(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    out = {"contractor": cdoc, "job": serialize_client_job(fresh) if fresh else updated}
+    out = {"contractor": cdoc, "job": await serialize_landlord_job(fresh) if fresh else updated}
     if pending_admin_review:
         out["contractor_pending_admin_review"] = True
     return out
@@ -795,7 +803,7 @@ async def job_set_operational_exception(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/resume-after-parts")
@@ -814,7 +822,7 @@ async def job_resume_after_parts(request: Request, job_id: str, user: Dict[str, 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 class RequestBookingBody(BaseModel):
@@ -854,7 +862,7 @@ async def job_request_booking(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/confirm-booking")
@@ -880,7 +888,7 @@ async def job_confirm_booking(request: Request, job_id: str, user: Dict[str, Any
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/reschedule")
@@ -925,7 +933,7 @@ async def job_request_visit_reschedule(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/cancel-booking")
@@ -950,7 +958,7 @@ async def job_cancel_booking(request: Request, job_id: str, user: Dict[str, Any]
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 class MarkNoAccessBody(BaseModel):
@@ -977,7 +985,7 @@ async def job_mark_no_access(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/mark-reschedule-required")
@@ -995,7 +1003,7 @@ async def job_mark_reschedule_required(request: Request, job_id: str, user: Dict
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/start")
@@ -1012,7 +1020,7 @@ async def job_start(request: Request, job_id: str, user: Dict[str, Any] = Depend
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/awaiting-parts")
@@ -1034,7 +1042,7 @@ async def job_awaiting_parts(request: Request, job_id: str, user: Dict[str, Any]
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/complete")
@@ -1051,7 +1059,7 @@ async def job_complete(request: Request, job_id: str, user: Dict[str, Any] = Dep
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 class SubmitJobQuoteBody(BaseModel):
@@ -1108,7 +1116,7 @@ async def job_approve_quote(request: Request, job_id: str, user: Dict[str, Any] 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/reject-quote")
@@ -1129,7 +1137,7 @@ async def job_reject_quote(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/request-quote-revision")
@@ -1152,7 +1160,7 @@ async def job_request_quote_revision(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/reject-quote-final")
@@ -1172,7 +1180,7 @@ async def job_reject_quote_final(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/mark-inspection-complete")
@@ -1214,7 +1222,7 @@ async def _completion_review_route(job_id: str, user: Dict[str, Any], decision: 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/accept-completion")
@@ -1281,7 +1289,7 @@ async def job_link_document(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_compliance_work_order_for_client(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/attach-completion-proof")
@@ -1318,7 +1326,7 @@ async def job_attach_completion_proof(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/close")
@@ -1359,7 +1367,7 @@ async def job_close_maintenance(request: Request, job_id: str, user: Dict[str, A
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/verify")
@@ -1393,7 +1401,7 @@ async def job_verify(request: Request, job_id: str, user: Dict[str, Any] = Depen
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.post("/jobs/{job_id}/cancel")
@@ -1410,7 +1418,7 @@ async def job_cancel(request: Request, job_id: str, user: Dict[str, Any] = Depen
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
-    return serialize_client_job(fresh) if fresh else {}
+    return await serialize_landlord_job(fresh) if fresh else {}
 
 
 @router.get("/today/items")

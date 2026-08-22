@@ -214,6 +214,59 @@ def _business_event_and_summary(ev: Dict[str, Any]) -> Tuple[str, str]:
             "Required compliance documents were successfully delivered to the tenant.",
         )
 
+    property_name = str(md.get("property_name") or md.get("property_label") or "").strip()
+    job_title = str(md.get("description") or md.get("job_title") or md.get("title") or "").strip()
+    contractor_name = str(md.get("contractor_name") or md.get("company_name") or "").strip()
+    at_property = f" at {property_name}" if property_name else ""
+    job_ref = f"“{job_title[:80]}”" if job_title else "a maintenance job"
+
+    if action in ("WORK_ORDER_CREATED", "WORK_ORDER_CREATED_FROM_RISK_SIGNAL", "COMPLIANCE_EXECUTION_WORK_ORDER_CREATED"):
+        return (
+            "Maintenance job created",
+            f"A job was created for {job_ref}{at_property}.",
+        )
+
+    if action == "MAINTENANCE_ISSUE_CREATED":
+        return (
+            "Maintenance issue recorded",
+            f"A maintenance issue was recorded for {job_ref}{at_property}.",
+        )
+
+    if action == "CONTRACTOR_ASSIGNED_TO_WORK_ORDER":
+        who = contractor_name or "A contractor"
+        return (
+            "Contractor assigned",
+            f"{who} was assigned to {job_ref}{at_property}.",
+        )
+
+    if action == "RENT_PAYMENT_RECORDED":
+        amount_minor = md.get("amount_minor")
+        period = str(md.get("period_key") or md.get("rent_period") or "").strip()
+        outstanding = md.get("outstanding_balance_minor")
+        amount_txt = ""
+        try:
+            if amount_minor is not None and str(amount_minor).strip() != "":
+                amount_txt = f" of £{int(amount_minor) / 100:.2f}"
+        except (TypeError, ValueError):
+            amount_txt = ""
+        period_txt = f" for period {period}" if period else ""
+        outstanding_txt = ""
+        try:
+            if outstanding is not None and str(outstanding).strip() != "":
+                outstanding_txt = f" Remaining outstanding: £{int(outstanding) / 100:.2f}."
+        except (TypeError, ValueError):
+            outstanding_txt = ""
+        return (
+            "Rent payment recorded",
+            f"A rent payment{amount_txt} was recorded{period_txt}{at_property}.{outstanding_txt}",
+        )
+
+    if action in ("RENT_LEDGER_CREATED", "RENT_LEDGER_UPDATED"):
+        return (
+            "Rent ledger updated",
+            f"The rent ledger was updated{at_property}.",
+        )
+
     if existing_summary and not _looks_like_raw_code(existing_summary):
         titled = existing_summary[:120]
         return titled, _expand_summary(existing_summary, action, md)

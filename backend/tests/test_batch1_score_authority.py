@@ -118,12 +118,28 @@ async def test_reconciliation_enqueue_idempotent():
 
     calls = []
 
-    async def fake_enqueue(**kw):
+    async def fake_automatic(db, **kw):
         calls.append(kw)
-        return True
+        from services.compliance_recalc_sla_eligibility import (
+            AutomaticEnqueueAttempt,
+            ComplianceRecalcSlaClass,
+            ComplianceRecalcSlaEligibility,
+        )
+
+        return AutomaticEnqueueAttempt(
+            enqueued=True,
+            outcome="enqueued",
+            eligibility=ComplianceRecalcSlaEligibility(
+                sla_class=ComplianceRecalcSlaClass.ACTIONABLE,
+                lifecycle_state="ACTIVE",
+                decision="CONTINUE",
+                reason="test",
+            ),
+        )
 
     with patch("services.compliance_score_reconciliation_service.database.get_db", return_value=FakeDb()), patch(
-        "services.compliance_score_reconciliation_service.enqueue_compliance_recalc", side_effect=fake_enqueue
+        "services.compliance_score_reconciliation_service.enqueue_automatic_compliance_recalc_if_eligible",
+        side_effect=fake_automatic,
     ):
         r = await enqueue_reconciliation_for_properties(client_id="c1")
         assert r["enqueued"] == 2
