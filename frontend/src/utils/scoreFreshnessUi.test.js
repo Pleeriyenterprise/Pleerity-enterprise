@@ -36,6 +36,15 @@ describe('scoreFreshnessUi', () => {
     expect(resolveDashboardFreshnessExplanation('ok', 'ignored')).toBe(null);
   });
 
+  it('resolveDashboardFreshnessExplanation uses server parked/stale message', () => {
+    expect(
+      resolveDashboardFreshnessExplanation(
+        'stale',
+        'Monitoring is paused. This score will refresh when monitoring resumes.',
+      ),
+    ).toBe('Monitoring is paused. This score will refresh when monitoring resumes.');
+  });
+
   it('resolveDashboardFreshnessExplanation provides defaults for stale/partial without message', () => {
     expect(resolveDashboardFreshnessExplanation('stale', null)).toBe(null);
     expect(resolveDashboardFreshnessExplanation('partial', null)).toBe(null);

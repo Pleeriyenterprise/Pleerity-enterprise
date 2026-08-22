@@ -55,6 +55,9 @@ def build_compliance_recalc_worker_run_result(metrics: Dict[str, Any]) -> Dict[s
     reclaim_d = int(metrics.get("stale_running_reclaimed_to_dead") or 0)
     reclaim_total = reclaim_p + reclaim_d
     lifecycle_total = lifecycle_skipped + lifecycle_paused + lifecycle_terminated
+    parked = int(metrics.get("queue_items_parked") or 0) or (lifecycle_skipped + lifecycle_paused)
+    drained_ok = int(metrics.get("drained_running_success") or 0)
+    drained_fail = int(metrics.get("drained_running_failure") or 0)
 
     claimed = batch - claim_skipped
     operational_fail = failed_retry + dead
@@ -66,6 +69,9 @@ def build_compliance_recalc_worker_run_result(metrics: Dict[str, Any]) -> Dict[s
         "queue_items_lifecycle_skipped": lifecycle_skipped,
         "queue_items_lifecycle_paused": lifecycle_paused,
         "queue_items_lifecycle_terminated": lifecycle_terminated,
+        "queue_items_parked": parked,
+        "drained_running_success": drained_ok,
+        "drained_running_failure": drained_fail,
         "queue_items_processed": processed,
         "queue_items_failed": failed_retry,
         "queue_items_dead": dead,
@@ -118,8 +124,8 @@ def build_compliance_recalc_worker_run_result(metrics: Dict[str, Any]) -> Dict[s
         )
         return {
             "message": (
-                f"Compliance recalc worker: {lifecycle_total} queue row(s) lifecycle-suppressed "
-                f"({detail}); not claim contention.{contention_tail}"
+            f"Compliance recalc worker: {lifecycle_total} queue row(s) lifecycle-suppressed "
+            f"({detail}); parked or terminalized, not claim contention.{contention_tail}"
             ),
             "count": 0,
             "errors": 0,

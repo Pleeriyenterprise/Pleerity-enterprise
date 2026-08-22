@@ -1144,6 +1144,43 @@ async def resolve_runtime_contract_for_client(
     return contract
 
 
+async def snapshot_runtime_contract(db, client_id: str) -> Mapping[str, Any]:
+    """Read the current contract without publishing transition events."""
+    return await resolve_runtime_contract_for_client(
+        db, client_id, use_cache=False, emit_events=False
+    )
+
+
+async def publish_runtime_contract_after_mutation(
+    db,
+    client_id: str,
+    previous: Optional[Mapping[str, Any]],
+    *,
+    trigger: str,
+) -> List[Dict[str, Any]]:
+    """
+    Publish lifecycle/runtime events after an authoritative mutation.
+
+    ``resolve_runtime_contract_for_client(..., emit_events=True)`` only emits when a
+    cached previous contract exists. Mutation paths that invalidate cache or pass
+    ``use_cache=False`` must call this with the pre-mutation snapshot.
+    """
+    if not client_id:
+        return []
+    invalidate_runtime_cache_for_client(client_id)
+    current = await resolve_runtime_contract_for_client(
+        db, client_id, use_cache=False, emit_events=False
+    )
+    from services.account_lifecycle_event_authority import publish_runtime_contract_transition
+
+    return await publish_runtime_contract_transition(
+        db,
+        previous,
+        current,
+        trigger=trigger,
+    )
+
+
 def get_cached_runtime_contract(client_id: str, runtime_version: int) -> Optional[Mapping[str, Any]]:
     entry = _runtime_cache.get(client_id)
     if not entry:

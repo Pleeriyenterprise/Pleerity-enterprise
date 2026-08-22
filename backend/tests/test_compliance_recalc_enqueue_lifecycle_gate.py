@@ -305,7 +305,10 @@ async def test_admin_manual_enqueue_bypasses_automatic_gate():
     resolve = AsyncMock(return_value=PAYMENT_PENDING)
 
     with patch("database.database.get_db", return_value=db):
-        with patch("services.compliance_recalc_queue.enqueue_compliance_recalc", enqueue):
+        with patch(
+            "services.compliance_recalc_lifecycle_transition.enqueue_compliance_recalc_admin_override",
+            enqueue,
+        ):
             with patch(
                 "services.compliance_recalc_sla_eligibility.resolve_compliance_recalc_sla_eligibility",
                 resolve,

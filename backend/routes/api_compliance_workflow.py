@@ -366,7 +366,10 @@ async def mark_requirement_not_applicable_by_id(
         resource_id=rid,
         metadata={"event": "mark_not_applicable", "reason_code": preset, "reason": body.reason.strip()[:2000]},
     )
-    from services.compliance_recalc_queue import ACTOR_CLIENT, TRIGGER_PROPERTY_UPDATED, enqueue_compliance_recalc
+    from services.compliance_recalc_queue import ACTOR_CLIENT, TRIGGER_PROPERTY_UPDATED
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
+    )
 
     recalc_result = None
     recalc_exc: Optional[Exception] = None
@@ -466,7 +469,10 @@ async def reopen_requirement(request: Request, requirement_id: str, user: Dict[s
             "prior_applicability": req.get("applicability"),
         },
     )
-    from services.compliance_recalc_queue import ACTOR_CLIENT, TRIGGER_PROPERTY_UPDATED, enqueue_compliance_recalc
+    from services.compliance_recalc_queue import ACTOR_CLIENT, TRIGGER_PROPERTY_UPDATED
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
+    )
 
     recalc_result = None
     recalc_exc: Optional[Exception] = None

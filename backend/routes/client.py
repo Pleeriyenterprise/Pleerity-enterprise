@@ -1567,9 +1567,11 @@ async def update_jurisdiction_settings(request: Request, body: JurisdictionSetti
     )
     # Re-score every property so jurisdiction profile, weights, and downstream risk regen stay aligned.
     from services.compliance_recalc_queue import (
-        enqueue_compliance_recalc,
         TRIGGER_CLIENT_JURISDICTION_UPDATED,
         ACTOR_CLIENT,
+    )
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
     )
 
     prop_rows = await db.properties.find(
@@ -1609,7 +1611,9 @@ async def apply_default_jurisdiction_to_missing_properties(request: Request):
     from services.compliance_recalc_queue import (
         ACTOR_CLIENT,
         TRIGGER_PROPERTY_UPDATED,
-        enqueue_compliance_recalc,
+    )
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
     )
 
     client = await db.clients.find_one(

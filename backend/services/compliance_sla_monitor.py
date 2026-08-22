@@ -466,13 +466,24 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
     cutoff_prop = (now - timedelta(seconds=SLA_PENDING_SECONDS)).isoformat()
     cursor = db.properties.find(
         {"compliance_score_pending": True},
-        {"_id": 0, "property_id": 1, "client_id": 1, "compliance_last_calculated_at": 1},
+        {
+            "_id": 0,
+            "property_id": 1,
+            "client_id": 1,
+            "compliance_last_calculated_at": 1,
+            "compliance_score_recalc_state": 1,
+            "compliance_score_pending": 1,
+        },
     )
     async for prop in cursor:
         property_id = prop.get("property_id")
         client_id = prop.get("client_id", "")
         last_calc = prop.get("compliance_last_calculated_at")
         if last_calc and last_calc > cutoff_prop:
+            continue
+        from services.compliance_recalc_state import is_recalc_parked
+
+        if is_recalc_parked(prop):
             continue
         eligibility = await _eligibility_for(client_id)
         _record_evaluated_row(stats, eligibility)
@@ -532,9 +543,15 @@ async def run_compliance_recalc_sla_monitor() -> Dict[str, Any]:
         elif alert_type == ALERT_PROPERTY_PENDING_TOO_LONG:
             prop = await db.properties.find_one(
                 {"property_id": property_id},
-                {"compliance_score_pending": 1, "compliance_last_calculated_at": 1},
+                {
+                    "compliance_score_pending": 1,
+                    "compliance_last_calculated_at": 1,
+                    "compliance_score_recalc_state": 1,
+                },
             )
-            if not prop or not prop.get("compliance_score_pending"):
+            from services.compliance_recalc_state import is_recalc_parked
+
+            if not prop or not prop.get("compliance_score_pending") or is_recalc_parked(prop):
                 await _resolve_alert(db, property_id, alert_type, client_id, now)
                 stats["resolved"] += 1
             elif prop.get("compliance_last_calculated_at") and prop.get("compliance_last_calculated_at") > cutoff_prop:

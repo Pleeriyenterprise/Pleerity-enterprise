@@ -26,6 +26,22 @@ def test_pending_snapshot_counts_and_note():
     assert "headline" in snap["portfolio_score_recalc_pending_note"].lower()
 
 
+def test_pending_snapshot_ignores_parked_debt():
+    snap = portfolio_pending_score_recalc_snapshot(
+        [
+            {
+                "property_id": "p1",
+                "compliance_score": 80,
+                "compliance_score_pending": True,
+                "compliance_score_recalc_state": "parked",
+            }
+        ],
+    )
+    assert snap["properties_pending_score_recalc_count"] == 0
+    assert snap["portfolio_score_recalc_pending_note"] is None
+    assert snap["properties_parked_score_recalc_count"] == 1
+
+
 def test_pending_snapshot_singular_note():
     snap = portfolio_pending_score_recalc_snapshot(
         [{"property_id": "p1", "compliance_score": 80, "compliance_score_pending": True}],

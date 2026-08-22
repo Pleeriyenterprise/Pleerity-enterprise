@@ -165,7 +165,10 @@ async def create_property(
         await provisioning_service._update_property_compliance(
             property_obj.property_id
         )
-        from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_PROPERTY_CREATED, ACTOR_ADMIN
+        from services.compliance_recalc_queue import TRIGGER_PROPERTY_CREATED, ACTOR_ADMIN
+        from services.compliance_recalc_lifecycle_transition import (
+            enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
+        )
         await enqueue_compliance_recalc(
             property_id=property_obj.property_id,
             client_id=user["client_id"],
@@ -476,7 +479,9 @@ async def patch_property(
         from services.compliance_recalc_queue import (
             TRIGGER_PROPERTY_UPDATED,
             ACTOR_CLIENT,
-            enqueue_compliance_recalc,
+        )
+        from services.compliance_recalc_lifecycle_transition import (
+            enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
         )
 
         try:
@@ -505,9 +510,11 @@ async def patch_property(
             )
     elif applicability_changed:
         from services.compliance_recalc_queue import (
-            enqueue_compliance_recalc,
             TRIGGER_PROPERTY_UPDATED,
             ACTOR_CLIENT,
+        )
+        from services.compliance_recalc_lifecycle_transition import (
+            enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
         )
         await enqueue_compliance_recalc(
             property_id=property_id,
@@ -801,7 +808,10 @@ async def patch_requirement(
     )
 
     # Recalculate property compliance when requirement expiry/status changes (e.g. confirm details later)
-    from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_PROPERTY_UPDATED, ACTOR_CLIENT
+    from services.compliance_recalc_queue import TRIGGER_PROPERTY_UPDATED, ACTOR_CLIENT
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
+    )
 
     recalc_result = None
     recalc_exc: Optional[Exception] = None
@@ -1238,7 +1248,10 @@ async def sync_property_requirements_from_registry(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     from services.requirement_materialization_service import materialize_requirements_for_property
     from services.provisioning import provisioning_service
-    from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_PROPERTY_UPDATED, ACTOR_CLIENT
+    from services.compliance_recalc_queue import TRIGGER_PROPERTY_UPDATED, ACTOR_CLIENT
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
+    )
 
     result = await materialize_requirements_for_property(user["client_id"], property_id, reconcile_obsolete=True)
     await provisioning_service._update_property_compliance(property_id)

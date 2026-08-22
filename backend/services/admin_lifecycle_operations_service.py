@@ -298,7 +298,15 @@ async def admin_refresh_runtime_contract(
     invalidate_runtime_cache_for_client(client_id)
     db = database.get_db()
     before = await resolve_runtime_contract_for_client(db, client_id, use_cache=False, emit_events=False)
-    after = await resolve_runtime_contract_for_client(db, client_id, use_cache=False, emit_events=True)
+    after = await resolve_runtime_contract_for_client(db, client_id, use_cache=False, emit_events=False)
+    try:
+        from services.account_lifecycle_event_authority import publish_runtime_contract_transition
+
+        await publish_runtime_contract_transition(
+            db, before, after, trigger="admin_refresh_runtime_contract"
+        )
+    except Exception:
+        logger.warning("lifecycle event emit skipped after admin refresh client_id=%s", client_id, exc_info=True)
     return {
         "success": True,
         "runtime_version_before": before.get("runtime_version"),
@@ -326,6 +334,9 @@ async def admin_reconcile_from_stripe(
     if not sid:
         raise ValueError("No Stripe subscription ID — use billing recovery checkout for new subscription")
 
+    previous_contract = await resolve_runtime_contract_for_client(
+        db, client_id, use_cache=False, emit_events=False
+    )
     before_status = billing.get("subscription_status")
     await sync_client_billing_from_stripe_subscription_id(
         client_id,
@@ -337,7 +348,15 @@ async def admin_reconcile_from_stripe(
     await sync_subscription_lifecycle(client_id, bump_version=True)
     invalidate_runtime_cache_for_client(client_id)
     billing_after = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0}) or {}
-    contract = await resolve_runtime_contract_for_client(db, client_id, use_cache=False, emit_events=True)
+    try:
+        from services.account_lifecycle_runtime_contract import publish_runtime_contract_after_mutation
+
+        await publish_runtime_contract_after_mutation(
+            db, client_id, previous_contract, trigger="admin_reconcile_from_stripe"
+        )
+    except Exception:
+        logger.warning("lifecycle event emit skipped after admin stripe reconcile client_id=%s", client_id, exc_info=True)
+    contract = await resolve_runtime_contract_for_client(db, client_id, use_cache=False, emit_events=False)
     return {
         "success": True,
         "subscription_status_before": before_status,
@@ -359,6 +378,10 @@ async def admin_resume_scheduled_cancellation(
     actor_role: str,
     reason: str,
 ) -> Dict[str, Any]:
+    db = database.get_db()
+    previous_contract = await resolve_runtime_contract_for_client(
+        db, client_id, use_cache=False, emit_events=False
+    )
     result = await stripe_service.resume_subscription(
         client_id=client_id,
         actor_role=actor_role,
@@ -366,8 +389,15 @@ async def admin_resume_scheduled_cancellation(
         resume_source="admin_lifecycle_operations_resume",
     )
     invalidate_runtime_cache_for_client(client_id)
-    db = database.get_db()
-    contract = await resolve_runtime_contract_for_client(db, client_id, use_cache=False, emit_events=True)
+    try:
+        from services.account_lifecycle_runtime_contract import publish_runtime_contract_after_mutation
+
+        await publish_runtime_contract_after_mutation(
+            db, client_id, previous_contract, trigger="admin_resume_scheduled_cancellation"
+        )
+    except Exception:
+        logger.warning("lifecycle event emit skipped after admin resume cancellation client_id=%s", client_id, exc_info=True)
+    contract = await resolve_runtime_contract_for_client(db, client_id, use_cache=False, emit_events=False)
     return {
         **result,
         "lifecycle_state": contract.get("lifecycle_state"),

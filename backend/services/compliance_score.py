@@ -156,21 +156,34 @@ async def mongo_find_to_list(cursor, cap: int = _MAX_TENANT_FETCH) -> List[Dict[
     return out
 
 
+from services.compliance_recalc_state import is_recalc_active_pending, is_recalc_parked
+
+
 def portfolio_pending_score_recalc_snapshot(properties: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Tenant-scoped honesty fields for Stream B: ``compliance_score_pending`` marks properties whose
-    stored headline will refresh after the compliance recalc queue drains. Exposed on compliance-score
-    payloads so KPI/live requirement rows are not confused with persisted headline timing.
+    Tenant-scoped honesty fields for Stream B.
+
+    Only ACTIVE_PENDING properties count as queued/updating work. PARKED debt is lifecycle-paused
+    and must not be presented as an in-flight score update.
     """
-    n = sum(1 for p in properties if bool(p.get("compliance_score_pending")))
-    if n <= 0:
-        return {"properties_pending_score_recalc_count": 0, "portfolio_score_recalc_pending_note": None}
-    subj_have = "properties have" if n != 1 else "property has"
+    active_n = sum(1 for p in properties if is_recalc_active_pending(p))
+    parked_n = sum(1 for p in properties if is_recalc_parked(p))
+    if active_n <= 0:
+        return {
+            "properties_pending_score_recalc_count": 0,
+            "portfolio_score_recalc_pending_note": None,
+            "properties_parked_score_recalc_count": parked_n,
+        }
+    subj_have = "properties have" if active_n != 1 else "property has"
     note = (
-        f"{n} {subj_have} a stored compliance score update queued after recent changes. "
+        f"{active_n} {subj_have} a stored compliance score update queued after recent changes. "
         "The headline uses the last completed calculation until processing finishes; requirement summaries reflect current portal records."
     )
-    return {"properties_pending_score_recalc_count": n, "portfolio_score_recalc_pending_note": note}
+    return {
+        "properties_pending_score_recalc_count": active_n,
+        "portfolio_score_recalc_pending_note": note,
+        "properties_parked_score_recalc_count": parked_n,
+    }
 
 
 def property_persisted_score_row_status(prop: Dict[str, Any]) -> str:
@@ -194,11 +207,13 @@ async def get_persisted_portfolio_headline_for_summary(
         cap=_MAX_TENANT_FETCH,
     )
     if not skip_lazy_backfill:
-        from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_LAZY_BACKFILL, ACTOR_SYSTEM
+        from services.compliance_recalc_lifecycle_transition import enqueue_or_park_compliance_recalc
+        from services.compliance_recalc_queue import TRIGGER_LAZY_BACKFILL, ACTOR_SYSTEM
 
         for p in properties:
             if p.get("compliance_score") is None:
-                await enqueue_compliance_recalc(
+                await enqueue_or_park_compliance_recalc(
+                    db,
                     property_id=p["property_id"],
                     client_id=client_id,
                     trigger_reason=TRIGGER_LAZY_BACKFILL,
@@ -380,18 +395,21 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                     **_jurisdiction_api_fields(client_row_empty, []),
                 }
             )
-        from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_LAZY_BACKFILL, ACTOR_SYSTEM
-
         need_backfill = [p for p in properties if p.get("compliance_score") is None]
-        for p in need_backfill:
-            await enqueue_compliance_recalc(
-                property_id=p["property_id"],
-                client_id=client_id,
-                trigger_reason=TRIGGER_LAZY_BACKFILL,
-                actor_type=ACTOR_SYSTEM,
-                actor_id=None,
-                correlation_id=f"LAZY_BACKFILL:{p['property_id']}",
-            )
+        if need_backfill:
+            from services.compliance_recalc_lifecycle_transition import enqueue_or_park_compliance_recalc
+            from services.compliance_recalc_queue import TRIGGER_LAZY_BACKFILL, ACTOR_SYSTEM
+
+            for p in need_backfill:
+                await enqueue_or_park_compliance_recalc(
+                    db,
+                    property_id=p["property_id"],
+                    client_id=client_id,
+                    trigger_reason=TRIGGER_LAZY_BACKFILL,
+                    actor_type=ACTOR_SYSTEM,
+                    actor_id=None,
+                    correlation_id=f"LAZY_BACKFILL:{p['property_id']}",
+                )
         scores = [p.get("compliance_score") for p in properties if p.get("compliance_score") is not None]
         if not scores:
             client_row_nr = await db.clients.find_one(

@@ -267,7 +267,7 @@ async def recalculate_and_persist(
 
     await db.properties.update_one(
         {"property_id": property_id},
-        {"$set": set_fields}
+        {"$set": set_fields, "$unset": {"compliance_score_recalc_state": ""}},
     )
 
     breakdown_summary = {
@@ -500,7 +500,9 @@ def _merge_live_compliance_with_persisted_headline(
                 "Stored compliance score could not be read; reconciliation may be required."
             )
     else:
-        st = "calculating" if prop.get("compliance_score_pending") else "reconciliation_required"
+        from services.compliance_recalc_state import is_recalc_active_pending
+
+        st = "calculating" if is_recalc_active_pending(prop) else "reconciliation_required"
         authoritative["score"] = None
         authoritative["score_status"] = st
         authoritative["grade"] = None
@@ -572,6 +574,7 @@ async def get_authoritative_property_compliance_for_client(
             "client_id": 1,
             "compliance_score": 1,
             "compliance_score_pending": 1,
+            "compliance_score_recalc_state": 1,
             "compliance_breakdown": 1,
             "compliance_bucket_breakdown": 1,
             "score_breakdown": 1,

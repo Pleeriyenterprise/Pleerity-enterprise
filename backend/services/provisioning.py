@@ -69,7 +69,10 @@ class ProvisioningService:
                 await self._generate_requirements(client_id, prop["property_id"])
             for prop in properties:
                 await self._update_property_compliance(prop["property_id"])
-            from services.compliance_recalc_queue import enqueue_compliance_recalc, TRIGGER_PROVISIONING, ACTOR_SYSTEM
+            from services.compliance_recalc_queue import TRIGGER_PROVISIONING, ACTOR_SYSTEM
+            from services.compliance_recalc_lifecycle_transition import (
+                enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
+            )
             for prop in properties:
                 await enqueue_compliance_recalc(
                     property_id=prop["property_id"],

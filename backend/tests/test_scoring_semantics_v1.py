@@ -94,5 +94,18 @@ def test_headline_score_display_for_export():
     assert headline_score_display_for_export(None, SCORE_STATUS_CALCULATING) == "Calculating"
 
 
+def test_parked_pending_is_stale_not_calculating():
+    now = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
+    row = _prop(55, last_iso="2026-03-01T00:00:00+00:00", pending=True)
+    row["compliance_score_recalc_state"] = "parked"
+    assert resolve_property_score_status(row, now=now) == SCORE_STATUS_STALE
+
+
+def test_parked_without_score_is_reconciliation():
+    row = _prop(None, pending=True)
+    row["compliance_score_recalc_state"] = "parked"
+    assert resolve_property_score_status(row) == SCORE_STATUS_RECONCILIATION_REQUIRED
+
+
 def test_is_property_score_stale_no_score():
     assert is_property_score_stale(_prop(None, last_iso="2020-01-01")) is False

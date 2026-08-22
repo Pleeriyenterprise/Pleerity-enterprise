@@ -151,7 +151,9 @@ async def enqueue_compliance_recalc_with_fanout(
     broadcast_traces: Optional[Sequence[Optional[Dict[str, Any]]]] = None,
 ) -> None:
     """Enqueue recalc once; attach downstream rows to ``transition_fanout`` and optional ``broadcast_traces``."""
-    from services.compliance_recalc_queue import enqueue_compliance_recalc
+    from services.compliance_recalc_lifecycle_transition import (
+        enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
+    )
     from services.requirement_transition_observability import (
         PROPAGATION_CONTINUITY_ACTIVE as _PCA,
         PROPAGATION_CONTINUITY_SKIPPED_REGISTRY as _PCSR,

@@ -212,7 +212,7 @@ function buildDashboardComplianceGapsLine(p, openJobsMap, showOpenJobs, missingO
     }
     return p.score_cognition_line;
   }
-  if (p?.compliance_score_pending || p?.score_status === 'pending_recalc' || p?.score_status === 'calculating') {
+  if (p?.score_status === 'calculating' || p?.score_status === 'pending_recalc') {
     return 'Score updating — recent compliance changes are being processed';
   }
   const parts = [];
@@ -3262,7 +3262,7 @@ const ClientDashboard = () => {
                         {headlineScoreShowsOutOf100(p.property_score ?? p.score, p.score_status) ? '/100' : ''}
                       </td>
                       <td className="p-3 whitespace-nowrap">
-                        {p.score_status === 'calculating' || p.compliance_score_pending
+                        {p.score_status === 'calculating'
                           ? 'Updating…'
                           : formatRiskLabel(p.risk_level)}
                       </td>
@@ -3469,7 +3469,7 @@ const ClientDashboard = () => {
                                 {headlineScoreDisplayForDashboard(score, st)}
                                 {headlineScoreShowsOutOf100(score, st) ? '/100' : ''}
                               </span>
-                              {p.risk_level && st !== 'calculating' && !p.compliance_score_pending ? (
+                              {p.risk_level && st !== 'calculating' ? (
                                 <span className="text-gray-600"> · {formatRiskLabel(p.risk_level)}</span>
                               ) : null}
                             </p>
@@ -3515,7 +3515,7 @@ const ClientDashboard = () => {
                                     {headlineScoreShowsOutOf100(score, st) ? '/100' : ''}
                                   </div>
                                   <div className="text-xs text-gray-600">
-                                    {st === 'calculating' || p.compliance_score_pending
+                                    {st === 'calculating'
                                       ? 'Updating…'
                                       : p.risk_level
                                         ? formatRiskLabel(p.risk_level)

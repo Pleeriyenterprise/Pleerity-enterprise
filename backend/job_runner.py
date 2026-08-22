@@ -473,6 +473,22 @@ async def run_compliance_recalc_worker():
         reclaim_stats = await reclaim_stale_running_compliance_recalc_jobs(db, now=now)
         reclaimed_to_pending = int(reclaim_stats.get("reclaimed_to_pending") or 0)
         reclaimed_to_dead = int(reclaim_stats.get("reclaimed_to_dead") or 0)
+        parked_restore_stats = {
+            "clients_scanned": 0,
+            "clients_restored": 0,
+            "rows_restored": 0,
+            "restoration_enqueued": 0,
+            "skipped_ineligible": 0,
+            "errors": 0,
+        }
+        try:
+            from services.compliance_recalc_lifecycle_transition import (
+                restore_parked_debt_for_eligible_clients,
+            )
+
+            parked_restore_stats = await restore_parked_debt_for_eligible_clients(db)
+        except Exception as restore_exc:
+            logger.warning("parked-debt safety-net skipped: %s", restore_exc)
 
         async def _heartbeat_while_running(job_id: Any) -> None:
             try:
@@ -501,6 +517,8 @@ async def run_compliance_recalc_worker():
         processed = 0
         failed_retry = 0
         dead_count = 0
+        drained_running_success = 0
+        drained_running_failure = 0
         for job in jobs:
             jid = job["_id"]
             property_id = job["property_id"]
@@ -522,23 +540,17 @@ async def run_compliance_recalc_worker():
             if client_id:
                 from services.account_background_runtime_authority import (
                     BackgroundJobDecision,
-                    apply_queue_runtime_suppression,
                     evaluate_background_runtime,
                     log_background_decision,
                     queue_runtime_action,
                 )
+                from services.compliance_recalc_lifecycle_transition import park_claimed_ineligible_job
 
                 bg = await evaluate_background_runtime(db, client_id, "compliance_recalc_queue")
                 if not bg.allowed:
                     log_background_decision(bg)
-                    await apply_queue_runtime_suppression(
-                        db,
-                        collection_name="compliance_recalc_queue",
-                        item_id=jid,
-                        decision=bg,
-                        status_pending=STATUS_PENDING,
-                        status_dead=STATUS_DEAD,
-                    )
+                    claimed_job = {**job, "status": STATUS_RUNNING, "_id": jid}
+                    await park_claimed_ineligible_job(db, claimed_job, bg)
                     action = queue_runtime_action(bg)
                     if action == "terminate":
                         lifecycle_terminated += 1
@@ -667,6 +679,17 @@ async def run_compliance_recalc_worker():
                     },
                 )
                 processed += 1
+                if client_id:
+                    try:
+                        from services.account_background_runtime_authority import (
+                            evaluate_background_runtime as _eval_bg_after,
+                        )
+
+                        bg_after = await _eval_bg_after(db, client_id, "compliance_recalc_queue")
+                        if not bg_after.allowed:
+                            drained_running_success += 1
+                    except Exception:
+                        pass
                 try:
                     from services.operational_evidence.producers import emit_queue_item_completed
 
@@ -719,6 +742,20 @@ async def run_compliance_recalc_worker():
                     {"_id": jid},
                     {"$set": fail_fields, "$unset": {"heartbeat_at": ""}},
                 )
+                if client_id:
+                    try:
+                        from services.account_background_runtime_authority import (
+                            evaluate_background_runtime as _eval_bg_fail,
+                        )
+                        from services.compliance_recalc_lifecycle_transition import park_queue_row
+
+                        bg_fail = await _eval_bg_fail(db, client_id, "compliance_recalc_queue")
+                        if not bg_fail.allowed:
+                            failed_job = {**job, "status": new_status, "_id": jid, "last_error": err_str}
+                            await park_queue_row(db, failed_job, bg_fail, allow_running=True)
+                            drained_running_failure += 1
+                    except Exception:
+                        pass
                 audit_meta: Dict[str, Any] = {
                     "attempts": next_attempts,
                     "retry_count": next_attempts,
@@ -790,6 +827,11 @@ async def run_compliance_recalc_worker():
                 "dead": dead_count,
                 "stale_running_reclaimed_to_pending": reclaimed_to_pending,
                 "stale_running_reclaimed_to_dead": reclaimed_to_dead,
+                "drained_running_success": drained_running_success,
+                "drained_running_failure": drained_running_failure,
+                "queue_items_parked": lifecycle_skipped + lifecycle_paused,
+                "parked_debt_clients_scanned": int(parked_restore_stats.get("clients_scanned") or 0),
+                "parked_debt_rows_restored": int(parked_restore_stats.get("rows_restored") or 0),
             }
         )
     except Exception as e:
@@ -1687,7 +1729,6 @@ async def run_compliance_recalc_enqueue_property(property_id: Optional[str] = No
 
     from database import database
     from services.compliance_recalc_queue import (
-        ACTOR_ADMIN,
         ACTOR_SYSTEM,
         TRIGGER_ADMIN_MANUAL_JOB,
         TRIGGER_SCHEDULED_PROPERTY_BATCH,
@@ -1712,13 +1753,17 @@ async def run_compliance_recalc_enqueue_property(property_id: Optional[str] = No
             }
         cid = prop["client_id"]
         corr = f"{TRIGGER_ADMIN_MANUAL_JOB}:{pid}:{uuid.uuid4().hex[:12]}"
-        enq = await enqueue_compliance_recalc(
+        from services.compliance_recalc_lifecycle_transition import (
+            enqueue_compliance_recalc_admin_override,
+        )
+
+        enq = await enqueue_compliance_recalc_admin_override(
             property_id=pid,
             client_id=cid,
             trigger_reason=TRIGGER_ADMIN_MANUAL_JOB,
-            actor_type=ACTOR_ADMIN,
             actor_id=None,
             correlation_id=corr,
+            override_reason="job_runner_single_property",
         )
         return {
             "message": "Compliance recalc enqueued" if enq else "Recalc already queued (duplicate correlation window)",

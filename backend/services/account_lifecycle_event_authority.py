@@ -385,6 +385,7 @@ async def publish_runtime_contract_transition(
 
 
 async def _dispatch_event(event_doc: Mapping[str, Any]) -> None:
+    _ensure_compliance_recalc_lifecycle_consumers()
     category_str = str(event_doc.get("event_category") or LifecycleEventCategory.RUNTIME.value)
     try:
         category = LifecycleEventCategory(category_str)
@@ -461,3 +462,15 @@ def _register_builtin_consumers() -> None:
 
 
 _register_builtin_consumers()
+_compliance_recalc_consumers_registered = False
+
+
+def _ensure_compliance_recalc_lifecycle_consumers() -> None:
+    """Lazy register to avoid circular import with compliance_recalc_lifecycle_transition."""
+    global _compliance_recalc_consumers_registered
+    if _compliance_recalc_consumers_registered:
+        return
+    from services.compliance_recalc_lifecycle_transition import register_compliance_recalc_lifecycle_consumers
+
+    register_compliance_recalc_lifecycle_consumers()
+    _compliance_recalc_consumers_registered = True

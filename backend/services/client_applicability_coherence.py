@@ -565,7 +565,9 @@ async def refresh_stale_authority_for_client_requirements(
         from services.compliance_recalc_queue import (
             ACTOR_SYSTEM,
             TRIGGER_DOC_STATUS_CHANGED,
-            enqueue_compliance_recalc,
+        )
+        from services.compliance_recalc_lifecycle_transition import (
+            enqueue_governed_compliance_recalc as enqueue_compliance_recalc,
         )
 
         for pid in sorted(property_ids):
